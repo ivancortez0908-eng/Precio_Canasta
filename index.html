@@ -5,8 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Canasta SV · Compara precios de supermercados</title>
 <style>
-:root{--bg:#f6f4ee;--surf:#fff;--ink:#1d2b24;--mute:#66736c;--line:#dcd8cc;--brand:#0f5c3e;--best:#d9f0e3;--bestInk:#0a4a31;--warn:#b3402a}
-@media (prefers-color-scheme:dark){:root{--bg:#141a17;--surf:#1c2420;--ink:#e8efe9;--mute:#98a89f;--line:#2f3a34;--brand:#58c493;--best:#1d3d2d;--bestInk:#8fe0b8;--warn:#f08a72}}
+/* Paleta proporcionada por el usuario: escala azul de luminosidad y acentos de matiz. */
+:root{color-scheme:light;--bg:#dbe3f9;--surf:#ffffff;--ink:#060f24;--mute:#193a91;--line:#b6c7f3;--brand:#2557da;--onBrand:#ffffff;--best:#dbe3f9;--bestInk:#132c6d;--bestBorder:#6e8fe6;--warn:#da2658;--shadow:#2557da20}
+@media (prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#060f24;--surf:#0c1d49;--ink:#dbe3f9;--mute:#92abec;--line:#193a91;--brand:#92abec;--onBrand:#060f24;--best:#132c6d;--bestInk:#dbe3f9;--bestBorder:#4973e0;--warn:#daa826;--shadow:#00000040}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Trebuchet MS","Segoe UI",system-ui,sans-serif}
 header{padding:32px 20px 8px;max-width:1100px;margin:auto}
@@ -41,45 +42,43 @@ section.cart h2{margin:0 0 4px;font:700 1.4rem Georgia,serif}
 button{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--brand);background:transparent;color:var(--brand);cursor:pointer}
 :focus-visible{outline:3px solid var(--brand);outline-offset:2px}
 [hidden]{display:none!important}
-.star{background:none;border:0;font-size:1.4rem;line-height:1;padding:2px 6px;color:var(--mute)}.star[aria-pressed=true]{color:#e0a100}
+.star{background:none;border:0;font-size:1.4rem;line-height:1;padding:2px 6px;color:var(--mute)}.star[aria-pressed=true]{color:var(--brand)}
 .stp{display:inline-flex;align-items:center;gap:4px}.stp button{padding:2px 10px;font-size:1.1rem;line-height:1.2}
 .rm{border-color:var(--warn);color:var(--warn);padding:4px 10px}
 td small.f{font-size:.72rem}
 #p1,#p3{display:grid;gap:16px}
 .tabs{display:flex;gap:8px;flex-wrap:wrap}
-.tabs button[aria-selected=true]{background:var(--brand);color:var(--bg)}
+.tabs button[aria-selected=true]{background:var(--brand);color:var(--onBrand)}
 .store{display:inline-block;font-size:.8rem;padding:1px 8px;border-radius:999px;background:var(--best);color:var(--bestInk);font-weight:600}
 footer{max-width:1100px;margin:auto;padding:0 20px 40px;color:var(--mute);font-size:.85rem}
 /* Interfaz de compra: búsqueda, lista y cobertura por tienda. */
-:root{--bg:#f5f7f2;--line:#dce4da;--brand:#176345;--best:#e5f3df;--bestInk:#245239}
 body{font-family:"Segoe UI",system-ui,sans-serif}
 header{padding-top:38px;padding-bottom:20px;display:flex;justify-content:space-between;gap:24px;align-items:center}
 .eyebrow{font-size:.72rem;font-weight:750;letter-spacing:.16em;text-transform:uppercase;color:var(--brand);margin:0 0 12px}
 h1{font-family:Georgia,serif;font-size:clamp(2.8rem,7vw,4rem)}
 header p{max-width:55ch}
-.brand-mark{width:86px;height:86px;flex-shrink:0;border-radius:26px;background:var(--brand);color:#fff;display:grid;place-items:center;transform:rotate(-6deg)}
+.brand-mark{width:86px;height:86px;flex-shrink:0;border-radius:26px;background:var(--brand);color:var(--onBrand);display:grid;place-items:center;transform:rotate(-6deg)}
 .brand-mark svg{width:52px;height:52px}
 .intro{background:var(--surf);border:1px solid var(--line);border-radius:16px;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px}
 .intro strong{display:block;font-size:1.1rem}.intro p{margin:3px 0 0;color:var(--mute);font-size:.9rem}
 .intro .badge{background:var(--best);color:var(--bestInk);border-radius:30px;padding:8px 14px;font-size:.8rem;white-space:nowrap}
 .tabs{border-bottom:1px solid var(--line);padding-bottom:12px;gap:8px}
 .tabs button{border:0;color:var(--mute);font-weight:650;padding:12px 18px;border-radius:12px}
-.tabs button[aria-selected=true]{color:#fff;background:var(--brand);box-shadow:0 3px 10px #17634520}
+.tabs button[aria-selected=true]{color:var(--onBrand);background:var(--brand);box-shadow:0 3px 10px var(--shadow)}
 #nf{display:inline-block;min-width:23px;border-radius:6px;background:#ffffff24}
 .panel-heading{margin:8px 0 14px}.panel-heading h2{font-size:1.45rem;margin:0 0 4px;letter-spacing:-.03em}.panel-heading p{margin:0;color:var(--mute);font-size:.92rem}
-input[type=search]{padding:14px 16px;border-radius:12px}button[type=submit]{background:var(--brand);color:#fff;padding:14px 18px;font-weight:650;border-radius:12px}
+input[type=search]{padding:14px 16px;border-radius:12px;accent-color:var(--brand)}input[type=checkbox]{accent-color:var(--brand)}button[type=submit]{background:var(--brand);color:var(--onBrand);padding:14px 18px;font-weight:650;border-radius:12px}
 button:hover{filter:brightness(.92)}button:disabled{opacity:.6;cursor:wait}
 .wrap{border-radius:14px}th{background:var(--bg);font-size:.78rem;letter-spacing:.02em;padding:14px 16px}td{padding:16px;vertical-align:top}tbody tr:last-child td{border-bottom:0}
 td:first-child{font-weight:600}td small{font-weight:400;margin-top:4px}.star{font-size:1.8rem;min-width:40px;min-height:40px}
 .consulta{max-width:300px;font-size:.75rem}.retry{font-size:.75rem;padding:4px 8px;margin-top:8px;border-color:var(--line)}
 .product-source{white-space:normal;min-width:130px;max-width:220px;font-size:.75rem;line-height:1.35}
 .opciones{text-align:left;white-space:normal;max-width:240px;font-weight:400}.opciones summary{color:var(--brand);font-size:.75rem}.opciones label{font-size:.75rem}.opciones select{display:block;width:220px;max-width:100%;margin-top:6px;font-size:.8rem}
-section.cart{border:1px solid var(--line);border-radius:16px;padding:24px;order:0}.tot{padding:16px;border-radius:12px}.tot b{font-size:1.8rem;letter-spacing:-.04em}.tot.best{border:1px solid #9ecb9a}
+section.cart{border:1px solid var(--line);border-radius:16px;padding:24px;order:0}.tot{padding:16px;border-radius:12px}.tot b{font-size:1.8rem;letter-spacing:-.04em}.tot.best{border:1px solid var(--bestBorder)}
 #favmix{padding:14px;background:var(--bg);border-radius:10px;margin-top:16px;font-size:.9rem}
 .cart-note{font-size:.8rem;color:var(--mute);margin:12px 0 0}
 .scroll-hint{display:none;font-size:.8rem;color:var(--mute);margin:0}
 @media(max-width:640px){.scroll-hint{display:block}}
-@media(prefers-color-scheme:dark){:root{--bg:#141e19;--line:#30443a;--brand:#75d6a5;--best:#223d2e;--bestInk:#c0ebcc}.brand-mark,.tabs button[aria-selected=true],button[type=submit]{color:#11271c}}
 @media(max-width:640px){header{padding-top:24px}.brand-mark{width:60px;height:60px;border-radius:18px}.brand-mark svg{width:38px;height:38px}main{padding:8px 14px 40px}header{padding-left:14px;padding-right:14px}.intro{padding:16px}.intro .badge{display:none}.tabs{flex-wrap:nowrap;gap:2px}.tabs button{font-size:.8rem;padding:10px 8px;flex:1}.controls>input[type=search]{min-width:100%;width:100%}.controls>button[type=submit]{flex:1}.totals{grid-template-columns:repeat(2,minmax(0,1fr))}.tot b{font-size:1.5rem}section.cart{padding:16px}th:first-child,td:first-child{min-width:200px}}
 </style>
 </head>
