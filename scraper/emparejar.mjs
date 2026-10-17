@@ -39,6 +39,10 @@ for (const grupo of manual) {
 const grupos = new Map();
 todos.forEach((_, i) => { const r = raiz(i); (grupos.get(r) || grupos.set(r, []).get(r)).push(i); });
 
+const bonito = t => { // "FRIJOL ROJO DE SEDA" -> "Frijol Rojo De Seda"
+  const letras = t.replace(/[^A-Za-zÁÉÍÓÚÑáéíóúñ]/g, "");
+  return letras && (t.replace(/[^A-ZÁÉÍÓÚÑ]/g, "").length / letras.length) > 0.8 ? t.toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase()).replace(/(\d)\s*(G|Kg|Ml|Lb|Oz)\b/g, (_, d, u) => d + " " + (u === "Ml" ? "ml" : u.toLowerCase())) : t;
+};
 const items = [];
 for (const [r, idxs] of grupos) {
   const porTienda = new Map(); // se queda con el más barato de cada tienda
@@ -50,12 +54,13 @@ for (const [r, idxs] of grupos) {
   const base = lista[0], conQ = lista.find(x => x.q) || base;
   const t = lista.map(x => {
     const p = precioUnitario(x.precio, x.q, x.u);
-    return [x.ti, +x.precio.toFixed(2), x.url, p ? +p.pu.toFixed(2) : null];
+    return [x.ti, +x.precio.toFixed(2), x.url, p ? +p.pu.toFixed(2) : null, bonito(x.nombre), x.marca || "", x.desc || ""];
   });
   const pus = t.map(x => x[3]).filter(v => v != null);
   const ts = tipos.get(raiz(r));
   const k = lista.length < 2 ? null : ts?.has("manual") ? "manual" : ts?.has("ean") ? "ean" : "nombre";
-  items.push({ n: base.nombre, m: base.marca, q: conQ.q, u: conQ.u,
+  const conMarca = lista.find(x => x.marca);
+  items.push({ n: bonito(base.nombre), m: conMarca ? bonito(conMarca.marca) : "", q: conQ.q, u: conQ.u,
     pl: precioUnitario(1, conQ.q, conQ.u)?.pl ?? null, pu: pus.length ? Math.min(...pus) : null, k, t });
 }
 items.sort((a, b) => a.n.localeCompare(b.n, "es"));

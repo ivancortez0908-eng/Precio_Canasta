@@ -6,18 +6,21 @@ const RE_UD = /(\d+)\s*(unidades|und|uds?|pzas?|piezas)(?![a-z])/i;
 
 function conv(v, u) {
   u = u.toLowerCase();
-  if (/^(kg|kilos?)$/.test(u)) return { q: v * 1000, u: "g" };
+  if (/^(kg|kilos?)$/.test(u)) return v > 60 ? { q: v, u: "g" } : { q: v * 1000, u: "g" };   // "802 kg" en un quitamanchas es 802 g
   if (/^(g|grs?|gramos?)$/.test(u)) return { q: v, u: "g" };
   if (/^(lbs?|libras?)$/.test(u)) return { q: v * 453.592, u: "g" };
   if (u === "oz") return { q: v * 28.3495, u: "g" };
-  if (/^(l|lts?|litros?)$/.test(u)) return { q: v * 1000, u: "ml" };
+  if (/^(l|lts?|litros?)$/.test(u)) return v > 50 ? { q: v, u: "ml" } : { q: v * 1000, u: "ml" };
   if (u === "ml") return { q: v, u: "ml" };
   if (/^gal/.test(u)) return { q: v * 3785.41, u: "ml" };
   return null;
 }
 
 // Superselectos escribe 1 816 g (miles con espacio): lo convertimos a 1816 g
-export const limpiaTam = t => (t || "").replace(/(\d{1,3})\s(\d{3})(?=\s*(?:g|gr|grs|gramos|ml)(?![a-z]))/gi, "$1$2").replace(/\s+/g, " ");
+export const limpiaTam = t => (t || "")
+  .replace(/(\d{1,3})\s(\d{3})(?=\s*(?:g|gr|grs|gramos|ml)(?![a-z]))/gi, "$1$2")        // 1 816 g  -> 1816 g
+  .replace(/(\d{1,3})\s(\d{3})(?=\s*(?:kg|kilos?|lts?|litros?|l)(?![a-z]))/gi, "$1.$2") // 2 500 kg -> 2.500 kg
+  .replace(/\s+/g, " ");
 
 // "Frijol rojo 2 lb" -> { q: 907, u: "g" }; "Cerveza 6 x 355 ml" -> { q: 2130, u: "ml" }
 export function parseTamano(nombre) {
