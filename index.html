@@ -44,7 +44,8 @@ button{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--br
 .star{background:none;border:0;font-size:1.4rem;line-height:1;padding:2px 6px;color:var(--mute)}.star[aria-pressed=true]{color:#e0a100}
 .stp{display:inline-flex;align-items:center;gap:4px}.stp button{padding:2px 10px;font-size:1.1rem;line-height:1.2}
 .rm{border-color:var(--warn);color:var(--warn);padding:4px 10px}
-td small.f{font-size:.72rem}
+td small.f{font-size:.72rem;white-space:normal;display:block;max-width:220px;margin-left:auto}
+select.alt{max-width:230px;font-size:.8rem;padding:4px;margin-top:4px}
 #p1,#p3{display:grid;gap:16px}
 .tabs{display:flex;gap:8px;flex-wrap:wrap}
 .tabs button[aria-selected=true]{background:var(--brand);color:var(--bg)}
@@ -92,7 +93,8 @@ footer{max-width:1100px;margin:auto;padding:0 20px 40px;color:var(--mute);font-s
     <p class="msg">Los resultados salen directamente de cada tienda y pueden incluir presentaciones distintas. Verifica marca, concentración y presentación antes de comparar, sobre todo en medicamentos.</p>
   </div>
   <div id="p3" hidden>
-    <div class="controls"><p class="msg" id="favmsg" style="flex:1"></p><button id="favclear" hidden>Vaciar favoritos</button></div>
+    <div class="controls"><p class="msg" id="favmsg" style="flex:1"></p><button id="favact" hidden>Actualizar precios en todas las tiendas</button><button id="favclear" hidden>Vaciar favoritos</button></div>
+    <p class="msg" id="favest"></p>
     <div class="wrap"><table id="tfav"></table></div>
     <section class="cart" id="favres" aria-live="polite" hidden>
       <h2>Comparación de tu compra</h2>
@@ -125,15 +127,16 @@ const esFav = id => FAV.some(f => f.id === id);
 const idGrupo = it => "g:" + norm(it.n) + "|" + (it.q || "") + (it.u || "");
 const idVivo = x => "v:" + x.tienda + ":" + x.url;
 const favDeItem = it => ({ id: it.fid, n: it.n, m: it.m, q: it.q, u: it.u, pl: it.pl,
-  t: Object.fromEntries(it.t.map(e => [D.supers[e[0]], { p: e[1], url: e[2], nom: e[4] || it.n, f: D.actualizado }])) });
+  t: Object.fromEntries(it.t.map(e => [D.supers[e[0]], { p: e[1], url: e[2], nom: e[4] || it.n, f: D.actualizado, src: "cat" }])), c: {} });
 const favDeVivo = x => ({ id: x.id, n: x.nombre, m: x.marca, q: x.q, u: x.u, pl: x.pl,
-  t: { [x.tienda]: { p: x.precio, url: x.url, nom: x.nombre, f: hoy() } } });
+  t: { [x.tienda]: { p: x.precio, url: x.url, nom: x.nombre, f: hoy(), src: "man" } }, c: {} });
 const estrella = (attr, on) => `<button class="star" ${attr} aria-pressed="${on}" aria-label="${on ? "Quitar de favoritos" : "Agregar a favoritos"}">${on ? "★" : "☆"}</button>`;
 
 function alternar(f, b) {
   const i = FAV.findIndex(x => x.id === f.id);
   i >= 0 ? FAV.splice(i, 1) : FAV.push({ ...f, cant: 1 });
   guardar(); pintarFav();
+  if (i < 0) buscarUno(FAV[FAV.length - 1]);
   if (b) { const on = i < 0; b.setAttribute("aria-pressed", on); b.textContent = on ? "★" : "☆"; b.setAttribute("aria-label", on ? "Quitar de favoritos" : "Agregar a favoritos"); }
 }
 // Al cargar datos nuevos, actualiza los precios de los favoritos (por producto o por enlace de tienda)
@@ -142,7 +145,7 @@ function refrescarFavs() {
   for (const it of D.items) { porId.set(it.fid, it); for (const e of it.t) if (e[2]) porUrl.set(e[2], [D.supers[e[0]], e]); }
   for (const f of FAV) {
     const it = porId.get(f.id);
-    if (it) for (const e of it.t) f.t[D.supers[e[0]]] = { p: e[1], url: e[2], nom: e[4] || it.n, f: D.actualizado };
+    if (it) for (const e of it.t) { const k = D.supers[e[0]]; if (f.t[k]?.src !== "man" && !(f.sin && f.sin[k])) f.t[k] = { p: e[1], url: e[2], nom: e[4] || it.n, f: D.actualizado, src: "cat" }; }
     for (const [s, v] of Object.entries(f.t)) { const h = v.url && porUrl.get(v.url); if (h && h[0] === s) { v.p = h[1][1]; v.f = D.actualizado; } }
   }
   guardar();
@@ -217,20 +220,82 @@ async function vivo(q) {
 }
 
 // ---------- Vista de favoritos: cantidades, quitar y comparación de la compra ----------
+// ---- Buscar el producto de referencia en todas las tiendas (usa el Worker) ----
+const PARASITAS = new Set("de la el los las con en y para por del al un una bolsa caja paquete pack unidades unidad ud uds g gr kg lb lbs ml l lt oz".split(" "));
+const toks = t => norm(t).replace(/\d+([.,]\d+)?/g, " ").replace(/[^a-zñ ]/g, " ").split(/\s+/).filter(w => w.length > 1 && !PARASITAS.has(w));
+function consultas(f) {
+  const marca = norm(f.m || "").trim(), mw = marca.split(" ");
+  const nom = [...new Set(toks(f.n))].filter(w => !mw.includes(w));
+  const a = [marca, ...nom.slice(0, 3)].filter(Boolean).join(" ").slice(0, 60), b = nom.slice(0, 2).join(" ");
+  return b && b !== a ? [a, b] : [a];
+}
+function puntaje(f, x) {   // qué tan parecido es x al producto de referencia (0 a 1)
+  const t = new Set(toks(x.nombre + " " + (x.marca || ""))), mw = norm(f.m || "").split(" ");
+  const mios = toks(f.n).filter(w => !mw.includes(w));
+  let s = mios.length ? 4 * mios.filter(w => t.has(w)).length / mios.length : 0;
+  if (f.m && norm(x.nombre + " " + (x.marca || "")).includes(norm(f.m))) s += 3;
+  if (f.q && x.q && f.u === x.u) { const d = Math.abs(f.q - x.q) / f.q; s += d <= 0.05 ? 3 : d <= 0.2 ? 0 : -2; }
+  return { s, r: s / (4 + (f.m ? 3 : 0) + (f.q ? 3 : 0)) };
+}
+async function actualizarFav(f) {
+  if (!window.API_VIVO) return;
+  f.c = f.c || {};
+  const por = {}, resp = new Set();
+  for (const q of consultas(f)) {
+    let d; try { const r = await fetch(`${window.API_VIVO}?q=${encodeURIComponent(q)}`); d = await r.json(); if (!r.ok) throw 0; } catch { continue; }
+    for (const [t, v] of Object.entries(d.tiendas)) if (v.ok) resp.add(t);
+    for (const x of d.resultados) { const l = (por[x.tienda] = por[x.tienda] || []); if (!l.some(y => y.id === x.id)) l.push(x); }
+    if ([...resp].every(t => por[t]?.length)) break;
+  }
+  for (const t of resp) {
+    const cs = (por[t] || []).map(x => ({ ...x, ...puntaje(f, x) })).filter(x => x.s > 0).sort((a, b) => b.s - a.s).slice(0, 5);
+    f.c[t] = cs.map(x => ({ id: x.id, nombre: x.nombre, precio: x.precio, url: x.url, q: x.q, u: x.u }));
+    const act = f.t[t], mejor = cs[0], igual = act && cs.find(x => x.url === act.url);
+    if (act && act.src === "man") { if (igual) { act.p = igual.precio; act.f = hoy(); } continue; }
+    if (f.sin && f.sin[t]) continue;
+    if (act && act.src !== "auto") { if (igual) { act.p = igual.precio; act.f = hoy(); } continue; }   // viene del catálogo
+    if (mejor && mejor.r >= 0.8) f.t[t] = { p: mejor.precio, url: mejor.url, nom: mejor.nombre, f: hoy(), src: "auto" };
+    else delete f.t[t];
+  }
+  if (resp.size) f.v = hoy();
+}
+async function buscarUno(f) {
+  if (!window.API_VIVO) return;
+  $("favest").textContent = `Buscando «${f.n.slice(0, 40)}» en las tiendas…`;
+  await actualizarFav(f); guardar(); pintarFav(); $("favest").textContent = "";
+}
+let actualizando = false;
+async function actualizarTodas() {
+  if (actualizando) return;
+  if (!window.API_VIVO) { $("favest").textContent = "Para buscar en todas las tiendas falta configurar la búsqueda en vivo (config.js)."; return; }
+  actualizando = true;
+  const lista = [...FAV];
+  for (let i = 0; i < lista.length; i++) {
+    $("favest").textContent = `Buscando precios en las tiendas… (${i + 1}/${lista.length})`;
+    await actualizarFav(lista[i]); guardar(); pintarFav();
+  }
+  $("favest").textContent = `Precios actualizados a las ${new Date().toLocaleTimeString("es-SV", { hour: "2-digit", minute: "2-digit" })}.`;
+  actualizando = false;
+}
+function celdaFav(f, s, min, n) {
+  const v = f.t[s], c = (f.c && f.c[s]) || [];
+  const alt = (c.length > 1 || (!v && c.length)) ? `<details><summary>${v ? "cambiar" : "elegir"}</summary><select class="alt" data-id="${esc(f.id)}" data-s="${esc(s)}" aria-label="Producto en ${esc(s)}"><option value="">— Ninguno —</option>${c.map((x, i) => `<option value="${i}"${v && x.url === v.url ? " selected" : ""}>${fmt(x.precio)} · ${esc(x.nombre.slice(0, 50))}</option>`).join("")}</select></details>` : "";
+  if (!v) return `<td class="na">${f.v ? (c.length ? "Sin coincidencia exacta" : "No encontrado") : "—"}${alt}</td>`;
+  const p = v.url ? `<a href="${esc(v.url)}" target="_blank" rel="noopener">${fmt(v.p)}</a>` : fmt(v.p);
+  const otro = v.nom && norm(v.nom) !== norm(f.n) ? esc(v.nom.slice(0, 40)) + " · " : "";
+  return `<td class="${v.p === min && n > 1 ? "best" : ""}">${p}<small class="f">${otro}${v.f ? "al " + fecha(v.f) : ""}</small>${alt}</td>`;
+}
+
 function pintarFav() {
   const S = [...new Set([...(D ? D.supers : []), ...FAV.flatMap(f => Object.keys(f.t))])].filter(s => FAV.some(f => f.t[s]));
-  $("favmsg").textContent = FAV.length ? `${FAV.length} producto(s). Solo estos se comparan para tu compra.` : "Aún no tienes favoritos. Marca la ☆ en el catálogo o en la búsqueda en vivo para armar tu lista de compra.";
-  $("favclear").hidden = !FAV.length; $("favres").hidden = !FAV.length;
+  $("favmsg").textContent = FAV.length ? `${FAV.length} producto(s). Cada uno se busca en todas las tiendas y solo estos se comparan para tu compra.` : "Aún no tienes favoritos. Marca la ☆ en el catálogo o en la búsqueda en vivo para armar tu lista de compra.";
+  $("favclear").hidden = !FAV.length; $("favact").hidden = !FAV.length; $("favres").hidden = !FAV.length;
   if (!FAV.length) { $("tfav").innerHTML = ""; return; }
   let h = `<thead><tr><th>Producto</th>${S.map(s => `<th>${esc(s)}</th>`).join("")}<th>Cantidad</th><th></th></tr></thead><tbody>`;
   for (const f of FAV) {
     const ps = Object.values(f.t).map(v => v.p), min = Math.min(...ps), id = esc(f.id);
     h += `<tr><td>${esc(f.n)}<small>${f.m ? `<span class="marca">${esc(f.m)}</span>` : "Marca no indicada"}${tam(f) ? " · " + tam(f) : ""}</small></td>` +
-      S.map(s => {
-        const v = f.t[s]; if (!v) return `<td class="na">—</td>`;
-        const p = v.url ? `<a href="${esc(v.url)}" target="_blank" rel="noopener">${fmt(v.p)}</a>` : fmt(v.p);
-        return `<td class="${v.p === min && ps.length > 1 ? "best" : ""}">${p}${v.f ? `<small class="f">al ${fecha(v.f)}</small>` : ""}</td>`;
-      }).join("") +
+      S.map(s => celdaFav(f, s, min, ps.length)).join("") +
       `<td><span class="stp"><button data-a="menos" data-id="${id}" aria-label="Menos">−</button><input class="qty" type="number" min="1" max="99" value="${f.cant}" data-id="${id}" aria-label="Cantidad de ${esc(f.n)}"><button data-a="mas" data-id="${id}" aria-label="Más">+</button></span></td>` +
       `<td><button class="rm" data-a="rm" data-id="${id}">Quitar</button></td></tr>`;
   }
@@ -249,7 +314,7 @@ function pintarFav() {
 // ---------- Pestañas y eventos ----------
 function pestana(n) {
   for (const i of [1, 2, 3]) { $("p" + i).hidden = i !== n; $("tab" + i).setAttribute("aria-selected", i === n); }
-  if (n === 1) render(); if (n === 2) pintarVivo(); if (n === 3) pintarFav();
+  if (n === 1) render(); if (n === 2) pintarVivo(); if (n === 3) { pintarFav(); if (FAV.some(f => f.v !== hoy())) actualizarTodas(); }
 }
 $("tab1").onclick = () => pestana(1);
 $("tab2").onclick = () => { pestana(2); $("qv").focus(); };
@@ -270,9 +335,17 @@ $("tfav").onclick = e => {
   guardar(); pintarFav();
 };
 $("tfav").onchange = e => {
+  if (e.target.classList.contains("alt")) {
+    const f = FAV.find(x => x.id === e.target.dataset.id), t = e.target.dataset.s; if (!f) return;
+    f.sin = f.sin || {};
+    if (e.target.value === "") { delete f.t[t]; f.sin[t] = true; }
+    else { const c = f.c[t][+e.target.value]; delete f.sin[t]; f.t[t] = { p: c.precio, url: c.url, nom: c.nombre, f: hoy(), src: "man" }; }
+    guardar(); pintarFav(); return;
+  }
   const f = e.target.classList.contains("qty") && FAV.find(x => x.id === e.target.dataset.id);
   if (f) { f.cant = Math.max(1, Math.min(99, parseInt(e.target.value) || 1)); guardar(); pintarFav(); }
 };
+$("favact").onclick = actualizarTodas;
 $("favclear").onclick = () => { if (confirm("¿Vaciar toda la lista de favoritos?")) { FAV = []; guardar(); pintarFav(); } };
 
 contar();

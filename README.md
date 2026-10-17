@@ -29,7 +29,7 @@ Se configuran en `scraper/tiendas.mjs`.
 Para ampliar la cobertura, agrega términos a `scraper/canasta.json`. Revisa términos de uso y `robots.txt` antes de activar cada tienda.
 
 ## Favoritos
-Marca la ☆ en el catálogo o en la búsqueda en vivo para pasar un producto a la pestaña **Favoritos**. Ahí cambias cantidades, quitas productos o vacías la lista, y la página compara **solo esos productos**: total por tienda y el costo de comprar cada uno donde sale más barato. La lista se guarda en el navegador (no en GitHub) y sus precios se actualizan cuando se publican datos nuevos.
+Marca la ☆ en un producto: queda como **referencia**. La página lo busca en todas las tiendas (usa el Worker de la búsqueda en vivo) y arma el comparativo: precio por tienda y total de la compra. En cada celda se ve qué producto encontró; con "cambiar" eliges otra coincidencia o "Ninguno". Se actualiza al abrir la pestaña si no se hizo hoy, o con el botón. La lista se guarda en el navegador (no en GitHub).
 
 ## Búsqueda en vivo (producto específico)
 La pestaña **Buscar en vivo** consulta un solo producto en el momento en cada tienda, sin descargar catálogos. Como el navegador no puede leer otras tiendas directamente, se usa un Worker gratuito de Cloudflare (`worker/worker.js`) que hace una petición por tienda y guarda cada consulta 10 minutos en caché.
