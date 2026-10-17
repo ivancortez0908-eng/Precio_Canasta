@@ -8,8 +8,8 @@ const MAX = 12; // resultados por tienda
 const RE = /(?<![\d.,])(?:(\d+)\s*[x×]\s*)?(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|mg|lbs?|libras?|oz|ml|lts?|litros?|l|gal(?:on(?:es)?)?)(?![a-z])/i;
 const RE_UD = /(\d+)\s*(unidades|und|uds?|pzas?|piezas|tabletas|capsulas|cápsulas|tabs?|caps?)(?![a-z])/i;
 const limpia = t => (t || "")
-  .replace(/(\d{1,3})\s(\d{3})(?=\s*(?:g|gr|grs|gramos|ml)(?![a-z]))/gi, "$1$2")
-  .replace(/(\d{1,3})\s(\d{3})(?=\s*(?:kg|kilos?|lts?|litros?|l)(?![a-z]))/gi, "$1.$2").replace(/\s+/g, " ");
+  .replace(/(?<![\w.,])(\d{1,3})\s(\d{3})(?=\s*(?:g|gr|grs|gramos|ml)(?![a-z]))/gi, "$1$2")
+  .replace(/(?<![\w.,])(\d{1,3})\s(\d{3})(?=\s*(?:kg|kilos?|lts?|litros?|l)(?![a-z]))/gi, "$1.$2").replace(/\s+/g, " ");
 function conv(v, u) {
   u = u.toLowerCase();
   if (/^(kg|kilos?)$/.test(u)) return v > 60 ? { q: v, u: "g" } : { q: v * 1000, u: "g" };
@@ -22,13 +22,19 @@ function conv(v, u) {
   return null; // mg: concentración de medicamentos, no tamaño de empaque
 }
 function tamano(nombre) {
-  const t = limpia(nombre);
+  const t = limpia(nombre).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const mp = t.match(/(\d+)\s*(?:unidades|unidad|uds?|und)\s*\/\s*(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|lbs?|libras?|oz|ml|lts?|litros?|l)(?![a-z])/i);
   if (mp) { const c = conv(parseFloat(mp[2].replace(",", ".")), mp[3]); if (c) return { q: Math.round(c.q * +mp[1]), u: c.u }; }
   for (const m of t.matchAll(new RegExp(RE.source, "gi"))) {
     const c = conv(parseFloat(m[2].replace(",", ".")), m[3]);
-    if (c) return { q: Math.round(c.q * (m[1] ? +m[1] : 1)), u: c.u };
+    if (c) {
+      let q = c.q * (m[1] ? +m[1] : 1);
+      const pk = t.slice(m.index + m[0].length).match(/(\d+)\s*pack\b/i); // "250 mL 6 Pack" = 6 envases
+      if (pk && !m[1]) q *= +pk[1];
+      return { q: Math.round(q), u: c.u };
+    }
   }
+  if (/\bgalon\b/i.test(t)) return { q: 3785, u: "ml" };
   if (/docena/i.test(t)) return { q: 12, u: "ud" };
   const ud = t.match(RE_UD);
   return ud ? { q: +ud[1], u: "ud" } : null;

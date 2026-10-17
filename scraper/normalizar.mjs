@@ -18,20 +18,26 @@ function conv(v, u) {
 
 // Superselectos escribe 1 816 g (miles con espacio): lo convertimos a 1816 g
 export const limpiaTam = t => (t || "")
-  .replace(/(\d{1,3})\s(\d{3})(?=\s*(?:g|gr|grs|gramos|ml)(?![a-z]))/gi, "$1$2")        // 1 816 g  -> 1816 g
-  .replace(/(\d{1,3})\s(\d{3})(?=\s*(?:kg|kilos?|lts?|litros?|l)(?![a-z]))/gi, "$1.$2") // 2 500 kg -> 2.500 kg
+  .replace(/(?<![\w.,])(\d{1,3})\s(\d{3})(?=\s*(?:g|gr|grs|gramos|ml)(?![a-z]))/gi, "$1$2")        // 1 816 g  -> 1816 g
+  .replace(/(?<![\w.,])(\d{1,3})\s(\d{3})(?=\s*(?:kg|kilos?|lts?|litros?|l)(?![a-z]))/gi, "$1.$2") // 2 500 kg -> 2.500 kg
   .replace(/\s+/g, " ");
 
 // "Frijol rojo 2 lb" -> { q: 907, u: "g" }; "Cerveza 6 x 355 ml" -> { q: 2130, u: "ml" }
 export function parseTamano(nombre) {
-  const t = limpiaTam(nombre);
+  const t = limpiaTam(nombre).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const mp = t.match(/(\d+)\s*(?:unidades|unidad|uds?|und)\s*\/\s*(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|lbs?|libras?|oz|ml|lts?|litros?|l)(?![a-z])/i);
   if (mp) { const c = conv(parseFloat(mp[2].replace(",", ".")), mp[3]); if (c) return { q: Math.round(c.q * +mp[1]), u: c.u }; }
   const m = t.match(RE);
   if (m) {
     const c = conv(parseFloat(m[2].replace(",", ".")), m[3]);
-    if (c) return { q: Math.round(c.q * (m[1] ? +m[1] : 1)), u: c.u };
+    if (c) {
+      let q = c.q * (m[1] ? +m[1] : 1);
+      const pk = t.slice(m.index + m[0].length).match(/(\d+)\s*pack\b/i); // "250 mL 6 Pack" = 6 envases
+      if (pk && !m[1]) q *= +pk[1];
+      return { q: Math.round(q), u: c.u };
+    }
   }
+  if (/\bgalon\b/i.test(t)) return { q: 3785, u: "ml" };
   if (/docena/i.test(t)) return { q: 12, u: "ud" };
   const ud = t.match(RE_UD);
   return ud ? { q: +ud[1], u: "ud" } : null;
