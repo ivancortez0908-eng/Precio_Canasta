@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Canasta SV · Compara precios de productos básicos</title>
+<title>Canasta SV · Compara precios de supermercados</title>
 <style>
 :root{--bg:#f6f4ee;--surf:#fff;--ink:#1d2b24;--mute:#66736c;--line:#dcd8cc;--brand:#0f5c3e;--best:#d9f0e3;--bestInk:#0a4a31;--warn:#b3402a}
 @media (prefers-color-scheme:dark){:root{--bg:#141a17;--surf:#1c2420;--ink:#e8efe9;--mute:#98a89f;--line:#2f3a34;--brand:#58c493;--best:#1d3d2d;--bestInk:#8fe0b8;--warn:#f08a72}}
@@ -12,22 +12,22 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Trebuchet MS"
 header{padding:32px 20px 8px;max-width:1100px;margin:auto}
 h1{font:700 clamp(2rem,6vw,3.2rem)/1.05 Georgia,"Times New Roman",serif;margin:0 0 8px;letter-spacing:-.02em}
 header p{margin:0;color:var(--mute);max-width:60ch}
-main{max-width:1100px;margin:auto;padding:16px 20px 60px;display:grid;gap:20px}
+main{max-width:1100px;margin:auto;padding:16px 20px 60px;display:grid;gap:16px}
 .controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
 input[type=search],select{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surf);color:var(--ink)}
-input[type=search]{flex:1;min-width:200px}
-.supers{display:flex;flex-wrap:wrap;gap:8px}
-.supers label{display:flex;gap:6px;align-items:center;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surf);cursor:pointer;font-size:.9rem}
+input[type=search]{flex:1;min-width:220px}
+label.chk{display:flex;gap:6px;align-items:center;font-size:.95rem}
 .wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surf)}
-table{border-collapse:collapse;width:100%;min-width:560px}
-th,td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
-th:first-child,td:first-child{text-align:left}
-th{font-weight:600;font-size:.9rem;color:var(--mute);position:sticky;top:0;background:var(--surf)}
-tr:last-child td{border-bottom:0}
+table{border-collapse:collapse;width:100%;min-width:620px}
+th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left;white-space:normal;min-width:220px}
+th{font-weight:600;font-size:.9rem;color:var(--mute)}
 td small{color:var(--mute);display:block}
 td.best{background:var(--best);color:var(--bestInk);font-weight:700}
 td.na{color:var(--mute)}
-.qty{width:56px;padding:6px;text-align:center}
+td a{color:inherit}
+.tag{display:inline-block;font-size:.75rem;padding:0 6px;border:1px solid var(--line);border-radius:6px;color:var(--mute);margin-left:4px}
+.qty{width:56px;padding:6px;text-align:center;font:inherit;border:1px solid var(--line);border-radius:6px;background:var(--surf);color:var(--ink)}
 section.cart{border:2px solid var(--brand);border-radius:10px;padding:16px 18px;background:var(--surf)}
 section.cart h2{margin:0 0 4px;font:700 1.4rem Georgia,serif}
 .totals{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:12px}
@@ -35,8 +35,7 @@ section.cart h2{margin:0 0 4px;font:700 1.4rem Georgia,serif}
 .tot b{display:block;font-size:1.4rem}
 .tot.best{background:var(--best);color:var(--bestInk);border-color:transparent}
 .tot span{font-size:.85rem;color:var(--mute)}.tot.best span{color:var(--bestInk)}
-.msg{color:var(--mute);margin:8px 0 0}
-.warn{color:var(--warn);font-size:.9rem}
+.msg{color:var(--mute);margin:8px 0 0}.warn{color:var(--warn)!important}
 button{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--brand);background:transparent;color:var(--brand);cursor:pointer}
 :focus-visible{outline:3px solid var(--brand);outline-offset:2px}
 footer{max-width:1100px;margin:auto;padding:0 20px 40px;color:var(--mute);font-size:.85rem}
@@ -45,102 +44,97 @@ footer{max-width:1100px;margin:auto;padding:0 20px 40px;color:var(--mute);font-s
 <body>
 <header>
   <h1>Canasta SV</h1>
-  <p>Compara el precio de los productos básicos entre supermercados y descubre dónde te sale más barata tu compra.</p>
+  <p>Busca cualquier producto y compáralo entre supermercados. Los precios se muestran también por libra, litro o unidad para que las presentaciones sean comparables.</p>
 </header>
 <main>
   <div class="controls">
-    <input type="search" id="q" placeholder="Buscar producto (frijol, leche…)" aria-label="Buscar producto">
-    <select id="cat" aria-label="Categoría"></select>
+    <input type="search" id="q" placeholder="Buscar (frijol, leche, aceite…)" aria-label="Buscar producto">
+    <label class="chk"><input type="checkbox" id="comp" checked> Solo productos en 2 o más tiendas</label>
+    <select id="ord" aria-label="Ordenar">
+      <option value="pu">Más barato por unidad</option>
+      <option value="n">Nombre</option>
+      <option value="dif">Mayor diferencia entre tiendas</option>
+    </select>
     <button id="clear">Vaciar canasta</button>
   </div>
-  <div class="supers" id="supers" aria-label="Supermercados"></div>
-
+  <p class="msg" id="count"></p>
   <div class="wrap"><table id="tabla"></table></div>
-
+  <button id="mas" hidden>Mostrar más</button>
   <section class="cart" aria-live="polite">
     <h2>Tu canasta</h2>
-    <p class="msg" id="cartmsg">Indica la cantidad de cada producto en la tabla para ver el total por supermercado.</p>
+    <p class="msg" id="cartmsg">Escribe una cantidad en la tabla para ver el total por supermercado.</p>
     <div class="totals" id="totals"></div>
   </section>
 </main>
 <footer id="foot"></footer>
 
 <script>
-fetch("data/precios.json").then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{
-  window.SUPERS=d.supers;window.PRODUCTOS=d.productos;window.ACTUALIZADO=d.actualizado;window.EJEMPLO=d.ejemplo;iniciar();
-}).catch(()=>{document.getElementById("tabla").innerHTML="<tr><td>No se pudieron cargar los precios. Si abriste el archivo directo, usa GitHub Pages o un servidor local (python3 -m http.server).</td></tr>"});
-function iniciar(){
 const $ = id => document.getElementById(id);
+const norm = s => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+const esc = s => (s || "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fmt = n => "$" + n.toFixed(2);
-const activos = new Set(SUPERS.map((_, i) => i));
-const cantidades = {};
+const TAG = { ean: "Mismo código de barras", nombre: "Coincide por nombre y tamaño", manual: "Equivalencia verificada" };
+let D, cant = {}, limite = 60;
 
-// Controles
-$("cat").innerHTML = '<option value="">Todas las categorías</option>' +
-  [...new Set(PRODUCTOS.map(p => p.cat))].map(c => `<option>${c}</option>`).join("");
-$("supers").innerHTML = SUPERS.map((s, i) =>
-  `<label><input type="checkbox" data-i="${i}" checked> ${s}</label>`).join("");
-$("foot").textContent = EJEMPLO ? `Datos de ejemplo (no son precios reales). Ejecuta la acción "Actualizar precios" en GitHub para cargar los reales.` : `Precios en USD tomados de las tiendas en línea. Última actualización: ${ACTUALIZADO}. Pueden diferir de los precios en sala.`;
+fetch("data/productos.json").then(r => { if (!r.ok) throw 0; return r.json(); }).then(d => {
+  D = d;
+  D.items.forEach((it, i) => { it.i = i; it.s = norm(it.n + " " + it.m); });
+  $("foot").textContent = D.ejemplo
+    ? "Datos de ejemplo (no son precios reales). Ejecuta la acción “Actualizar precios” en GitHub para cargar los reales."
+    : `Precios en USD tomados de las tiendas en línea. Actualizado: ${D.actualizado}. Pueden diferir de los precios en sala.`;
+  render();
+}).catch(() => { $("tabla").innerHTML = "<tr><td>No se pudieron cargar los precios. Si abriste el archivo directo, usa GitHub Pages o un servidor local (python3 -m http.server).</td></tr>"; });
+
+const dif = it => { const v = it.t.map(x => x[1]); return it.t.length > 1 ? (Math.max(...v) - Math.min(...v)) / Math.min(...v) : -1; };
+
+function filtrar() {
+  const ts = norm($("q").value).split(/\s+/).filter(Boolean), c = $("comp").checked, o = $("ord").value;
+  const r = D.items.filter(it => ts.every(t => it.s.includes(t)) && (!c || it.t.length > 1));
+  if (o === "pu") r.sort((a, b) => (a.pu ?? 1e9) - (b.pu ?? 1e9));
+  if (o === "dif") r.sort((a, b) => dif(b) - dif(a));
+  return r;
+}
 
 function render() {
-  const q = $("q").value.trim().toLowerCase();
-  const cat = $("cat").value;
-  const cols = [...activos].sort();
-  const lista = PRODUCTOS.filter(p =>
-    (!cat || p.cat === cat) && p.nombre.toLowerCase().includes(q));
-
-  let html = `<thead><tr><th>Producto</th>${cols.map(i => `<th>${SUPERS[i]}</th>`).join("")}<th>Cant.</th></tr></thead><tbody>`;
-  if (!lista.length) html += `<tr><td colspan="${cols.length + 2}">No hay productos con ese nombre. Prueba otra búsqueda.</td></tr>`;
-  for (const p of lista) {
-    const vals = cols.map(i => p.p[i]).filter(v => v != null);
-    const min = vals.length ? Math.min(...vals) : null;
-    html += `<tr><td>${p.nombre}<small>${p.unidad} · ${p.cat}</small></td>` +
-      cols.map(i => {
-        const v = p.p[i];
-        if (v == null) return `<td class="na">N/D</td>`;
-        return `<td class="${v === min && vals.length > 1 ? "best" : ""}" title="${(p.n && p.n[i]) || ""}">${fmt(v)}</td>`;
+  const r = filtrar(), S = D.supers;
+  $("count").textContent = r.length ? `${r.length} producto(s)` : "";
+  let h = `<thead><tr><th>Producto</th>${S.map(s => `<th>${esc(s)}</th>`).join("")}<th>Por unidad</th><th>Cant.</th></tr></thead><tbody>`;
+  if (!r.length) h += `<tr><td colspan="${S.length + 3}">No hay resultados. Prueba otra palabra o desmarca “Solo productos en 2 o más tiendas”.</td></tr>`;
+  for (const it of r.slice(0, limite)) {
+    const min = Math.min(...it.t.map(x => x[1]));
+    h += `<tr><td>${esc(it.n)}<small>${esc(it.m)}${it.k ? `<span class="tag">${TAG[it.k]}</span>` : ""}</small></td>` +
+      S.map((_, si) => {
+        const e = it.t.find(x => x[0] === si);
+        if (!e) return `<td class="na">—</td>`;
+        const p = fmt(e[1]), v = e[2] ? `<a href="${esc(e[2])}" target="_blank" rel="noopener">${p}</a>` : p;
+        return `<td class="${e[1] === min && it.t.length > 1 ? "best" : ""}">${v}</td>`;
       }).join("") +
-      `<td><input class="qty" type="number" min="0" max="99" value="${cantidades[p.id] || 0}" data-id="${p.id}" aria-label="Cantidad de ${p.nombre}"></td></tr>`;
+      `<td>${it.pu != null ? `${fmt(it.pu)}<small>por ${it.pl}</small>` : "—"}</td>` +
+      `<td><input class="qty" type="number" min="0" max="99" value="${cant[it.i] || 0}" data-i="${it.i}" aria-label="Cantidad de ${esc(it.n)}"></td></tr>`;
   }
-  $("tabla").innerHTML = html + "</tbody>";
+  $("tabla").innerHTML = h + "</tbody>";
+  $("mas").hidden = r.length <= limite;
   totales();
 }
 
 function totales() {
-  const items = PRODUCTOS.filter(p => cantidades[p.id] > 0);
-  $("cartmsg").style.display = items.length ? "none" : "";
-  if (!items.length) { $("totals").innerHTML = ""; return; }
-  const res = [...activos].sort().map(i => {
+  const sel = D.items.filter(it => cant[it.i] > 0);
+  $("cartmsg").style.display = sel.length ? "none" : "";
+  if (!sel.length) { $("totals").innerHTML = ""; return; }
+  const res = D.supers.map((s, si) => {
     let total = 0, faltan = 0;
-    for (const p of items) p.p[i] == null ? faltan++ : total += p.p[i] * cantidades[p.id];
-    return { i, total, faltan };
+    for (const it of sel) { const e = it.t.find(x => x[0] === si); e ? total += e[1] * cant[it.i] : faltan++; }
+    return { s, total, faltan };
   });
-  // Solo compite por "más barato" quien tiene todos los productos
-  const completos = res.filter(r => !r.faltan);
-  const min = completos.length ? Math.min(...completos.map(r => r.total)) : null;
-  $("totals").innerHTML = res.map(r => `
-    <div class="tot ${r.faltan === 0 && r.total === min ? "best" : ""}">
-      <span>${SUPERS[r.i]}</span><b>${fmt(r.total)}</b>
-      ${r.faltan ? `<span class="warn">Faltan ${r.faltan} producto(s)</span>` : r.total === min ? "<span>La opción más barata</span>" : `<span>+${fmt(r.total - min)} vs. la más barata</span>`}
-    </div>`).join("");
+  const ok = res.filter(r => !r.faltan), min = ok.length ? Math.min(...ok.map(r => r.total)) : null;
+  $("totals").innerHTML = res.map(r => `<div class="tot ${!r.faltan && r.total === min ? "best" : ""}"><span>${esc(r.s)}</span><b>${fmt(r.total)}</b>` +
+    (r.faltan ? `<span class="warn">No tiene ${r.faltan} producto(s)</span>` : r.total === min ? "<span>La opción más barata</span>" : `<span>+${fmt(r.total - min)} vs. la más barata</span>`) + `</div>`).join("");
 }
 
-$("q").oninput = $("cat").onchange = render;
-$("supers").onchange = e => {
-  const i = +e.target.dataset.i;
-  e.target.checked ? activos.add(i) : activos.delete(i);
-  if (!activos.size) { activos.add(i); e.target.checked = true; }
-  render();
-};
-$("tabla").oninput = e => {
-  if (e.target.classList.contains("qty")) {
-    cantidades[e.target.dataset.id] = Math.max(0, +e.target.value || 0);
-    totales();
-  }
-};
-$("clear").onclick = () => { for (const k in cantidades) delete cantidades[k]; render(); };
-render();
-}
+$("q").oninput = $("comp").onchange = $("ord").onchange = () => { limite = 60; render(); };
+$("mas").onclick = () => { limite += 60; render(); };
+$("tabla").oninput = e => { if (e.target.classList.contains("qty")) { cant[e.target.dataset.i] = Math.max(0, +e.target.value || 0); totales(); } };
+$("clear").onclick = () => { cant = {}; render(); };
 </script>
 </body>
 </html>

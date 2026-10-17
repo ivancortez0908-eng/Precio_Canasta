@@ -1,30 +1,26 @@
 # Canasta SV
 
-Plataforma web para consultar y comparar precios de productos básicos entre supermercados.
+Comparador de precios de supermercados de El Salvador. Descarga el catálogo completo de cada tienda en línea, agrupa los productos equivalentes y los muestra lado a lado, con precio por libra, litro o unidad.
 
-- Búsqueda por producto y filtro por categoría
-- Resalta el precio más bajo de cada producto
-- Canasta: calcula el total por supermercado
-- Sitio estático (HTML + JS), sin dependencias ni servidor
+## Cómo funciona
+1. `scraper/catalogo.mjs` descarga todo el catálogo de cada tienda activa a `data/catalogo/<tienda>.json` (la base de productos).
+2. `scraper/emparejar.mjs` agrupa los productos equivalentes entre tiendas y genera `data/productos.json`, que lee la página.
+3. Una GitHub Action ejecuta ambos pasos lunes y jueves (o a mano en **Actions → Actualizar precios → Run workflow**).
 
-## Estructura
+## Cómo se decide que dos productos son iguales
+1. **Código de barras (EAN):** la señal más confiable.
+2. **Marca + nombre + tamaño:** el tamaño se normaliza (1 lb = 454 g, 1 gal = 3785 ml…). Si el tamaño o la marca difieren, no se agrupan.
+3. **Manual:** `scraper/equivalencias.json` fuerza equivalencias que el algoritmo no detecta:
+   ```json
+   [[ {"tienda":"Walmart","id":"12345"}, {"tienda":"Super Selectos","id":"678"} ]]
+   ```
+Cada fila muestra con qué criterio se unió. Lo que no se pudo emparejar aparece en una sola tienda (desmarca “Solo productos en 2 o más tiendas” para verlo).
+
+## Tiendas
+`scraper/tiendas.mjs`. Walmart está activo (supone una tienda VTEX; verificar en la primera corrida). Super Selectos y Despensa de Don Juan están pendientes: hay que escribir su adaptador (DevTools → Network en su tienda en línea, ver qué petición devuelve la lista de productos). Revisa términos de uso y `robots.txt` antes de activar cada tienda.
+
+## Probar localmente
+```bash
+node scraper/catalogo.mjs && node scraper/emparejar.mjs   # Node 20+
+python3 -m http.server                                    # abre http://localhost:8000
 ```
-index.html        # interfaz y lógica
-data/precios.json # precios (los genera el scraper)
-scraper/          # obtiene precios de las tiendas en línea
-.github/workflows # ejecuta el scraper cada día
-```
-
-## Cómo se obtienen los precios
-Un navegador no puede leer directamente otras páginas (CORS), así que una **GitHub Action** corre `scraper/scrape.mjs` cada día, consulta las tiendas en línea y guarda `data/precios.json`. El sitio lee ese archivo. Si una consulta falla, conserva el último precio conocido.
-
-- `scraper/productos.json`: productos a rastrear (texto de búsqueda y palabras clave para validar el resultado).
-- `scraper/tiendas.mjs`: una entrada por supermercado. Solo **Walmart** (tienda VTEX) viene configurado; **Super Selectos** y **Despensa de Don Juan** están como pendientes.
-- Probar localmente: `node scraper/scrape.mjs` (Node 20+).
-- Correr en GitHub: pestaña **Actions → Actualizar precios → Run workflow** (también corre solo cada día).
-
-## Agregar un supermercado
-En el navegador abre la tienda en línea, busca un producto y en DevTools → Network mira qué petición JSON devuelve los resultados. Luego crea un adaptador en `tiendas.mjs` que reciba un texto y devuelva `[{ precio, nombre }]`, y pon `activa: true`. Revisa antes los términos de uso y el `robots.txt` del sitio.
-
-## Aviso
-Los precios en línea pueden diferir de los de sala. Los datos iniciales son de ejemplo hasta la primera ejecución del scraper.
