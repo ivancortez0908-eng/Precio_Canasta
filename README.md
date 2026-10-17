@@ -17,7 +17,12 @@ Comparador de precios de supermercados de El Salvador. Descarga el catálogo com
 Cada fila muestra con qué criterio se unió. Lo que no se pudo emparejar aparece en una sola tienda (desmarca “Solo productos en 2 o más tiendas” para verlo).
 
 ## Tiendas
-`scraper/tiendas.mjs`. Walmart está activo (supone una tienda VTEX; verificar en la primera corrida). Super Selectos y Despensa de Don Juan están pendientes: hay que escribir su adaptador (DevTools → Network en su tienda en línea, ver qué petición devuelve la lista de productos). Revisa términos de uso y `robots.txt` antes de activar cada tienda.
+Se configuran en `scraper/tiendas.mjs`.
+- **Super Selectos:** su página entrega el HTML ya armado. El scraper lee páginas de búsqueda (una por cada término de `scraper/canasta.json`) y unas pocas categorías, con 3 segundos de pausa entre peticiones. No descarga todo el catálogo: su `robots.txt` rechaza la extracción masiva. Solo se lee la primera página de cada búsqueda.
+- **Walmart:** supone una tienda VTEX; falta verificarlo en la primera corrida.
+- **Despensa de Don Juan:** pendiente.
+
+Para ampliar la cobertura, agrega términos a `scraper/canasta.json`. Revisa términos de uso y `robots.txt` antes de activar cada tienda.
 
 ## Probar localmente
 ```bash

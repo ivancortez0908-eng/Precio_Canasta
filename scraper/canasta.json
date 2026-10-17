@@ -1,0 +1,15 @@
+{
+  "terminos": [
+    "frijol rojo", "frijol negro", "arroz", "harina de maiz", "azucar", "sal", "aceite vegetal", "aceite de soya",
+    "leche entera", "leche en polvo", "huevos", "queso duro", "crema", "mantequilla", "pan", "cafe", "pasta", "espagueti",
+    "pollo", "carne molida", "salchicha", "tomate", "cebolla", "papa", "chile verde", "zanahoria", "platano", "banano",
+    "limon", "naranja", "atun", "sardina", "avena", "cereal", "galletas", "jugo", "agua purificada", "gaseosa",
+    "papel higienico", "jabon de lavar", "detergente", "cloro", "shampoo", "jabon de bano", "pasta dental", "panales"
+  ],
+  "categorias_selectos": [
+    { "nombre": "Frijoles", "id": "03377" },
+    { "nombre": "Harina de maíz", "id": "03271" },
+    { "nombre": "Queso", "id": "01528" },
+    { "nombre": "Atún", "id": "03695" }
+  ]
+}

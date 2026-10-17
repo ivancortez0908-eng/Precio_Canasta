@@ -16,9 +16,12 @@ function conv(v, u) {
   return null;
 }
 
+// Superselectos escribe 1 816 g (miles con espacio): lo convertimos a 1816 g
+export const limpiaTam = t => (t || "").replace(/(\d{1,3})\s(\d{3})(?=\s*(?:g|gr|grs|gramos|ml)(?![a-z]))/gi, "$1$2").replace(/\s+/g, " ");
+
 // "Frijol rojo 2 lb" -> { q: 907, u: "g" }; "Cerveza 6 x 355 ml" -> { q: 2130, u: "ml" }
 export function parseTamano(nombre) {
-  const t = nombre || "";
+  const t = limpiaTam(nombre);
   const m = t.match(RE);
   if (m) {
     const c = conv(parseFloat(m[2].replace(",", ".")), m[3]);
@@ -37,12 +40,12 @@ export function precioUnitario(precio, q, u) {
   return { pu: precio / q, pl: "ud" };
 }
 
-const VACIAS = new Set("de la el los las con en y para por del al un una bolsa caja paquete pack".split(" "));
+const VACIAS = new Set("de la el los las con en y para por del al un una bolsa caja paquete".split(" "));
 // Clave para decidir si dos productos de tiendas distintas son "el mismo"
 export function claveNombre(it) {
   if (!it.q) return null;
   const marca = norm(it.marca).replace(/[^a-z0-9]/g, "");
-  const sinTam = norm(it.nombre).replace(RE, " ").replace(RE_UD, " ").replace(/docena/g, " ");
+  const sinTam = norm(limpiaTam(it.nombre)).replace(RE, " ").replace(RE_UD, " ").replace(/docena/g, " ");
   const toks = [...new Set(sinTam.replace(/[^a-z0-9ñ ]/g, " ").split(/\s+/)
     .filter(w => w && !VACIAS.has(w) && w !== marca && !(marca && marca.includes(w) && w.length > 2)))].sort();
   if (!marca && toks.length < 3) return null; // muy poco para asegurar equivalencia
