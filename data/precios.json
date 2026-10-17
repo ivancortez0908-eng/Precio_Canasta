@@ -1,0 +1,204 @@
+{
+ "ejemplo": true,
+ "actualizado": "2026-10-16",
+ "supers": [
+  "Super Selectos",
+  "Walmart",
+  "Despensa de Don Juan",
+  "PriceSmart"
+ ],
+ "productos": [
+  {
+   "id": 1,
+   "nombre": "Frijol rojo",
+   "unidad": "1 lb",
+   "cat": "Granos",
+   "p": [
+    0.89,
+    0.95,
+    0.92,
+    0.85
+   ]
+  },
+  {
+   "id": 2,
+   "nombre": "Arroz blanco",
+   "unidad": "1 lb",
+   "cat": "Granos",
+   "p": [
+    0.65,
+    0.62,
+    0.68,
+    0.58
+   ]
+  },
+  {
+   "id": 3,
+   "nombre": "Harina de maíz",
+   "unidad": "2 lb",
+   "cat": "Granos",
+   "p": [
+    1.15,
+    1.1,
+    1.18,
+    null
+   ]
+  },
+  {
+   "id": 4,
+   "nombre": "Azúcar",
+   "unidad": "2 lb",
+   "cat": "Despensa",
+   "p": [
+    1.3,
+    1.25,
+    1.32,
+    1.2
+   ]
+  },
+  {
+   "id": 5,
+   "nombre": "Aceite vegetal",
+   "unidad": "900 ml",
+   "cat": "Despensa",
+   "p": [
+    2.75,
+    2.6,
+    2.8,
+    2.45
+   ]
+  },
+  {
+   "id": 6,
+   "nombre": "Sal",
+   "unidad": "1 lb",
+   "cat": "Despensa",
+   "p": [
+    0.45,
+    0.42,
+    0.48,
+    null
+   ]
+  },
+  {
+   "id": 7,
+   "nombre": "Leche entera",
+   "unidad": "1 L",
+   "cat": "Lácteos",
+   "p": [
+    1.25,
+    1.2,
+    1.28,
+    1.15
+   ]
+  },
+  {
+   "id": 8,
+   "nombre": "Huevos",
+   "unidad": "docena",
+   "cat": "Lácteos",
+   "p": [
+    2.8,
+    2.95,
+    2.75,
+    2.6
+   ]
+  },
+  {
+   "id": 9,
+   "nombre": "Queso duro blando",
+   "unidad": "1 lb",
+   "cat": "Lácteos",
+   "p": [
+    3.4,
+    3.55,
+    3.35,
+    null
+   ]
+  },
+  {
+   "id": 10,
+   "nombre": "Pollo entero",
+   "unidad": "1 lb",
+   "cat": "Carnes",
+   "p": [
+    1.75,
+    1.7,
+    1.8,
+    1.62
+   ]
+  },
+  {
+   "id": 11,
+   "nombre": "Carne molida",
+   "unidad": "1 lb",
+   "cat": "Carnes",
+   "p": [
+    3.1,
+    3.2,
+    3.05,
+    2.95
+   ]
+  },
+  {
+   "id": 12,
+   "nombre": "Tomate",
+   "unidad": "1 lb",
+   "cat": "Verduras",
+   "p": [
+    0.7,
+    0.75,
+    0.65,
+    null
+   ]
+  },
+  {
+   "id": 13,
+   "nombre": "Cebolla",
+   "unidad": "1 lb",
+   "cat": "Verduras",
+   "p": [
+    0.55,
+    0.5,
+    0.58,
+    0.48
+   ]
+  },
+  {
+   "id": 14,
+   "nombre": "Papa",
+   "unidad": "1 lb",
+   "cat": "Verduras",
+   "p": [
+    0.6,
+    0.62,
+    0.58,
+    0.55
+   ]
+  },
+  {
+   "id": 15,
+   "nombre": "Plátano",
+   "unidad": "1 lb",
+   "cat": "Frutas",
+   "p": [
+    0.35,
+    0.4,
+    0.33,
+    null
+   ]
+  },
+  {
+   "id": 16,
+   "nombre": "Pan francés",
+   "unidad": "6 uds",
+   "cat": "Panadería",
+   "p": [
+    1,
+    1.1,
+    0.95,
+    null
+   ]
+  }
+ ]
+}
