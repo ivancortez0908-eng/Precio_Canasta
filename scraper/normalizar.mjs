@@ -25,6 +25,8 @@ export const limpiaTam = t => (t || "")
 // "Frijol rojo 2 lb" -> { q: 907, u: "g" }; "Cerveza 6 x 355 ml" -> { q: 2130, u: "ml" }
 export function parseTamano(nombre) {
   const t = limpiaTam(nombre);
+  const mp = t.match(/(\d+)\s*(?:unidades|unidad|uds?|und)\s*\/\s*(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|lbs?|libras?|oz|ml|lts?|litros?|l)(?![a-z])/i);
+  if (mp) { const c = conv(parseFloat(mp[2].replace(",", ".")), mp[3]); if (c) return { q: Math.round(c.q * +mp[1]), u: c.u }; }
   const m = t.match(RE);
   if (m) {
     const c = conv(parseFloat(m[2].replace(",", ".")), m[3]);
