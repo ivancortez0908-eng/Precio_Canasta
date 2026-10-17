@@ -14,7 +14,11 @@ Comparador de precios de supermercados de El Salvador. Descarga el catálogo com
    ```json
    [[ {"tienda":"Walmart","id":"12345"}, {"tienda":"Super Selectos","id":"678"} ]]
    ```
-Cada fila muestra con qué criterio se unió. Lo que no se pudo emparejar aparece en una sola tienda (desmarca “Solo productos en 2 o más tiendas” para verlo).
+Cada fila muestra marca, tamaño y la descripción de cada tienda (desplegable “Descripción”) y con qué criterio se unió. Lo que no se pudo emparejar aparece en una sola tienda (desmarca “Solo productos en 2 o más tiendas” para verlo).
+
+## Marca y descripción
+- **Walmart** entrega marca y descripción en su catálogo.
+- **Super Selectos** no las trae en el listado: la marca se detecta dentro del nombre con la lista `marcas` de `scraper/canasta.json` (agrega ahí las que falten) y no tiene descripción más allá del nombre.
 
 ## Tiendas
 Se configuran en `scraper/tiendas.mjs`.

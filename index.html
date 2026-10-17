@@ -23,6 +23,8 @@ th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line);whit
 th:first-child,td:first-child{text-align:left;white-space:normal;min-width:220px}
 th{font-weight:600;font-size:.9rem;color:var(--mute)}
 td small{color:var(--mute);display:block}
+td .marca{font-weight:600;color:var(--brand)}
+details{margin-top:4px;font-size:.85rem;color:var(--mute)}details summary{cursor:pointer}details p{margin:4px 0;white-space:normal}
 td.best{background:var(--best);color:var(--bestInk);font-weight:700}
 td.na{color:var(--mute)}
 td a{color:inherit}
@@ -48,7 +50,7 @@ footer{max-width:1100px;margin:auto;padding:0 20px 40px;color:var(--mute);font-s
 </header>
 <main>
   <div class="controls">
-    <input type="search" id="q" placeholder="Buscar (frijol, leche, aceite…)" aria-label="Buscar producto">
+    <input type="search" id="q" placeholder="Buscar por producto o marca (frijol, Omoa, leche…)" aria-label="Buscar producto">
     <label class="chk"><input type="checkbox" id="comp" checked> Solo productos en 2 o más tiendas</label>
     <select id="ord" aria-label="Ordenar">
       <option value="pu">Más barato por unidad</option>
@@ -78,13 +80,19 @@ let D, cant = {}, limite = 60;
 
 fetch("data/productos.json").then(r => { if (!r.ok) throw 0; return r.json(); }).then(d => {
   D = d;
-  D.items.forEach((it, i) => { it.i = i; it.s = norm(it.n + " " + it.m); });
+  D.items.forEach((it, i) => { it.i = i; it.s = norm(it.n + " " + it.m + " " + it.t.map(e => (e[4] || "") + " " + (e[5] || "")).join(" ")); });
   $("foot").textContent = D.ejemplo
     ? "Datos de ejemplo (no son precios reales). Ejecuta la acción “Actualizar precios” en GitHub para cargar los reales."
     : `Precios en USD tomados de las tiendas en línea. Actualizado: ${D.actualizado}. Pueden diferir de los precios en sala.`;
   render();
 }).catch(() => { $("tabla").innerHTML = "<tr><td>No se pudieron cargar los precios. Si abriste el archivo directo, usa GitHub Pages o un servidor local (python3 -m http.server).</td></tr>"; });
 
+const tam = it => !it.q ? "" : it.u === "g" ? `${Math.round(it.q)} g (${(it.q / 453.592).toFixed(it.q % 454 < 3 ? 0 : 1)} lb)` : it.u === "ml" ? (it.q >= 1000 ? `${+(it.q / 1000).toFixed(2)} L` : `${it.q} ml`) : `${it.q} ud`;
+const desc = it => { // descripción por tienda: nombre tal como lo vende cada una
+  const f = it.t.filter(e => e[4]);
+  if (!f.length) return "";
+  return `<details><summary>Descripción</summary>${f.map(e => `<p><b>${esc(D.supers[e[0]])}:</b> ${esc(e[4])}${e[5] ? ` · Marca: ${esc(e[5])}` : ""}${e[6] ? `. ${esc(e[6])}` : ""}</p>`).join("")}</details>`;
+};
 const dif = it => { const v = it.t.map(x => x[1]); return it.t.length > 1 ? (Math.max(...v) - Math.min(...v)) / Math.min(...v) : -1; };
 
 function filtrar() {
@@ -102,7 +110,7 @@ function render() {
   if (!r.length) h += `<tr><td colspan="${S.length + 3}">No hay resultados. Prueba otra palabra o desmarca “Solo productos en 2 o más tiendas”.</td></tr>`;
   for (const it of r.slice(0, limite)) {
     const min = Math.min(...it.t.map(x => x[1]));
-    h += `<tr><td>${esc(it.n)}<small>${esc(it.m)}${it.k ? `<span class="tag">${TAG[it.k]}</span>` : ""}</small></td>` +
+    h += `<tr><td>${esc(it.n)}<small>${it.m ? `<span class="marca">${esc(it.m)}</span>` : "Marca no indicada"}${tam(it) ? " · " + tam(it) : ""}${it.k ? `<span class="tag">${TAG[it.k]}</span>` : ""}</small>${desc(it)}</td>` +
       S.map((_, si) => {
         const e = it.t.find(x => x[0] === si);
         if (!e) return `<td class="na">—</td>`;
