@@ -40,6 +40,10 @@ section.cart h2{margin:0 0 4px;font:700 1.4rem Georgia,serif}
 .msg{color:var(--mute);margin:8px 0 0}.warn{color:var(--warn)!important}
 button{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--brand);background:transparent;color:var(--brand);cursor:pointer}
 :focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+.tabs button[aria-selected=true]{background:var(--brand);color:var(--bg)}
+#p1{display:grid;gap:16px}
+.store{display:inline-block;font-size:.8rem;padding:1px 8px;border-radius:999px;background:var(--best);color:var(--bestInk);font-weight:600}
 footer{max-width:1100px;margin:auto;padding:0 20px 40px;color:var(--mute);font-size:.85rem}
 </style>
 </head>
@@ -49,6 +53,11 @@ footer{max-width:1100px;margin:auto;padding:0 20px 40px;color:var(--mute);font-s
   <p>Busca cualquier producto y compáralo entre supermercados. Los precios se muestran también por libra, litro o unidad para que las presentaciones sean comparables.</p>
 </header>
 <main>
+  <nav class="tabs" role="tablist">
+    <button id="tab1" role="tab" aria-selected="true">Catálogo guardado</button>
+    <button id="tab2" role="tab" aria-selected="false">Buscar en vivo</button>
+  </nav>
+  <div id="p1">
   <div class="controls">
     <input type="search" id="q" placeholder="Buscar por producto o marca (frijol, Omoa, leche…)" aria-label="Buscar producto">
     <label class="chk"><input type="checkbox" id="comp" checked> Solo productos en 2 o más tiendas</label>
@@ -67,9 +76,25 @@ footer{max-width:1100px;margin:auto;padding:0 20px 40px;color:var(--mute);font-s
     <p class="msg" id="cartmsg">Escribe una cantidad en la tabla para ver el total por supermercado.</p>
     <div class="totals" id="totals"></div>
   </section>
+  </div>
+
+  <div id="p2" hidden>
+    <form class="controls" id="fvivo">
+      <input type="search" id="qv" placeholder="Producto específico (ej. acetaminofén 500 mg, leche deslactosada)" aria-label="Producto a buscar en vivo" maxlength="60">
+      <button type="submit">Buscar en las tiendas</button>
+      <select id="ordv" aria-label="Ordenar resultados">
+        <option value="pu">Más barato por unidad</option>
+        <option value="precio">Precio más bajo</option>
+      </select>
+    </form>
+    <p class="msg" id="estv">Consulta el producto en el momento en cada tienda, sin descargar sus catálogos.</p>
+    <div class="wrap"><table id="tv"></table></div>
+    <p class="msg">Los resultados salen directamente de cada tienda y pueden incluir presentaciones distintas. Verifica marca, concentración y presentación antes de comparar, sobre todo en medicamentos.</p>
+  </div>
 </main>
 <footer id="foot"></footer>
 
+<script src="config.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const norm = s => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -108,7 +133,7 @@ function render() {
   const r = filtrar(), S = D.supers;
   $("count").textContent = r.length ? `${r.length} producto(s)` : "";
   let h = `<thead><tr><th>Producto</th>${S.map(s => `<th>${esc(s)}</th>`).join("")}<th>Por unidad</th><th>Cant.</th></tr></thead><tbody>`;
-  if (!r.length) h += `<tr><td colspan="${S.length + 3}">No hay resultados. Prueba otra palabra o desmarca “Solo productos en 2 o más tiendas”.</td></tr>`;
+  if (!r.length) h += `<tr><td colspan="${S.length + 3}">No hay resultados en el catálogo guardado.${$("q").value.trim().length > 1 ? ` <button class="envivo">Buscar “${esc($("q").value.trim())}” en vivo</button>` : ""}</td></tr>`;
   for (const it of r.slice(0, limite)) {
     const min = Math.min(...it.t.map(x => x[1]));
     h += `<tr><td>${esc(it.n)}<small>${it.m ? `<span class="marca">${esc(it.m)}</span>` : "Marca no indicada"}${tam(it) ? " · " + tam(it) : ""}${it.k ? `<span class="tag">${TAG[it.k]}</span>` : ""}</small>${desc(it)}</td>` +
@@ -143,6 +168,47 @@ function totales() {
 $("q").oninput = $("comp").onchange = $("ord").onchange = () => { limite = 60; render(); };
 $("mas").onclick = () => { limite += 60; render(); };
 $("tabla").oninput = e => { if (e.target.classList.contains("qty")) { cant[e.target.dataset.i] = Math.max(0, +e.target.value || 0); totales(); } };
+// ---- Búsqueda en vivo ----
+let RV = [], ctl;
+function pestana(n) {
+  $("p1").hidden = n !== 1; $("p2").hidden = n !== 2;
+  $("tab1").setAttribute("aria-selected", n === 1); $("tab2").setAttribute("aria-selected", n === 2);
+}
+$("tab1").onclick = () => pestana(1);
+$("tab2").onclick = () => { pestana(2); $("qv").focus(); };
+
+function pintarVivo() {
+  const o = $("ordv").value, r = [...RV];
+  r.sort((a, b) => o === "pu" ? (a.pu ?? 1e9) - (b.pu ?? 1e9) : a.precio - b.precio);
+  const min = r.length ? Math.min(...r.map(x => x.precio)) : 0;
+  $("tv").innerHTML = r.length
+    ? `<thead><tr><th>Producto</th><th>Tienda</th><th>Precio</th><th>Por unidad</th></tr></thead><tbody>` + r.map(x => `<tr>
+        <td>${esc(x.nombre)}<small>${x.marca ? `<span class="marca">${esc(x.marca)}</span>` : "Marca no indicada"}${tam(x) ? " · " + tam(x) : ""}</small></td>
+        <td><span class="store">${esc(x.tienda)}</span></td>
+        <td class="${x.precio === min && r.length > 1 ? "best" : ""}"><a href="${esc(x.url)}" target="_blank" rel="noopener">${fmt(x.precio)}</a></td>
+        <td>${x.pu != null ? `${fmt(x.pu)}<small>por ${x.pl}</small>` : "—"}</td></tr>`).join("") + "</tbody>"
+    : "";
+}
+async function vivo(q) {
+  if (!window.API_VIVO) { $("estv").textContent = "La búsqueda en vivo aún no está configurada. Mira el README, sección “Búsqueda en vivo”."; return; }
+  ctl?.abort(); ctl = new AbortController();
+  $("estv").textContent = `Buscando “${q}” en las tiendas…`; $("tv").innerHTML = "";
+  try {
+    const r = await fetch(`${window.API_VIVO}?q=${encodeURIComponent(q)}`, { signal: ctl.signal });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || "Error " + r.status);
+    RV = d.resultados;
+    const est = Object.entries(d.tiendas).map(([t, v]) => v.ok ? `${t}: ${v.n} resultado(s)` : `${t}: no respondió`).join(" · ");
+    $("estv").textContent = RV.length ? `${est}. Consultado ${new Date(d.generado).toLocaleTimeString("es-SV", { hour: "2-digit", minute: "2-digit" })}.` : `Sin resultados para “${q}”. ${est}. Prueba con otra palabra.`;
+    pintarVivo();
+  } catch (e) { if (e.name !== "AbortError") $("estv").textContent = "No se pudo consultar: " + e.message; }
+}
+$("fvivo").onsubmit = e => { e.preventDefault(); const q = $("qv").value.trim(); if (q.length >= 2) vivo(q); };
+$("ordv").onchange = pintarVivo;
+$("tabla").onclick = e => {
+  if (e.target.classList.contains("envivo")) { $("qv").value = $("q").value.trim(); pestana(2); vivo($("qv").value); }
+};
+
 $("clear").onclick = () => { cant = {}; render(); };
 </script>
 </body>

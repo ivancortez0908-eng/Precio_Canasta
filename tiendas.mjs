@@ -5,15 +5,30 @@ const UA = "CanastaSV/1.0 (comparador de precios sin fines de lucro)";
 const esp = ms => new Promise(r => setTimeout(r, ms));
 
 async function getJson(url) {
+  let ultimo = "sin respuesta";
   for (let i = 0; i < 3; i++) {
     try {
       const r = await fetch(url, { headers: { "user-agent": UA, accept: "application/json" } });
       if (r.ok) return await r.json();
+      ultimo = "HTTP " + r.status;
       if (r.status === 400 || r.status === 404) return [];
-    } catch {}
+    } catch (e) { ultimo = e.message; }
     await esp(1500 * (i + 1));
   }
-  throw new Error("No respondió: " + url);
+  throw new Error(`${ultimo} en ${url}`);
+}
+
+// Diagnóstico: imprime qué responde la tienda (estado, plataforma, primeras letras) para ver el log en GitHub
+async function sondear(base) {
+  for (const ruta of ["/", "/api/catalog_system/pub/category/tree/1"]) {
+    try {
+      const r = await fetch(base + ruta, { headers: { "user-agent": UA } });
+      const h = ["server", "x-powered-by", "via", "cf-ray", "x-vtex-janus-router-backend-app", "content-type"]
+        .map(k => `${k}=${r.headers.get(k)}`).join(" ");
+      const b = (await r.text()).slice(0, 150).replace(/\s+/g, " ");
+      console.log(`[sonda] ${base + ruta} -> ${r.status} ${h}\n        ${b}`);
+    } catch (e) { console.log(`[sonda] ${base + ruta} -> error: ${e.message}`); }
+  }
 }
 const hojas = (ns, out = []) => { for (const n of ns) n.children?.length ? hojas(n.children, out) : out.push(n); return out; };
 
@@ -47,9 +62,9 @@ const CANASTA = JSON.parse(await readFile(new URL("./canasta.json", import.meta.
 const MARCAS = [...CANASTA.marcas].sort((a, b) => b.length - a.length);
 const sinAcento = x => x.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 // Super Selectos no entrega la marca en la lista: se detecta dentro del nombre
-export const detectarMarca = nombre => {
+export const detectarMarca = (nombre, lista = MARCAS) => {
   const n = ` ${sinAcento(nombre).replace(/[^a-z0-9ñ]+/g, " ")} `;
-  return MARCAS.find(m => n.includes(` ${sinAcento(m).replace(/[^a-z0-9ñ]+/g, " ")} `)) || "";
+  return lista.find(m => n.includes(` ${sinAcento(m).replace(/[^a-z0-9ñ]+/g, " ")} `)) || "";
 };
 const ENT = { amp: "&", quot: '"', lt: "<", gt: ">", nbsp: " ", apos: "'" };
 const deco = s => s.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (m, e) =>
@@ -87,6 +102,18 @@ export function parseSelectos(html) {
   return out;
 }
 
+// La página trae un filtro "Marcas" con las marcas de esos resultados: sirve para detectar la marca de cada producto
+export function extraerMarcas(html) {
+  const hit = html.match(/>\s*Marcas\s*</i);
+  if (!hit) return [];
+  const i = hit.index + 1;
+  const fin = html.search(/<h1[\s>]/i);
+  const seg = html.slice(i, fin > i ? fin : i + 20000);
+  return seg.split(/<[^>]*>/).map(x => deco(x).replace(/\s+/g, " ").trim())
+    .filter(x => x.length >= 3 && x.length <= 30 && /[a-zñ]/i.test(x) && !/[$\d]/.test(x) &&
+      !/^(marcas|close|filter_list|filtros|mas filtros|ofertas.*|rango.*|categor.*)$/i.test(x));
+}
+
 function selectos() {
   return async function* () {
     const vistos = new Set();
@@ -94,13 +121,20 @@ function selectos() {
       ...CANASTA.terminos.map(t => ({ cat: t, url: `${SS}/products?keyword=${encodeURIComponent(t)}` })),
       ...CANASTA.categorias_selectos.map(c => ({ cat: c.nombre, url: `${SS}/products?category=${c.id}` }))
     ];
+    const descargadas = [], marcas = new Set(CANASTA.marcas);
     for (const p of paginas) {
       const html = await getHtml(p.url);
+      descargadas.push([p, html]);
+      extraerMarcas(html).forEach(m => marcas.add(m));
       await esp(3000);                              // pausa larga: un sitio ajeno, pocas peticiones
+    }
+    const lista = [...marcas].sort((a, b) => b.length - a.length);
+    console.log(`[Super Selectos] ${lista.length} marcas conocidas`);
+    for (const [p, html] of descargadas) {
       for (const it of parseSelectos(html)) {
         if (vistos.has(it.id)) continue;
         vistos.add(it.id);
-        yield { ...it, cat: p.cat };
+        yield { ...it, marca: detectarMarca(it.nombre, lista), cat: p.cat };
       }
     }
   };
@@ -109,7 +143,7 @@ function selectos() {
 const pendiente = n => async function* () { throw new Error(n + ": adaptador pendiente"); };
 
 export const TIENDAS = [
-  { nombre: "Walmart",              activa: true,  catalogo: vtex("https://www.walmart.com.sv") }, // VERIFICAR en la primera corrida
+  { nombre: "Walmart",              activa: true,  catalogo: vtex("https://www.walmart.com.sv"), sonda: () => sondear("https://www.walmart.com.sv") }, // VERIFICAR en la primera corrida
   { nombre: "Super Selectos",       activa: true,  catalogo: selectos() },
   { nombre: "Despensa de Don Juan", activa: false, catalogo: pendiente("Despensa de Don Juan") }
 ];

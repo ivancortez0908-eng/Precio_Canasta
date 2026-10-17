@@ -7,6 +7,7 @@ await mkdir("data/catalogo", { recursive: true });
 let bien = 0;
 for (const t of TIENDAS.filter(t => t.activa)) {
   try {
+    if (t.sonda) await t.sonda();
     const items = [];
     for await (const it of t.catalogo()) {
       const tam = parseTamano(it.nombre);
