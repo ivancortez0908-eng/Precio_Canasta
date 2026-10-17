@@ -31,12 +31,6 @@ Para ampliar la cobertura, agrega términos a `scraper/canasta.json`. Revisa té
 ## Favoritos
 Marca la ☆ en el catálogo o en la búsqueda en vivo para pasar un producto a la pestaña **Favoritos**. Ahí cambias cantidades, quitas productos o vacías la lista, y la página compara **solo esos productos**: total por tienda y el costo de comprar cada uno donde sale más barato. La lista se guarda en el navegador (no en GitHub) y sus precios se actualizan cuando se publican datos nuevos.
 
-Al agregar un producto, la página reúne coincidencias del catálogo y de la búsqueda, y consulta el Worker existente para obtener precios de las demás fuentes. Las coincidencias automáticas exigen marca, variante y presentación compatibles. Si no hay una coincidencia segura, abre **Elegir coincidencia** en la columna de la tienda, revisa la presentación y selecciona el producto. Esa elección también se guarda. **Cambiar producto** permite corregirla.
-
-**Actualizar precios** consulta toda la lista; **Consultar tiendas** actualiza un favorito. Las tiendas sin respuesta y los productos sin coincidencia se muestran explícitamente. Los totales incompletos se marcan como **parciales** y no se consideran la compra completa más barata. Los precios guardados conservan su fecha si falla una consulta.
-
-El cliente carga `app.js` y `comparador.js` junto a `index.html`; no requiere compilación. Al actualizar el sitio en GitHub, subir los tres archivos juntos y conservar el `config.js` y `data/` existentes. Esta copia de trabajo no incluye esos archivos ni los metadatos Git. La integración del Worker no necesita cambios para esta mejora.
-
 ## Búsqueda en vivo (producto específico)
 La pestaña **Buscar en vivo** consulta un solo producto en el momento en cada tienda, sin descargar catálogos. Como el navegador no puede leer otras tiendas directamente, se usa un Worker gratuito de Cloudflare (`worker/worker.js`) que hace una petición por tienda y guarda cada consulta 10 minutos en caché.
 
@@ -56,14 +50,3 @@ La pestaña **Buscar en vivo** consulta un solo producto en el momento en cada t
 node scraper/catalogo.mjs && node scraper/emparejar.mjs   # Node 20+
 python3 -m http.server                                    # abre http://localhost:8000
 ```
-
-Pruebas sin consultas reales a comercios:
-```bash
-node --test tests/canasta.test.cjs
-node --check app.js
-node --check comparador.js
-```
-
-Con Playwright y Chromium instalados: `node tests/interfaz.cjs`. Esta prueba levanta un servidor local temporal y simula el catálogo, la configuración y el Worker. Para guardar capturas, definir `CANASTA_CAPTURAS` con una carpeta de salida. Para uso manual contra tiendas reales, utilizar el `config.js` del despliegue conectado.
-
-La guía para continuar el desarrollo está en `AGENTS.md` y los cambios de esta entrega en `BITACORA.md`.
