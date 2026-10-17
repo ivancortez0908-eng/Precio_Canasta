@@ -6,8 +6,8 @@
 <title>Canasta SV · Compara precios de supermercados</title>
 <style>
 /* Paleta proporcionada por el usuario: escala azul de luminosidad y acentos de matiz. */
-:root{color-scheme:light;--bg:#dbe3f9;--surf:#ffffff;--ink:#060f24;--mute:#193a91;--line:#b6c7f3;--brand:#2557da;--onBrand:#ffffff;--best:#dbe3f9;--bestInk:#132c6d;--bestBorder:#6e8fe6;--warn:#da2658;--shadow:#2557da20}
-@media (prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#060f24;--surf:#0c1d49;--ink:#dbe3f9;--mute:#92abec;--line:#193a91;--brand:#92abec;--onBrand:#060f24;--best:#132c6d;--bestInk:#dbe3f9;--bestBorder:#4973e0;--warn:#daa826;--shadow:#00000040}}
+:root{color-scheme:light;--bg:#dbe3f9;--surf:#ffffff;--ink:#000000;--mute:#737a8d;--line:#b6c7f3;--brand:#2557da;--brandHover:#4973e0;--brandActive:#1f49b6;--onBrand:#ffffff;--best:#dbe3f9;--bestInk:#132c6d;--bestBorder:#6e8fe6;--warn:#da2658;--shadow:#2557da20}
+@media (prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#060f24;--surf:#0c1d49;--ink:#dbe3f9;--mute:#92abec;--line:#193a91;--brand:#92abec;--brandHover:#b6c7f3;--brandActive:#6e8fe6;--onBrand:#060f24;--best:#132c6d;--bestInk:#dbe3f9;--bestBorder:#4973e0;--warn:#daa826;--shadow:#00000040}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Trebuchet MS","Segoe UI",system-ui,sans-serif}
 header{padding:32px 20px 8px;max-width:1100px;margin:auto}
@@ -68,7 +68,12 @@ header p{max-width:55ch}
 #nf{display:inline-block;min-width:23px;border-radius:6px;background:#ffffff24}
 .panel-heading{margin:8px 0 14px}.panel-heading h2{font-size:1.45rem;margin:0 0 4px;letter-spacing:-.03em}.panel-heading p{margin:0;color:var(--mute);font-size:.92rem}
 input[type=search]{padding:14px 16px;border-radius:12px;accent-color:var(--brand)}input[type=checkbox]{accent-color:var(--brand)}button[type=submit]{background:var(--brand);color:var(--onBrand);padding:14px 18px;font-weight:650;border-radius:12px}
-button:hover{filter:brightness(.92)}button:disabled{opacity:.6;cursor:wait}
+button:not(:disabled):hover{background:var(--best)}
+button:not(:disabled):active{border-color:var(--brandActive)}
+button[type=submit]:not(:disabled):hover,.tabs button[aria-selected=true]:not(:disabled):hover{background:var(--brandHover)}
+button[type=submit]:not(:disabled):active,.tabs button[aria-selected=true]:not(:disabled):active{background:var(--brandActive)}
+button:disabled{opacity:.6;cursor:wait}
+.intro,.wrap,section.cart{box-shadow:0 1px 3px var(--shadow)}
 .wrap{border-radius:14px}th{background:var(--bg);font-size:.78rem;letter-spacing:.02em;padding:14px 16px}td{padding:16px;vertical-align:top}tbody tr:last-child td{border-bottom:0}
 td:first-child{font-weight:600}td small{font-weight:400;margin-top:4px}.star{font-size:1.8rem;min-width:40px;min-height:40px}
 .consulta{max-width:300px;font-size:.75rem}.retry{font-size:.75rem;padding:4px 8px;margin-top:8px;border-color:var(--line)}
