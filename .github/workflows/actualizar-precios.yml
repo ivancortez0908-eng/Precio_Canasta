@@ -1,20 +1,22 @@
 name: Actualizar precios
 on:
-  schedule: [{ cron: "0 12 * * *" }]   # todos los días, 6:00 a. m. hora de El Salvador
-  workflow_dispatch: {}                 # botón "Run workflow" para correrlo a mano
+  schedule: [{ cron: "0 12 * * 1,4" }]  # lunes y jueves, 6:00 a. m. hora de El Salvador
+  workflow_dispatch: {}                  # botón "Run workflow"
 permissions:
   contents: write
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    timeout-minutes: 300
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20 }
-      - run: node scraper/scrape.mjs
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22 }
+      - run: node scraper/catalogo.mjs
+      - run: node scraper/emparejar.mjs
       - name: Guardar cambios
         run: |
           git config user.name "canasta-bot"
           git config user.email "canasta-bot@users.noreply.github.com"
-          git add data/precios.json
+          git add data
           git diff --cached --quiet || (git commit -m "Actualizar precios $(date -u +%F)" && git push)
