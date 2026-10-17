@@ -2,6 +2,9 @@
 // { id, nombre, marca, ean, precio, url, cat } por cada producto disponible.
 import { readFile } from "node:fs/promises";
 const UA = "CanastaSV/1.0 (comparador de precios sin fines de lucro)";
+const CANASTA = JSON.parse(await readFile(new URL("./canasta.json", import.meta.url), "utf8"));
+const CONFIG_JS = await readFile(new URL("../config.js", import.meta.url), "utf8").catch(() => "");
+let avisos = 0;
 const esp = ms => new Promise(r => setTimeout(r, ms));
 
 async function getJson(url) {
@@ -11,11 +14,32 @@ async function getJson(url) {
       const r = await fetch(url, { headers: { "user-agent": UA, accept: "application/json" } });
       if (r.ok) return await r.json();
       ultimo = "HTTP " + r.status;
-      if (r.status === 400 || r.status === 404) return [];
+      if (r.status === 400 || r.status === 404) { if (avisos++ < 5) console.warn(`[HTTP ${r.status}] ${url.slice(0, 150)}`); return []; }
     } catch (e) { ultimo = e.message; }
     await esp(1500 * (i + 1));
   }
   throw new Error(`${ultimo} en ${url}`);
+}
+
+async function sondearProductos(base) {
+  const probar = async (etiqueta, url) => {
+    try {
+      const r = await fetch(url, { headers: { "user-agent": UA, accept: "application/json" } });
+      const j = r.ok ? await r.json() : [];
+      console.log(`[sonda] ${etiqueta}: HTTP ${r.status}, ${Array.isArray(j) ? j.length : "?"} resultados`);
+      for (const it of (Array.isArray(j) ? j : []).slice(0, 2)) {
+        const o = it.items?.[0]?.sellers?.[0]?.commertialOffer;
+        console.log(`        "${it.productName}" marca=${it.brand} Price=${o?.Price} Disponible=${o?.AvailableQuantity} IsAvailable=${o?.IsAvailable} skus=${it.items?.length} vendedores=${it.items?.[0]?.sellers?.length}`);
+      }
+    } catch (e) { console.log(`[sonda] ${etiqueta}: error ${e.message}`); }
+  };
+  await probar("búsqueda ft=leche", `${base}/api/catalog_system/pub/products/search?ft=leche&_from=0&_to=4`);
+  const arbol = await fetch(`${base}/api/catalog_system/pub/category/tree/3`, { headers: { "user-agent": UA } }).then(r => r.json()).catch(() => []);
+  const h = hojas(arbol)[0];
+  if (h) {
+    await probar(`categoría ${h.nombre} con ruta`, `${base}/api/catalog_system/pub/products/search?fq=C:/${h.ruta.join("/")}/&_from=0&_to=4`);
+    await probar(`categoría ${h.nombre} solo id`, `${base}/api/catalog_system/pub/products/search?fq=C:${h.ruta.at(-1)}&_from=0&_to=4`);
+  }
 }
 
 // Diagnóstico: imprime qué responde la tienda (estado, plataforma, primeras letras) para ver el log en GitHub
@@ -30,27 +54,52 @@ async function sondear(base) {
     } catch (e) { console.log(`[sonda] ${base + ruta} -> error: ${e.message}`); }
   }
 }
-const hojas = (ns, out = []) => { for (const n of ns) n.children?.length ? hojas(n.children, out) : out.push(n); return out; };
 
-// Tiendas VTEX: recorre todas las categorías y pagina cada una
-function vtex(base) {
+// Tiendas VTEX. Usa la MISMA consulta que el Worker (products/search?ft=…) para cada término de canasta.json.
+// Si desde GitHub no devuelve nada (algunas tiendas bloquean IPs de servidores), usa el Worker como puente.
+const hojas = (ns, ruta = [], out = []) => {
+  for (const n of ns) { const r = [...ruta, n.id]; n.children?.length ? hojas(n.children, r, out) : out.push({ nombre: n.name, ruta: r }); }
+  return out;
+};
+const apiVivo = () => (CONFIG_JS.match(/API_VIVO\s*=\s*"([^"]+)"/) || [])[1] || "";
+function vtex(base, nombre) {
   return async function* () {
-    const arbol = await getJson(`${base}/api/catalog_system/pub/category/tree/3`);
-    const vistos = new Set();
-    for (const cat of hojas(arbol)) {
-      for (let d = 0; d < 2500; d += 50) {
-        const items = await getJson(`${base}/api/catalog_system/pub/products/search?fq=C:${cat.id}&_from=${d}&_to=${d + 49}`);
-        await esp(400);
+    const vistos = new Set(), rech = { sinPrecio: 0, sinStock: 0 };
+    const mapear = (it, cat) => {
+      const sku = it.items?.[0], o = sku?.sellers?.[0]?.commertialOffer;
+      if (!o || !(o.Price > 0)) { rech.sinPrecio++; return null; }
+      if (!(o.IsAvailable ?? o.AvailableQuantity > 0)) { rech.sinStock++; return null; }
+      return { id: String(it.productId), nombre: it.productName, marca: it.brand || "", ean: sku.ean || "",
+        desc: (it.description || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 220),
+        precio: o.Price, url: it.link || `${base}/${it.linkText}/p`, cat };
+    };
+    let a = 0, n = 0;
+    for (const t of CANASTA.terminos) {
+      for (let d = 0; d < 100; d += 50) {
+        const items = await getJson(`${base}/api/catalog_system/pub/products/search?ft=${encodeURIComponent(t)}&_from=${d}&_to=${d + 49}`);
+        await esp(500);
+        if (n < 3) console.log(`[${nombre}] "${t}" (desde ${d}): ${items.length} recibidos`);
         for (const it of items) {
           if (vistos.has(it.productId)) continue;
-          vistos.add(it.productId);
-          const sku = it.items?.[0];
-          const o = sku?.sellers?.[0]?.commertialOffer;
-          if (!o || !(o.Price > 0) || !(o.AvailableQuantity > 0)) continue;
-          yield { id: String(it.productId), nombre: it.productName, marca: it.brand || "", ean: sku.ean || "",
-                  precio: o.Price, desc: (it.description || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 220), url: it.link || `${base}/${it.linkText}/p`, cat: cat.name };
+          const x = mapear(it, t);
+          if (x) { vistos.add(it.productId); a++; yield x; }
         }
         if (items.length < 50) break;
+      }
+      if (++n === 3 && !a) break; // las primeras búsquedas no sirvieron: pasar al plan B
+    }
+    console.log(`[${nombre}] consulta directa: ${a} productos (descartados: ${rech.sinPrecio} sin precio, ${rech.sinStock} sin stock)`);
+    if (a) return;
+    const api = apiVivo();
+    if (!api) throw new Error(`${nombre}: la consulta directa no devolvió productos y config.js no tiene API_VIVO para usar el Worker`);
+    console.log(`[${nombre}] plan B: usando el Worker ${api}`);
+    for (const t of CANASTA.terminos) {
+      const j = await getJson(`${api}?q=${encodeURIComponent(t)}&tiendas=${encodeURIComponent(nombre)}`);
+      await esp(1000);
+      for (const x of j.resultados || []) {
+        if (x.tienda !== nombre || vistos.has(x.id)) continue;
+        vistos.add(x.id);
+        yield { id: x.id, nombre: x.nombre, marca: x.marca, ean: "", desc: "", precio: x.precio, url: x.url, cat: t };
       }
     }
   };
@@ -58,7 +107,6 @@ function vtex(base) {
 
 // ---- Super Selectos: sitio con HTML ya armado; se leen páginas de búsqueda y de categoría ----
 const SS = "https://www.superselectos.com";
-const CANASTA = JSON.parse(await readFile(new URL("./canasta.json", import.meta.url), "utf8"));
 const MARCAS = [...CANASTA.marcas].sort((a, b) => b.length - a.length);
 const sinAcento = x => x.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 // Super Selectos no entrega la marca en la lista: se detecta dentro del nombre
@@ -143,8 +191,8 @@ function selectos() {
 const pendiente = n => async function* () { throw new Error(n + ": adaptador pendiente"); };
 
 export const TIENDAS = [
-  { nombre: "Walmart",              activa: true,  catalogo: vtex("https://www.walmart.com.sv"), sonda: () => sondear("https://www.walmart.com.sv") }, // VERIFICAR en la primera corrida
+  { nombre: "Walmart",              activa: true,  catalogo: vtex("https://www.walmart.com.sv", "Walmart"), sonda: async () => { await sondear("https://www.walmart.com.sv"); await sondearProductos("https://www.walmart.com.sv"); } }, // VERIFICAR en la primera corrida
   { nombre: "Super Selectos",       activa: true,  catalogo: selectos() },
-  { nombre: "Despensa de Don Juan", activa: false, catalogo: pendiente("Despensa de Don Juan") }
+  { nombre: "Despensa de Don Juan", activa: true,  catalogo: vtex("https://www.ladespensadedonjuan.com.sv", "Despensa de Don Juan"), sonda: () => sondear("https://www.ladespensadedonjuan.com.sv") } // VERIFICAR: es del grupo Walmart, pero no confirmado que use VTEX
 ];
 export const slug = n => n.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-");

@@ -28,6 +28,9 @@ Se configuran en `scraper/tiendas.mjs`.
 
 Para ampliar la cobertura, agrega términos a `scraper/canasta.json`. Revisa términos de uso y `robots.txt` antes de activar cada tienda.
 
+## Favoritos
+Marca la ☆ en el catálogo o en la búsqueda en vivo para pasar un producto a la pestaña **Favoritos**. Ahí cambias cantidades, quitas productos o vacías la lista, y la página compara **solo esos productos**: total por tienda y el costo de comprar cada uno donde sale más barato. La lista se guarda en el navegador (no en GitHub) y sus precios se actualizan cuando se publican datos nuevos.
+
 ## Búsqueda en vivo (producto específico)
 La pestaña **Buscar en vivo** consulta un solo producto en el momento en cada tienda, sin descargar catálogos. Como el navegador no puede leer otras tiendas directamente, se usa un Worker gratuito de Cloudflare (`worker/worker.js`) que hace una petición por tienda y guarda cada consulta 10 minutos en caché.
 
@@ -37,6 +40,8 @@ La pestaña **Buscar en vivo** consulta un solo producto en el momento en cada t
 3. Copia la dirección del Worker (`https://canasta-busqueda.TU-SUBDOMINIO.workers.dev`).
 4. **Settings → Variables and Secrets → Add**: nombre `ORIGEN_PERMITIDO`, valor `https://TU_USUARIO.github.io` (sin barra final). Así solo tu sitio puede usarlo.
 5. En este repositorio edita `config.js` y pega la dirección: `window.API_VIVO = "https://canasta-busqueda.TU-SUBDOMINIO.workers.dev";`
+
+**PriceSmart (opcional):** en Cloudflare, **Settings → Variables and Secrets → Add**, tipo **Secret**, nombre `PRICESMART_KEY`, valor = el `auth_key` público de su buscador. Sin esa variable, el Worker no consulta PriceSmart. Solo se usa en la búsqueda en vivo, nunca en la descarga programada.
 
 **Agregar una farmacia o tienda:** en `worker/worker.js` escribe una función como `walmart` o `selectos` (recibe el texto buscado y devuelve `[{id, nombre, marca, precio, url}]`) y agrégala al objeto `TIENDAS`.
 
