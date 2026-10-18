@@ -3,13 +3,14 @@
 // y devuelve los resultados en JSON. Guarda cada consulta 10 minutos en caché para no repetir peticiones.
 const UA = "CanastaSV/1.0 (comparador de precios sin fines de lucro)";
 const MAX = 12; // resultados por tienda
+const VERSION = "2026-10-18-b"; // aparece en cada respuesta: sirve para saber qué código está desplegado
 
 // ---- tamaños (misma lógica que scraper/normalizar.mjs) ----
 const RE = /(?<![\d.,])(?:(\d+)\s*[x×]\s*)?(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|mg|lbs?|libras?|oz|ml|lts?|litros?|l|gal(?:on(?:es)?)?)(?![a-z])/i;
 const RE_UD = /(\d+)\s*(unidades|und|uds?|pzas?|piezas|tabletas|capsulas|cápsulas|tabs?|caps?)(?![a-z])/i;
 const limpia = t => (t || "")
-  .replace(/(\d{1,3})\s(\d{3})(?=\s*(?:g|gr|grs|gramos|ml)(?![a-z]))/gi, "$1$2")
-  .replace(/(\d{1,3})\s(\d{3})(?=\s*(?:kg|kilos?|lts?|litros?|l)(?![a-z]))/gi, "$1.$2").replace(/\s+/g, " ");
+  .replace(/(?<![\w.,])(\d{1,3})\s(\d{3})(?=\s*(?:g|gr|grs|gramos|ml)(?![a-z]))/gi, "$1$2")
+  .replace(/(?<![\w.,])(\d{1,3})\s(\d{3})(?=\s*(?:kg|kilos?|lts?|litros?|l)(?![a-z]))/gi, "$1.$2").replace(/\s+/g, " ");
 function conv(v, u) {
   u = u.toLowerCase();
   if (/^(kg|kilos?)$/.test(u)) return v > 60 ? { q: v, u: "g" } : { q: v * 1000, u: "g" };
@@ -22,11 +23,19 @@ function conv(v, u) {
   return null; // mg: concentración de medicamentos, no tamaño de empaque
 }
 function tamano(nombre) {
-  const t = limpia(nombre);
+  const t = limpia(nombre).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const mp = t.match(/(\d+)\s*(?:unidades|unidad|uds?|und)\s*\/\s*(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|lbs?|libras?|oz|ml|lts?|litros?|l)(?![a-z])/i);
+  if (mp) { const c = conv(parseFloat(mp[2].replace(",", ".")), mp[3]); if (c) return { q: Math.round(c.q * +mp[1]), u: c.u }; }
   for (const m of t.matchAll(new RegExp(RE.source, "gi"))) {
     const c = conv(parseFloat(m[2].replace(",", ".")), m[3]);
-    if (c) return { q: Math.round(c.q * (m[1] ? +m[1] : 1)), u: c.u };
+    if (c) {
+      let q = c.q * (m[1] ? +m[1] : 1);
+      const pk = t.slice(m.index + m[0].length).match(/(\d+)\s*pack\b/i); // "250 mL 6 Pack" = 6 envases
+      if (pk && !m[1]) q *= +pk[1];
+      return { q: Math.round(q), u: c.u };
+    }
   }
+  if (/\bgalon\b/i.test(t)) return { q: 3785, u: "ml" };
   if (/docena/i.test(t)) return { q: 12, u: "ud" };
   const ud = t.match(RE_UD);
   return ud ? { q: +ud[1], u: "ud" } : null;
@@ -48,18 +57,17 @@ const deco = s => s.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (m, e) =>
 const texto = h => deco(h.replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
 const sinAcento = s => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-async function pedir(url, accept) {
+async function pedir(url, accept, init = {}) {
   const c = new AbortController(), t = setTimeout(() => c.abort(), 8000);
   try {
-    const r = await fetch(url, { headers: { "user-agent": UA, accept }, signal: c.signal });
+    const r = await fetch(url, { method: init.method, body: init.body, headers: { "user-agent": UA, accept, ...(init.headers || {}) }, signal: c.signal });
     if (!r.ok) throw new Error("HTTP " + r.status);
     return r;
   } finally { clearTimeout(t); }
 }
 
 // ---- tiendas: cada una recibe el texto buscado y devuelve [{id,nombre,marca,precio,url}] ----
-async function walmart(q) {
-  const base = "https://www.walmart.com.sv";
+const vtex = base => async q => {
   const r = await pedir(`${base}/api/catalog_system/pub/products/search?ft=${encodeURIComponent(q)}&_from=0&_to=${MAX - 1}`, "application/json");
   const out = [];
   for (const it of await r.json()) {
@@ -68,7 +76,7 @@ async function walmart(q) {
     out.push({ id: String(it.productId), nombre: it.productName, marca: it.brand || "", precio: o.Price, url: it.link || `${base}/${it.linkText}/p` });
   }
   return out;
-}
+};
 
 async function selectos(q) {
   const SS = "https://www.superselectos.com";
@@ -101,8 +109,67 @@ async function selectos(q) {
   return out;
 }
 
+// PriceSmart: usa un buscador externo (Bloomreach). La clave pública del sitio va en la variable PRICESMART_KEY del Worker.
+// Solo para consultas puntuales (búsqueda en vivo). Si responde 403, no se insiste ni se disimula el origen.
+async function pricesmart(q, env) {
+  const pagina = `https://www.pricesmart.com/es-sv/busqueda?q=${encodeURIComponent(q)}`;
+  const cuerpo = [{ account_id: "7024", auth_key: env.PRICESMART_KEY, domain_key: "pricesmart_bloomreach_io_es",
+    fl: "pid,title,brand,slug,currency,fractionDigits,availability_SV,price_SV,inventory_SV",
+    fq: [], q, request_id: Date.now(), rows: MAX, search_type: "keyword", start: 0, url: pagina, view_id: "SV" }];
+  const r = await pedir("https://www.pricesmart.com/api/br_discovery/getProductsByKeyword", "application/json",
+    { method: "POST", body: JSON.stringify(cuerpo), headers: { "content-type": "application/json" } });
+  const j = await r.json(), o = Array.isArray(j) ? j[0] : j;
+  return (o?.response?.docs || [])
+    .filter(d => String(d.availability_SV) === "true" && Number(d.price_SV) > 0)
+    .map(d => ({ id: String(d.pid), nombre: d.title, marca: d.brand || "", precio: Number(d.price_SV) / 10 ** (d.fractionDigits ?? 2), url: pagina }));
+}
+
 // Para agregar una farmacia u otra tienda: escribe una función igual a las de arriba y agrégala aquí.
-const TIENDAS = { "Walmart": walmart, "Super Selectos": selectos };
+const TIENDAS = { "Walmart": vtex("https://www.walmart.com.sv"), "Despensa de Don Juan": vtex("https://www.ladespensadedonjuan.com.sv"), "Super Selectos": selectos, "PriceSmart": pricesmart };
+
+// ---- aportes: el sitio envía comparaciones confirmadas y se crea una issue en GitHub para revisarlas ----
+const limpio = (t, n) => String(t ?? "").replace(/[\u0000-\u001f`<>@|\\\[\]]/g, " ").replace(/\s+/g, " ").trim().slice(0, n);
+function validar(grupos) {
+  if (!Array.isArray(grupos) || !grupos.length || grupos.length > 10) return null;
+  const out = [];
+  for (const g of grupos) {
+    if (!Array.isArray(g) || g.length < 2 || g.length > 6) return null;
+    const grp = [];
+    for (const x of g) {
+      if (!x || !Object.keys(TIENDAS).includes(x.tienda)) return null;
+      const id = limpio(x.id, 40), url = /^https:\/\/[\w./?=&%:#~+-]{3,300}$/.test(x.url || "") ? x.url : "";
+      if (!id && !url) return null;
+      grp.push({ tienda: x.tienda, id, url, nombre: limpio(x.nombre, 150) });
+    }
+    out.push(grp);
+  }
+  return out;
+}
+async function aporte(req, env, ctx, salida) {
+  if (!env.GITHUB_TOKEN_APORTES) return salida({ error: "Los aportes no están activados." }, 501);
+  if (env.ORIGEN_PERMITIDO && env.ORIGEN_PERMITIDO !== "*" && req.headers.get("Origin") !== env.ORIGEN_PERMITIDO) return salida({ error: "Origen no permitido" }, 403);
+  const texto = await req.text();
+  if (texto.length > 20000) return salida({ error: "Aporte demasiado grande." }, 413);
+  let grupos; try { grupos = validar(JSON.parse(texto)?.grupos); } catch { grupos = null; }
+  if (!grupos) return salida({ error: "Formato de aporte no válido." }, 400);
+  const llave = new Request("https://canasta.cache/aporte/" + (req.headers.get("CF-Connecting-IP") || "?"));
+  const hayCache = typeof caches !== "undefined";
+  if (hayCache && await caches.default.match(llave)) return salida({ error: "Espera unos minutos antes de enviar otro aporte." }, 429);
+  const tabla = (g, i) => [`### Comparación ${i + 1}`, "", "| Tienda | Producto | Enlace |", "|---|---|---|",
+    ...g.map(x => `| ${x.tienda} | ${x.nombre || x.id} | ${x.url ? `[ver producto](${x.url})` : "—"} |`), ""].join("\n");
+  const cuerpo = ["Aporte enviado desde el sitio.", "",
+    "**Para aplicarlo a la base:** revisa que cada tabla sea el mismo producto y agrega la etiqueta `aprobado`. **Para rechazarlo:** ciérralo como *not planned*.", "",
+    ...grupos.map(tabla), "<details><summary>JSON (lo usa la automatización)</summary>", "", "```json", JSON.stringify(grupos, null, 1), "```", "", "</details>"].join("\n");
+  const r = await fetch(`https://api.github.com/repos/${env.GITHUB_REPO || "ivancortez0908-eng/Precio_Canasta"}/issues`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${env.GITHUB_TOKEN_APORTES}`, accept: "application/vnd.github+json", "user-agent": UA, "x-github-api-version": "2022-11-28", "content-type": "application/json" },
+    body: JSON.stringify({ title: `Aporte de equivalencias (${grupos.length}) ${new Date().toISOString().slice(0, 10)}`, body: cuerpo })
+  });
+  if (!r.ok) return salida({ error: "GitHub respondió " + r.status }, 502);
+  const i = await r.json();
+  if (hayCache) ctx.waitUntil(caches.default.put(llave, new Response("1", { headers: { "cache-control": "max-age=600" } })));
+  return salida({ ok: true, numero: i.number, url: i.html_url });
+}
 
 // ---- servidor ----
 export default {
@@ -113,26 +180,35 @@ export default {
     const salida = (obj, status = 200, extra = {}) => new Response(JSON.stringify(obj),
       { status, headers: { "content-type": "application/json; charset=utf-8", ...cors, ...extra } });
 
-    if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: { ...cors, "access-control-allow-methods": "GET" } });
+    if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: { ...cors, "access-control-allow-methods": "GET, POST", "access-control-allow-headers": "content-type" } });
     if (permitido !== "*" && origen && origen !== permitido) return salida({ error: "Origen no permitido" }, 403);
+    if (req.method === "POST") return aporte(req, env, ctx, salida);
 
     const q = (new URL(req.url).searchParams.get("q") || "").replace(/\s+/g, " ").trim();
     if (q.length < 2 || q.length > 60) return salida({ error: "Escribe entre 2 y 60 caracteres." }, 400);
 
+    const solo = (new URL(req.url).searchParams.get("tiendas") || "").split(",").map(x => x.trim()).filter(Boolean);
+    const nombres = Object.keys(TIENDAS).filter(n => (!solo.length || solo.includes(n)) && (n !== "PriceSmart" || env.PRICESMART_KEY));
+    const fresco = new URL(req.url).searchParams.has("fresh");   // ?fresh=1 salta la caché (para diagnosticar)
     const hayCache = typeof caches !== "undefined";
-    const llave = new Request("https://canasta.cache/" + encodeURIComponent(sinAcento(q)));
-    if (hayCache) { const hit = await caches.default.match(llave); if (hit) return salida(await hit.json(), 200, { "x-cache": "HIT" }); }
+    const llave = new Request("https://canasta.cache/" + encodeURIComponent(sinAcento(q)) + "/" + nombres.join(","));
+    if (hayCache && !fresco) { const hit = await caches.default.match(llave); if (hit) return salida(await hit.json(), 200, { "x-cache": "HIT" }); }
 
-    const nombres = Object.keys(TIENDAS);
-    const res = await Promise.allSettled(nombres.map(n => TIENDAS[n](q)));
+    const res = await Promise.allSettled(nombres.map(async n => {
+      const t0 = Date.now();
+      try { return { v: await TIENDAS[n](q, env), ms: Date.now() - t0 }; }
+      catch (e) { e.ms = Date.now() - t0; throw e; }
+    }));
     const tiendas = {}, resultados = [];
     res.forEach((r, i) => {
-      if (r.status === "fulfilled") { tiendas[nombres[i]] = { ok: true, n: r.value.length }; r.value.forEach(x => resultados.push(fila(nombres[i], x))); }
-      else tiendas[nombres[i]] = { ok: false, error: String(r.reason?.message || r.reason).slice(0, 80) };
+      if (r.status === "fulfilled") { tiendas[nombres[i]] = { ok: true, n: r.value.v.length, ms: r.value.ms }; r.value.v.forEach(x => resultados.push(fila(nombres[i], x))); }
+      else tiendas[nombres[i]] = { ok: false, error: String(r.reason?.message || r.reason).slice(0, 80), ms: r.reason?.ms };
     });
-    const cuerpo = { q, generado: new Date().toISOString(), tiendas, resultados };
-    if (hayCache && resultados.length) ctx.waitUntil(caches.default.put(llave,
+    const omitidas = Object.keys(TIENDAS).filter(n => !nombres.includes(n) && !solo.length).map(n => n + (n === "PriceSmart" ? " (falta la variable PRICESMART_KEY)" : ""));
+    const cuerpo = { version: VERSION, q, generado: new Date().toISOString(), tiendas, omitidas, resultados };
+    // Solo se guarda en caché si TODAS las tiendas respondieron: un fallo pasajero no debe repetirse 10 minutos
+    if (hayCache && resultados.length && Object.values(tiendas).every(t => t.ok)) ctx.waitUntil(caches.default.put(llave,
       new Response(JSON.stringify(cuerpo), { headers: { "content-type": "application/json", "cache-control": "max-age=600" } })));
-    return salida(cuerpo, 200, { "x-cache": "MISS" });
+    return salida(cuerpo, 200, { "x-cache": "MISS", "x-version": VERSION });
   }
 };
