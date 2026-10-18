@@ -31,6 +31,9 @@ Para ampliar la cobertura, agrega términos a `scraper/canasta.json`. Revisa té
 ## Favoritos
 Marca la ☆ en un producto: queda como **referencia**. La página lo busca en todas las tiendas (usa el Worker de la búsqueda en vivo) y arma el comparativo: precio por tienda y total de la compra. En cada celda se ve qué producto encontró; con "cambiar" eliges otra coincidencia o "Ninguno". Se actualiza al abrir la pestaña si no se hizo hoy, o con el botón. La lista se guarda en el navegador (no en GitHub).
 
+## Entrenar la comparación
+En Favoritos, el cuadro **Entrenar la comparación** lista qué producto encontró cada tienda y su estado (catálogo, automático o confirmado). Con ✓ / ✗ confirmas o descartas; lo que eliges con «cambiar» también cuenta. Cada decisión queda en el **registro** (en tu navegador; se puede descargar). **Descargar equivalencias.json** une lo ya publicado con tus nuevas confirmaciones: reemplaza `scraper/equivalencias.json` con ese archivo y corre la acción. El emparejador las usa por id o por enlace y esos productos salen como «Equivalencia verificada».
+
 ## Búsqueda en vivo (producto específico)
 La pestaña **Buscar en vivo** consulta un solo producto en el momento en cada tienda, sin descargar catálogos. Como el navegador no puede leer otras tiendas directamente, se usa un Worker gratuito de Cloudflare (`worker/worker.js`) que hace una petición por tienda y guarda cada consulta 10 minutos en caché.
 

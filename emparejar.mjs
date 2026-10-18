@@ -20,9 +20,10 @@ const unir = (a, b, tipo) => {
   padre[ra] = rb; tipos.set(rb, ts);
 };
 
-const porEan = new Map(), porClave = new Map(), porId = new Map();
+const porEan = new Map(), porClave = new Map(), porId = new Map(), porUrl = new Map();
 todos.forEach((it, i) => {
   porId.set(`${supers[it.ti]}#${it.id}`, i);
+  if (it.url) porUrl.set(`${supers[it.ti]}#${it.url}`, i);
   const e = (it.ean || "").replace(/\D/g, "").replace(/^0+/, "");
   if (e.length >= 8) porEan.has(e) ? unir(i, porEan.get(e), "ean") : porEan.set(e, i);
   const k = claveNombre(it);
@@ -32,7 +33,7 @@ todos.forEach((it, i) => {
 // Equivalencias manuales: scraper/equivalencias.json = [[{tienda,id},{tienda,id}], ...]
 const manual = JSON.parse(await readFile("scraper/equivalencias.json", "utf8").catch(() => "[]"));
 for (const grupo of manual) {
-  const idx = grupo.map(x => porId.get(`${x.tienda}#${x.id}`)).filter(x => x !== undefined);
+  const idx = grupo.map(x => porId.get(`${x.tienda}#${x.id}`) ?? porUrl.get(`${x.tienda}#${x.url}`)).filter(x => x !== undefined);
   for (let j = 1; j < idx.length; j++) unir(idx[j], idx[0], "manual");
 }
 
@@ -54,7 +55,7 @@ for (const [r, idxs] of grupos) {
   const base = lista[0], conQ = lista.find(x => x.q) || base;
   const t = lista.map(x => {
     const p = precioUnitario(x.precio, x.q, x.u);
-    return [x.ti, +x.precio.toFixed(2), x.url, p ? +p.pu.toFixed(2) : null, bonito(x.nombre), x.marca || "", x.desc || ""];
+    return [x.ti, +x.precio.toFixed(2), x.url, p ? +p.pu.toFixed(2) : null, bonito(x.nombre), x.marca || "", x.desc || "", x.id];
   });
   const pus = t.map(x => x[3]).filter(v => v != null);
   const ts = tipos.get(raiz(r));
