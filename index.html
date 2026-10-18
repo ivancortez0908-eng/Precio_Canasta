@@ -5,65 +5,84 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Canasta SV · Compara precios de supermercados</title>
 <style>
-:root{--bg:#f6f4ee;--surf:#fff;--ink:#1d2b24;--mute:#66736c;--line:#dcd8cc;--brand:#0f5c3e;--best:#d9f0e3;--bestInk:#0a4a31;--warn:#b3402a}
-@media (prefers-color-scheme:dark){:root{--bg:#141a17;--surf:#1c2420;--ink:#e8efe9;--mute:#98a89f;--line:#2f3a34;--brand:#58c493;--best:#1d3d2d;--bestInk:#8fe0b8;--warn:#f08a72}}
+:root{--bg:#f0f2f5;--surf:#fff;--ink:#050505;--mute:#65676b;--line:#ced0d4;--blue:#1877f2;--btn:#e4e6eb;--hov:#d8dadf;--best:#e3f6e8;--bestInk:#14632b;--warn:#e02849;--v:#31a24c;--a:#f7b928;--r:#e02849;--sh:0 1px 2px rgba(0,0,0,.2)}
+@media (prefers-color-scheme:dark){:root{--bg:#18191a;--surf:#242526;--ink:#e4e6eb;--mute:#b0b3b8;--line:#3e4042;--blue:#2d88ff;--btn:#3a3b3c;--hov:#4e4f50;--best:#1d3d2a;--bestInk:#7ee2a8;--warn:#ff6b81;--sh:0 1px 2px rgba(0,0,0,.6)}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Trebuchet MS","Segoe UI",system-ui,sans-serif}
-header{padding:32px 20px 8px;max-width:1100px;margin:auto}
-h1{font:700 clamp(2rem,6vw,3.2rem)/1.05 Georgia,"Times New Roman",serif;margin:0 0 8px;letter-spacing:-.02em}
-header p{margin:0;color:var(--mute);max-width:60ch}
-main{max-width:1100px;margin:auto;padding:16px 20px 60px;display:grid;gap:16px}
-.controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
-input[type=search],select{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surf);color:var(--ink)}
-input[type=search]{flex:1;min-width:220px}
-label.chk{display:flex;gap:6px;align-items:center;font-size:.95rem}
-.wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surf)}
-table{border-collapse:collapse;width:100%;min-width:620px}
-th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
-th:first-child,td:first-child{text-align:left;white-space:normal;min-width:220px}
-th{font-weight:600;font-size:.9rem;color:var(--mute)}
-td small{color:var(--mute);display:block}
-td .marca{font-weight:600;color:var(--brand)}
-details{margin-top:4px;font-size:.85rem;color:var(--mute)}details summary{cursor:pointer}details p{margin:4px 0;white-space:normal}
-td.best{background:var(--best);color:var(--bestInk);font-weight:700}
-td.na{color:var(--mute)}
-td a{color:inherit}
-.tag{display:inline-block;font-size:.75rem;padding:0 6px;border:1px solid var(--line);border-radius:6px;color:var(--mute);margin-left:4px}
-.qty{width:56px;padding:6px;text-align:center;font:inherit;border:1px solid var(--line);border-radius:6px;background:var(--surf);color:var(--ink)}
-section.cart{border:2px solid var(--brand);border-radius:10px;padding:16px 18px;background:var(--surf)}
-section.cart h2{margin:0 0 4px;font:700 1.4rem Georgia,serif}
-.totals{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:12px}
-.tot{padding:10px 12px;border:1px solid var(--line);border-radius:8px}
-.tot b{display:block;font-size:1.4rem}
-.tot.best{background:var(--best);color:var(--bestInk);border-color:transparent}
-.tot span{font-size:.85rem;color:var(--mute)}.tot.best span{color:var(--bestInk)}
-.msg{color:var(--mute);margin:8px 0 0}.warn{color:var(--warn)!important}
-button{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--brand);background:transparent;color:var(--brand);cursor:pointer}
-:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
 [hidden]{display:none!important}
-.star{background:none;border:0;font-size:1.4rem;line-height:1;padding:2px 6px;color:var(--mute)}.star[aria-pressed=true]{color:#e0a100}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,"Segoe UI",Helvetica,Arial,sans-serif}
+/* barra superior fija, estilo red social */
+header.top{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:12px;height:56px;padding:0 16px;background:var(--surf);box-shadow:var(--sh)}
+.brand{display:flex;align-items:center;gap:8px;font-size:1.3rem;color:var(--blue)}
+.logo{width:40px;height:40px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;font-weight:800;font-size:1.4rem}
+.sp{width:120px}
+.tabs{flex:1;display:flex;justify-content:center;gap:4px;height:100%}
+main{max-width:1100px;margin:16px auto;padding:0 12px 60px;display:grid;gap:12px}
+#p1,#p2,#p3{display:grid;gap:12px}
+.intro{margin:4px 4px 0}
+.msg{color:var(--mute);margin:0 4px}.warn{color:var(--warn)!important}
+/* tarjetas */
+.controls,section.cart{background:var(--surf);border-radius:8px;box-shadow:var(--sh);padding:12px 16px}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+section.cart h2{margin:0 0 4px;font-size:1.25rem}
+input[type=search],select{font:inherit;padding:9px 14px;border:0;border-radius:999px;background:var(--bg);color:var(--ink)}
+input[type=search]{flex:1;min-width:200px}
+select{border-radius:8px}
+label.chk{display:flex;gap:6px;align-items:center;font-size:.95rem}
+button{font:inherit;font-weight:600;padding:8px 14px;border-radius:6px;border:0;background:var(--btn);color:var(--ink);cursor:pointer}
+button:hover{background:var(--hov)}
+.tabs button{height:100%;padding:0 26px;border-radius:0;background:none;color:var(--mute);border-bottom:3px solid transparent}
+.tabs button:hover{background:var(--bg)}
+.tabs button[aria-selected=true]{color:var(--blue);border-bottom-color:var(--blue)}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+/* tablas con encabezado y primera columna fijos */
+.wrap{background:var(--surf);border-radius:8px;box-shadow:var(--sh);overflow:auto;max-height:calc(100vh - 120px)}
+table{border-collapse:separate;border-spacing:0;width:100%;min-width:620px}
+th,td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--surf)}
+th{position:sticky;top:0;z-index:2;font-size:.85rem;color:var(--mute);font-weight:600}
+th:first-child,td:first-child{position:sticky;left:0;z-index:1;text-align:left;white-space:normal;min-width:200px}
+th:first-child{z-index:3}
+tr:last-child td{border-bottom:0}
+td.best{background:var(--best);color:var(--bestInk);font-weight:700}
+td.na{color:var(--mute);font-size:.85rem}
+td a{color:inherit}
+td small{color:var(--mute);display:block;font-weight:400}
+td small.f{font-size:.72rem;white-space:normal;max-width:220px;margin-left:auto}
+td.best small{color:var(--bestInk)}
+td .marca{font-weight:600;color:var(--blue)}
+@media (min-width:900px){.wrap{overflow:clip;max-height:none}th{top:56px}}
+.tag{display:inline-block;font-size:.75rem;padding:0 8px;border-radius:999px;background:var(--btn);color:var(--mute);margin-left:4px}
+.store{display:inline-block;font-size:.8rem;padding:1px 10px;border-radius:999px;background:var(--btn);font-weight:600}
+.star{background:none;font-size:1.4rem;line-height:1;padding:2px 8px;color:var(--mute)}.star:hover{background:var(--btn)}.star[aria-pressed=true]{color:#e0a100}
 .stp{display:inline-flex;align-items:center;gap:4px}.stp button{padding:2px 10px;font-size:1.1rem;line-height:1.2}
-.rm{border-color:var(--warn);color:var(--warn);padding:4px 10px}
-td small.f{font-size:.72rem;white-space:normal;display:block;max-width:220px;margin-left:auto}
-select.alt{max-width:230px;font-size:.8rem;padding:4px;margin-top:4px}
-#p1,#p3{display:grid;gap:16px}
-.tabs{display:flex;gap:8px;flex-wrap:wrap}
-.tabs button[aria-selected=true]{background:var(--brand);color:var(--bg)}
-.store{display:inline-block;font-size:.8rem;padding:1px 8px;border-radius:999px;background:var(--best);color:var(--bestInk);font-weight:600}
-footer{max-width:1100px;margin:auto;padding:0 20px 40px;color:var(--mute);font-size:.85rem}
+.rm{color:var(--warn);padding:4px 10px}
+.qty{width:56px;padding:6px;text-align:center;font:inherit;border:1px solid var(--line);border-radius:6px;background:var(--surf);color:var(--ink)}
+select.alt{max-width:230px;font-size:.8rem;padding:4px 8px;margin-top:4px}
+details{margin-top:4px;font-size:.85rem;color:var(--mute)}details summary{cursor:pointer}details p{margin:4px 0;white-space:normal}
+/* semáforo de la compra */
+.totals{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:12px}
+.tot{position:relative;display:grid;gap:2px;padding:12px 38px 12px 16px;border-radius:8px;background:var(--bg);border-left:8px solid var(--line)}
+.tot.v{border-left-color:var(--v)}.tot.a{border-left-color:var(--a)}.tot.r{border-left-color:var(--r)}
+.tot .dot{position:absolute;top:14px;right:14px;width:16px;height:16px;border-radius:50%;background:var(--line)}
+.tot.v .dot{background:var(--v)}.tot.a .dot{background:var(--a)}.tot.r .dot{background:var(--r)}
+.tn{font-weight:600}.tot b{font-size:1.6rem}.tl{font-size:.85rem;color:var(--mute)}
+.leyenda{display:flex;flex-wrap:wrap;gap:6px 16px;margin:10px 0 0;font-size:.8rem;color:var(--mute)}
+.d{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px}.d.v{background:var(--v)}.d.a{background:var(--a)}.d.r{background:var(--r)}
+footer{max-width:1100px;margin:auto;padding:0 16px 40px;color:var(--mute);font-size:.85rem}
+@media (max-width:700px){.brand b,.sp{display:none}.tabs button{padding:0 10px;font-size:.8rem}header.top{padding:0 6px}}
 </style>
 </head>
 <body>
-<header>
-  <h1>Canasta SV</h1>
-  <p>Busca cualquier producto y compáralo entre supermercados. Los precios se muestran también por libra, litro o unidad para que las presentaciones sean comparables.</p>
+<header class="top">
+  <div class="brand"><span class="logo">C</span><b>Canasta SV</b></div>
+  <nav class="tabs" role="tablist">
+    <button id="tab1" role="tab" aria-selected="true">🏪 Catálogo</button>
+    <button id="tab2" role="tab" aria-selected="false">⚡ En vivo</button>
+    <button id="tab3" role="tab" aria-selected="false">⭐ Favoritos (<span id="nf">0</span>)</button>
+  </nav>
+  <span class="sp"></span>
 </header>
 <main>
-  <nav class="tabs" role="tablist">
-    <button id="tab1" role="tab" aria-selected="true">Catálogo guardado</button>
-    <button id="tab2" role="tab" aria-selected="false">Buscar en vivo</button>
-    <button id="tab3" role="tab" aria-selected="false">Favoritos (<span id="nf">0</span>)</button>
-  </nav>
+  <p class="msg intro">Busca cualquier producto y compáralo entre supermercados. Los precios se muestran también por libra, litro o unidad.</p>
   <div id="p1">
   <div class="controls">
     <input type="search" id="q" placeholder="Buscar por producto o marca (frijol, Omoa, leche…)" aria-label="Buscar producto">
@@ -99,6 +118,7 @@ footer{max-width:1100px;margin:auto;padding:0 20px 40px;color:var(--mute);font-s
     <section class="cart" id="favres" aria-live="polite" hidden>
       <h2>Comparación de tu compra</h2>
       <div class="totals" id="favtot"></div>
+      <p class="leyenda"><span><i class="d v"></i>Verde: la más barata (o hasta 2 % más)</span><span><i class="d a"></i>Amarillo: hasta 10 % más cara</span><span><i class="d r"></i>Rojo: más de 10 % más cara o le faltan productos</span></p>
       <p class="msg" id="favmix"></p>
     </section>
   </div>
@@ -111,6 +131,7 @@ const $ = id => document.getElementById(id);
 const norm = s => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 const esc = s => (s || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const fmt = n => "$" + n.toFixed(2);
+const fpu = n => "$" + n.toFixed(n < 0.1 ? 3 : 2);
 const TAG = { ean: "Mismo código de barras", nombre: "Coincide por nombre y tamaño", manual: "Equivalencia verificada" };
 let D, limite = 60, RV = [], ctl;
 
@@ -183,7 +204,7 @@ function render() {
         const p = fmt(e[1]), v = e[2] ? `<a href="${esc(e[2])}" target="_blank" rel="noopener">${p}</a>` : p;
         return `<td class="${e[1] === min && it.t.length > 1 ? "best" : ""}">${v}</td>`;
       }).join("") +
-      `<td>${it.pu != null ? `${fmt(it.pu)}<small>por ${it.pl}</small>` : "—"}</td>` +
+      `<td>${it.pu != null ? `${fpu(it.pu)}<small>por ${it.pl}</small>` : "—"}</td>` +
       `<td>${estrella(`data-i="${it.i}"`, esFav(it.fid))}</td></tr>`;
   }
   $("tabla").innerHTML = h + "</tbody>";
@@ -200,7 +221,7 @@ function pintarVivo() {
         <td>${esc(x.nombre)}<small>${x.marca ? `<span class="marca">${esc(x.marca)}</span>` : "Marca no indicada"}${tam(x) ? " · " + tam(x) : ""}</small></td>
         <td><span class="store">${esc(x.tienda)}</span></td>
         <td class="${x.precio === min && r.length > 1 ? "best" : ""}"><a href="${esc(x.url)}" target="_blank" rel="noopener">${fmt(x.precio)}</a></td>
-        <td>${x.pu != null ? `${fmt(x.pu)}<small>por ${x.pl}</small>` : "—"}</td>
+        <td>${x.pu != null ? `${fpu(x.pu)}<small>por ${x.pl}</small>` : "—"}</td>
         <td>${estrella(`data-id="${esc(x.id)}"`, esFav(x.id))}</td></tr>`).join("") + "</tbody>"
     : "";
 }
@@ -302,8 +323,12 @@ function pintarFav() {
   $("tfav").innerHTML = h + "</tbody>";
   const res = S.map(s => { let total = 0, faltan = 0; for (const f of FAV) f.t[s] ? total += f.t[s].p * f.cant : faltan++; return { s, total, faltan }; });
   const ok = res.filter(r => !r.faltan), min = ok.length ? Math.min(...ok.map(r => r.total)) : null;
-  $("favtot").innerHTML = res.map(r => `<div class="tot ${!r.faltan && r.total === min ? "best" : ""}"><span>${esc(r.s)}</span><b>${fmt(r.total)}</b>` +
-    (r.faltan ? `<span class="warn">Faltan ${r.faltan}: total parcial</span>` : r.total === min ? "<span>La compra completa más barata</span>" : `<span>+${fmt(r.total - min)} vs. la más barata</span>`) + `</div>`).join("");
+  const nivel = r => {
+    if (r.faltan) return ["r", `Incompleta: faltan ${r.faltan} producto(s); total parcial`];
+    const p = (r.total - min) / min * 100;
+    return p < 0.005 ? ["v", "La compra completa más barata"] : [p <= 2 ? "v" : p <= 10 ? "a" : "r", `+${fmt(r.total - min)} (${p.toFixed(1)} %) más cara`];
+  };
+  $("favtot").innerHTML = res.map(r => { const [n, t] = nivel(r); return `<div class="tot ${n}"><span class="dot"></span><span class="tn">${esc(r.s)}</span><b>${fmt(r.total)}</b><span class="tl">${t}</span></div>`; }).join("");
   let mix = 0; const por = {};
   for (const f of FAV) { const [s, v] = Object.entries(f.t).reduce((a, b) => (b[1].p < a[1].p ? b : a)); mix += v.p * f.cant; por[s] = (por[s] || 0) + 1; }
   const gan = ok.find(r => r.total === min);
