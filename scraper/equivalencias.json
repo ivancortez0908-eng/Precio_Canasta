@@ -1,1 +1,62 @@
-[]
+[
+ [
+  {
+   "tienda": "Super Selectos",
+   "id": "",
+   "url": "https://www.superselectos.com/products?keyword=del%20monte%20nectar%20good%20pera&productId=101727",
+   "nombre": "Nectar Good Pera Manzana/Melon 160 ml 6Pack Del Monte"
+  },
+  {
+   "tienda": "Walmart",
+   "id": "",
+   "url": "https://www.walmart.com.sv/6-pack-nectar-del-monte-good-liv-960ml/p",
+   "nombre": "6 Pack Nectar Del Monte Good Liv - 960 ml"
+  },
+  {
+   "tienda": "Despensa de Don Juan",
+   "id": "",
+   "url": "https://www.ladespensadedonjuan.com.sv/6-pack-nectar-del-monte-good-liv-960ml/p",
+   "nombre": "6 Pack Nectar Del Monte Good Liv - 960 ml"
+  }
+ ],
+ [
+  {
+   "tienda": "Super Selectos",
+   "id": "",
+   "url": "https://www.superselectos.com/products?keyword=jalisco%20salsa%20picante%20frasco&productId=3227",
+   "nombre": "Salsa Jalisco Picante 60 ml Frasco"
+  },
+  {
+   "tienda": "Walmart",
+   "id": "",
+   "url": "https://www.walmart.com.sv/salsa-mccormick-picante-jalisco-60ml/p",
+   "nombre": "Salsa Picante Jalisco Mccormick - 60 ml"
+  },
+  {
+   "tienda": "Despensa de Don Juan",
+   "id": "",
+   "url": "https://www.ladespensadedonjuan.com.sv/salsa-mccormick-picante-jalisco-60ml/p",
+   "nombre": "Salsa Picante Jalisco Mccormick - 60 ml"
+  }
+ ],
+ [
+  {
+   "tienda": "Despensa de Don Juan",
+   "id": "",
+   "url": "https://www.ladespensadedonjuan.com.sv/leche-autralian-entera-bolsa-350-g-3/p",
+   "nombre": "Leche Entera Autralian Bolsa - 350 g"
+  },
+  {
+   "tienda": "Walmart",
+   "id": "",
+   "url": "https://www.walmart.com.sv/leche-autralian-entera-bolsa-350-g-3/p",
+   "nombre": "Leche Entera Autralian Bolsa - 350 g"
+  },
+  {
+   "tienda": "Super Selectos",
+   "id": "",
+   "url": "https://www.superselectos.com/products?keyword=australian%20leche%20entera%20autralian&productId=5637",
+   "nombre": "Leche En Polvo Australian 350 g Bolsa"
+  }
+ ]
+]
