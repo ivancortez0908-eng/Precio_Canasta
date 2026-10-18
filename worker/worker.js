@@ -126,6 +126,47 @@ async function pricesmart(q, env) {
 // Para agregar una farmacia u otra tienda: escribe una función igual a las de arriba y agrégala aquí.
 const TIENDAS = { "Walmart": vtex("https://www.walmart.com.sv"), "Despensa de Don Juan": vtex("https://www.ladespensadedonjuan.com.sv"), "Super Selectos": selectos, "PriceSmart": pricesmart };
 
+// ---- aportes: el sitio envía comparaciones confirmadas y se crea una issue en GitHub para revisarlas ----
+const limpio = (t, n) => String(t ?? "").replace(/[\u0000-\u001f`<>@|\\\[\]]/g, " ").replace(/\s+/g, " ").trim().slice(0, n);
+function validar(grupos) {
+  if (!Array.isArray(grupos) || !grupos.length || grupos.length > 10) return null;
+  const out = [];
+  for (const g of grupos) {
+    if (!Array.isArray(g) || g.length < 2 || g.length > 6) return null;
+    const grp = [];
+    for (const x of g) {
+      if (!x || !Object.keys(TIENDAS).includes(x.tienda)) return null;
+      const id = limpio(x.id, 40), url = /^https:\/\/[\w./?=&%:#~+-]{3,300}$/.test(x.url || "") ? x.url : "";
+      if (!id && !url) return null;
+      grp.push({ tienda: x.tienda, id, url, nombre: limpio(x.nombre, 150) });
+    }
+    out.push(grp);
+  }
+  return out;
+}
+async function aporte(req, env, ctx, salida) {
+  if (!env.GITHUB_TOKEN_APORTES) return salida({ error: "Los aportes no están activados." }, 501);
+  if (env.ORIGEN_PERMITIDO && env.ORIGEN_PERMITIDO !== "*" && req.headers.get("Origin") !== env.ORIGEN_PERMITIDO) return salida({ error: "Origen no permitido" }, 403);
+  const texto = await req.text();
+  if (texto.length > 20000) return salida({ error: "Aporte demasiado grande." }, 413);
+  let grupos; try { grupos = validar(JSON.parse(texto)?.grupos); } catch { grupos = null; }
+  if (!grupos) return salida({ error: "Formato de aporte no válido." }, 400);
+  const llave = new Request("https://canasta.cache/aporte/" + (req.headers.get("CF-Connecting-IP") || "?"));
+  const hayCache = typeof caches !== "undefined";
+  if (hayCache && await caches.default.match(llave)) return salida({ error: "Espera unos minutos antes de enviar otro aporte." }, 429);
+  const cuerpo = ["Aporte enviado desde el sitio. Para aplicarlo a la base, agrega la etiqueta `aprobado`.", "",
+    ...grupos.map((g, i) => `**${i + 1}.** ` + g.map(x => `${x.tienda}: ${x.nombre || x.id}`).join(" ↔ ")), "", "```json", JSON.stringify(grupos, null, 1), "```"].join("\n");
+  const r = await fetch(`https://api.github.com/repos/${env.GITHUB_REPO || "ivancortez0908-eng/Precio_Canasta"}/issues`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${env.GITHUB_TOKEN_APORTES}`, accept: "application/vnd.github+json", "user-agent": UA, "x-github-api-version": "2022-11-28", "content-type": "application/json" },
+    body: JSON.stringify({ title: `Aporte de equivalencias (${grupos.length}) ${new Date().toISOString().slice(0, 10)}`, body: cuerpo })
+  });
+  if (!r.ok) return salida({ error: "GitHub respondió " + r.status }, 502);
+  const i = await r.json();
+  if (hayCache) ctx.waitUntil(caches.default.put(llave, new Response("1", { headers: { "cache-control": "max-age=600" } })));
+  return salida({ ok: true, numero: i.number, url: i.html_url });
+}
+
 // ---- servidor ----
 export default {
   async fetch(req, env, ctx) {
@@ -135,8 +176,9 @@ export default {
     const salida = (obj, status = 200, extra = {}) => new Response(JSON.stringify(obj),
       { status, headers: { "content-type": "application/json; charset=utf-8", ...cors, ...extra } });
 
-    if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: { ...cors, "access-control-allow-methods": "GET" } });
+    if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: { ...cors, "access-control-allow-methods": "GET, POST", "access-control-allow-headers": "content-type" } });
     if (permitido !== "*" && origen && origen !== permitido) return salida({ error: "Origen no permitido" }, 403);
+    if (req.method === "POST") return aporte(req, env, ctx, salida);
 
     const q = (new URL(req.url).searchParams.get("q") || "").replace(/\s+/g, " ").trim();
     if (q.length < 2 || q.length > 60) return salida({ error: "Escribe entre 2 y 60 caracteres." }, 400);

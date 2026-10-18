@@ -70,6 +70,8 @@ details{margin-top:4px;font-size:.85rem;color:var(--mute)}details summary{cursor
 .acc{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
 code{background:var(--bg);padding:0 4px;border-radius:4px}
 #entrena .wrap{overflow:auto;max-height:340px}#entrena th{top:0}
+.ayuda{max-width:1076px;width:calc(100% - 24px);margin:0 auto 16px;padding:14px 16px;background:var(--surf);border-radius:8px;box-shadow:var(--sh);border-left:8px solid var(--blue)}
+.ayuda h3{margin:0 0 4px;font-size:1.05rem}.ayuda ul{margin:6px 0;padding-left:20px}
 footer{max-width:1100px;margin:auto;padding:0 16px 40px;color:var(--mute);font-size:.85rem}
 @media (max-width:700px){.brand b,.sp{display:none}.tabs button{padding:0 10px;font-size:.8rem}header.top{padding:0 6px}}
 </style>
@@ -129,17 +131,35 @@ footer{max-width:1100px;margin:auto;padding:0 16px 40px;color:var(--mute);font-s
       <p class="msg" id="entmsg"></p>
       <p class="msg">Marca ✓ las coincidencias automáticas que sí son el mismo producto y ✗ las que no. Lo que elijas con «cambiar» también cuenta. Todo queda anotado en el registro.</p>
       <div class="wrap"><table id="tent"></table></div>
-      <div class="acc">
-        <button id="expeq">Descargar equivalencias.json</button>
-        <button id="expcopy">Copiar</button>
-        <button id="expreg">Descargar registro</button>
-        <button id="reglimp" class="rm">Borrar registro</button>
-      </div>
       <details><summary>Registro de decisiones (<span id="nreg">0</span>)</summary><div class="wrap"><table id="treg"></table></div></details>
-      <p class="msg">Para que la base aprenda: en GitHub reemplaza el contenido de <code>scraper/equivalencias.json</code> con el archivo descargado (ya incluye lo anterior) y corre Actions → Actualizar precios. Esos productos saldrán en el catálogo como «Equivalencia verificada».</p>
+      <details><summary>Opciones de administrador</summary>
+        <div class="acc">
+          <button id="expeq">Descargar equivalencias.json</button>
+          <button id="expcopy">Copiar</button>
+          <button id="expreg">Descargar registro</button>
+          <button id="reglimp" class="rm">Borrar registro</button>
+        </div>
+        <p class="msg">Para aplicarlo tú mismo: reemplaza el contenido de <code>scraper/equivalencias.json</code> en GitHub con el archivo descargado (ya incluye lo anterior) y corre Actions → Actualizar precios.</p>
+      </details>
     </section>
   </div>
 </main>
+<section id="ayuda" class="ayuda" hidden aria-live="polite">
+  <h3>¿Nos ayudas con las nuevas comparaciones que utilizaste?</h3>
+  <p class="msg" id="ayudamsg"></p>
+  <div class="acc" id="ayudasn"><button id="ayudasi">Sí</button><button id="ayudano">No</button></div>
+  <div id="ayudadet" hidden>
+    <ul id="ayudalista"></ul>
+    <p class="msg">Solo se envían la tienda, el identificador, el enlace y el nombre de los productos que comparaste. No se envía ningún dato personal.</p>
+    <div class="acc">
+      <button id="aenviar">Enviar al proyecto</button>
+      <button id="adesc">Descargar archivo</button>
+      <button id="acorreo">Preparar correo</button>
+      <button id="acancel">Cancelar</button>
+    </div>
+    <p class="msg" id="aest"></p>
+  </div>
+</section>
 <footer id="foot"></footer>
 
 <script src="config.js"></script>
@@ -386,7 +406,43 @@ async function armarEquivalencias() {   // junta lo que ya está publicado con l
   return base;
 }
 const descargar = (nombre, obj) => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(obj, null, 1)], { type: "application/json" })); a.download = nombre; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
+// ---------- Pregunta al pie: compartir las comparaciones nuevas ----------
+const ENVK = "canasta-sv-aportes-v1";
+let ENV = {}, graciasHasta = 0;
+try { ENV = JSON.parse(localStorage.getItem(ENVK) || "{}"); } catch {}
+const guardarEnv = () => { try { localStorage.setItem(ENVK, JSON.stringify(ENV)); } catch {} };
+const claveGrupo = g => g.map(x => x.tienda + "#" + (x.id || x.url)).sort().join("|");
+const pendientes = () => equivalenciasLocal().filter(g => !ENV[claveGrupo(g)]);   // ENV[clave] = "enviado" | "no"
+function pintarAyuda() {
+  const p = pendientes();
+  $("ayuda").hidden = !p.length && Date.now() > graciasHasta;
+  if (!p.length) return;
+  if ($("ayudadet").hidden) $("ayudamsg").textContent = `Tienes ${p.length} comparación(es) nueva(s) que confirmaste. Si las compartes, mejoran la base para todos.`;
+  $("ayudalista").innerHTML = p.map(g => `<li><b>${esc(g[0].nombre)}</b> — ${g.map(x => esc(x.tienda)).join(" ↔ ")}</li>`).join("");
+  $("aenviar").hidden = !window.API_VIVO; $("acorreo").hidden = !window.CORREO_APORTES;
+}
+const cerrarAyuda = () => { $("ayudadet").hidden = true; $("ayudasn").hidden = false; };
+$("ayudasi").onclick = () => { $("ayudadet").hidden = false; $("ayudasn").hidden = true; $("aest").textContent = ""; $("ayudamsg").textContent = "Esto es lo que se enviaría:"; };
+$("ayudano").onclick = () => { for (const g of pendientes()) ENV[claveGrupo(g)] = "no"; guardarEnv(); pintarAyuda(); };
+$("acancel").onclick = () => { cerrarAyuda(); pintarAyuda(); };
+$("adesc").onclick = () => descargar("aporte-equivalencias.json", pendientes());
+$("acorreo").onclick = () => {
+  descargar("aporte-equivalencias.json", pendientes());
+  $("aest").textContent = "Se descargó el archivo. Adjúntalo al correo que se abrirá.";
+  location.href = `mailto:${window.CORREO_APORTES}?subject=${encodeURIComponent("Aporte de equivalencias - Canasta SV")}&body=${encodeURIComponent("Adjunto el archivo aporte-equivalencias.json.")}`;
+};
+$("aenviar").onclick = async () => {
+  const p = pendientes(); $("aest").textContent = "Enviando…";
+  try {
+    const r = await fetch(window.API_VIVO, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ grupos: p }) });
+    const j = await r.json(); if (!r.ok) throw new Error(j.error || "Error " + r.status);
+    p.forEach(g => { ENV[claveGrupo(g)] = "enviado"; }); guardarEnv();
+    cerrarAyuda(); graciasHasta = Date.now() + 8000; $("ayudamsg").textContent = "¡Gracias! Tu aporte se envió" + (j.numero ? ` (#${j.numero})` : "") + " y será revisado.";
+    setTimeout(pintarAyuda, 8100);
+  } catch (e) { $("aest").textContent = "No se pudo enviar: " + e.message + ". Puedes descargar el archivo o prepararlo por correo."; }
+};
 function pintarEntrena() {
+  pintarAyuda();
   $("entrena").hidden = !FAV.length && !REG.length;
   if ($("entrena").hidden) return;
   const ETQ = { auto: "Automático (sin confirmar)", man: "Confirmado por ti" }, filas = [];

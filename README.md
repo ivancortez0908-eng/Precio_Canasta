@@ -34,6 +34,11 @@ Marca la ☆ en un producto: queda como **referencia**. La página lo busca en t
 ## Entrenar la comparación
 En Favoritos, el cuadro **Entrenar la comparación** lista qué producto encontró cada tienda y su estado (catálogo, automático o confirmado). Con ✓ / ✗ confirmas o descartas; lo que eliges con «cambiar» también cuenta. Cada decisión queda en el **registro** (en tu navegador; se puede descargar). **Descargar equivalencias.json** une lo ya publicado con tus nuevas confirmaciones: reemplaza `scraper/equivalencias.json` con ese archivo y corre la acción. El emparejador las usa por id o por enlace y esos productos salen como «Equivalencia verificada».
 
+## Aportes de comparaciones (pregunta al pie de la página)
+Cuando un usuario confirma comparaciones nuevas, al pie aparece «¿Nos ayudas con las nuevas comparaciones que utilizaste? Sí / No». Si dice Sí ve qué se enviaría y puede **enviarlo al proyecto**, **descargar el archivo** o **preparar un correo** (si `config.js` define `window.CORREO_APORTES`).
+- **Enviar al proyecto:** el Worker valida el aporte y crea una *issue* en GitHub con la lista y el JSON. Tú la revisas y le pones la etiqueta `aprobado`: el workflow `aplicar-aporte.yml` la une a `scraper/equivalencias.json` y la cierra. Nada entra a la base sin tu aprobación.
+- **Activarlo:** (1) crea un token fine-grained de GitHub solo para este repositorio con permiso *Issues: Read and write*; (2) en Cloudflare agrega el secreto `GITHUB_TOKEN_APORTES` y, si el repositorio no es `ivancortez0908-eng/Precio_Canasta`, la variable `GITHUB_REPO`; (3) crea en GitHub la etiqueta `aprobado`.
+
 ## Búsqueda en vivo (producto específico)
 La pestaña **Buscar en vivo** consulta un solo producto en el momento en cada tienda, sin descargar catálogos. Como el navegador no puede leer otras tiendas directamente, se usa un Worker gratuito de Cloudflare (`worker/worker.js`) que hace una petición por tienda y guarda cada consulta 10 minutos en caché.
 
