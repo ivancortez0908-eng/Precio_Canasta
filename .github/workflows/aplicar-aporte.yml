@@ -1,0 +1,29 @@
+name: Aplicar aporte aprobado
+on:
+  issues:
+    types: [labeled]
+permissions:
+  contents: write
+  issues: write
+jobs:
+  aplicar:
+    if: github.event.label.name == 'aprobado'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22 }
+      - name: Aplicar equivalencias
+        run: node scraper/aplicar-aporte.mjs
+        env:
+          CUERPO: ${{ github.event.issue.body }}
+      - name: Guardar y cerrar la issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUM: ${{ github.event.issue.number }}
+        run: |
+          git config user.name "canasta-bot"
+          git config user.email "canasta-bot@users.noreply.github.com"
+          git add scraper/equivalencias.json
+          git diff --cached --quiet || (git commit -m "Aplicar aporte #$NUM" && git push)
+          gh issue close "$NUM" --comment "Aporte aplicado a scraper/equivalencias.json. Se verá en el catálogo tras la próxima actualización de precios."
