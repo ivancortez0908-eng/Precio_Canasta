@@ -240,6 +240,10 @@ test('ofertas por cantidad: solo en su tienda, por grupos completos y sin abarat
   assert.deepEqual([1, 2, 3, 4].map(n => costo(v, n)), [133, 220, 353, 440]);
   assert.deepEqual([2, 3, 4].map(n => costo({ p: 1, promo: '3x2' }, n)), [200, 200, 300]);
   assert.equal(costo({ p: 1, promo: '2 x $2.50' }, 2), 200);   // la «oferta» no abarata: precio normal
+  assert.deepEqual(leerPromo('Segundo al 50%'), { n: 2, segundo: 50 });
+  assert.deepEqual([1, 2, 3, 4].map(n => costo({ p: 3.25, promo: 'Segundo al 50%' }, n)), [325, 488, 813, 976]);
+  assert.deepEqual([1, 2, 3].map(n => costo({ p: 1.25, promo: '2x1' }, n)), [125, 125, 250]);
+  assert.deepEqual([2, 3, 6].map(n => costo({ p: 1, promo: '3x2' }, n)), [200, 200, 400]);
   const lista = [{ cant: 1, t: { A: { p: 1.33, promo: '2 x $2.20' }, B: { p: 1.2 } } }];
   assert.deepEqual(resumir(lista, ['A', 'B']).por, { B: 1 });
   lista[0].cant = 2;
@@ -303,5 +307,17 @@ test('Worker: quita tildes y lee las ofertas internas de VTEX (vigentes y que cu
   const maxi = d.resultados.filter(x => x.tienda === 'Maxi Despensa');
   assert.deepEqual(maxi.map(x => [x.id, x.promo, x.antes]), [['1', '2 x $2.20', 1.5], ['2', '3 x $1.50', null], ['3', null, null], ['4', null, null], ['5', null, null]]);
   const sel = d.resultados.filter(x => x.tienda === 'Super Selectos');
-  assert.deepEqual(sel.map(x => [x.id, x.precio, x.promo]), [['21702', .5, 'Seleccione 2X$0.90'], ['89275', 1.1, null]]);
+  // La imagen tipoPromoMM/2-50.png es «Segundo al 50%» según los filtros oficiales de /special-deals
+  assert.deepEqual(sel.map(x => [x.id, x.precio, x.promo]), [['21702', .5, 'Seleccione 2X$0.90'], ['89275', 1.1, null], ['77412', 3.25, 'Segundo al 50%']]);
+});
+test('ofertas de imagen de Selectos (2x1, segundo al 50%) se muestran y aplican solo en Selectos', async () => {
+  const ui = interfaz({ resultados: [producto('Walmart', 2), producto('Selectos', 1.75, { promo: '2x1' })] });
+  await ui.run('vivo("leche salud")');
+  ui.run('alternar(favDeVivo(RV[0]));'); await terminar();
+  assert.match(ui.el('tfav').innerHTML, /Oferta 2x1 · lleva 2 para aplicarla/);
+  ui.run('FAV[0].cant = 2; pintarFav();');
+  assert.match(ui.el('tfav').innerHTML, /Oferta 2x1 · aplicada: \$1\.75 por 2/);
+  assert.match(ui.el('favtot').innerHTML, /\$4\.00[^]*\$1\.75/);   // Walmart sin oferta: 2 × $2.00
+  ui.run('FAV[0].t.Selectos.promo = "Segundo al 50%"; pintarFav();');
+  assert.match(ui.el('tfav').innerHTML, /Oferta 2\.ª unidad al 50% de descuento · aplicada: \$2\.63 por 2/);
 });

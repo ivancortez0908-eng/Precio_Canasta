@@ -3,7 +3,7 @@
 // y devuelve los resultados en JSON. Guarda cada consulta 10 minutos en caché para no repetir peticiones.
 const UA = "CanastaSV/1.0 (comparador de precios sin fines de lucro)";
 const MAX = 12; // resultados por tienda
-const VERSION = "2026-10-21-b"; // aparece en cada respuesta: sirve para saber qué código está desplegado
+const VERSION = "2026-10-21-c"; // aparece en cada respuesta: sirve para saber qué código está desplegado
 
 // ---- tamaños (misma lógica que scraper/normalizar.mjs) ----
 const RE = /(?<![\d.,])(?:(\d+)\s*[x×]\s*)?(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|mg|lbs?|libras?|oz|ml|lts?|litros?|l|gal(?:on(?:es)?)?)(?![a-z])/i;
@@ -99,6 +99,11 @@ const vtex = base => async q => {
   return out;
 };
 
+// Selectos marca muchas ofertas con una imagen tipoPromoMM/<código>.png. Significado tomado de los filtros
+// oficiales de /special-deals (verificado el 2026-10-21): el orden de los números no es siempre el mismo.
+const PROMO_SELECTOS = { "2-1": "2x1", "2-3": "3x2", "3-4": "4x3", "4-5": "5x4", "4-6": "6x4", "5-6": "6x5", "6-7": "7x6", "8-12": "12x8",
+  "2-40": "Segundo al 40%", "2-50": "Segundo al 50%", "2-75": "Segundo al 75%" };   // COMBO y «otras» no dicen cuánto se paga
+
 async function selectos(q) {
   const SS = "https://www.superselectos.com";
   const html = await (await pedir(`${SS}/products?keyword=${encodeURIComponent(sinTilde(q))}`, "text/html")).text();
@@ -119,13 +124,14 @@ async function selectos(q) {
   while ((m = re.exec(h)) && out.length < MAX) {
     const nombre = texto(m[3]);
     if (nombre.length < 3) continue;                // enlace de la imagen
-    const tramo = texto(h.slice(ult, m.index)), oferta = tramo.match(/Seleccione\s*\d+\s*X\s*\$\s*[\d.,]*\d/i);
+    const crudo = h.slice(ult, m.index), tramo = texto(crudo), oferta = tramo.match(/Seleccione\s*\d+\s*X\s*\$\s*[\d.,]*\d/i);
+    const imagen = [...crudo.matchAll(/tipoPromoMM\/(\d+-\d+)\.png/gi)].at(-1)?.[1];   // la de este producto, junto a su nombre
     const antes = tramo.replace(/Seleccione\s*\d+\s*X\s*\$\s*[\d.,]+/gi, "");
     ult = m.index + m[0].length;
     const pr = antes.match(/\$\s*(\d{1,3}(?:,\d{3})*\.\d{2})/);
     if (!pr) continue;
     const href = deco(m[1]);
-    out.push({ id: m[2], nombre, marca: marcaDe(nombre), precio: parseFloat(pr[1].replace(",", "")), promo: promoDe([oferta?.[0]]),
+    out.push({ id: m[2], nombre, marca: marcaDe(nombre), precio: parseFloat(pr[1].replace(",", "")), promo: promoDe([oferta?.[0]]) || PROMO_SELECTOS[imagen] || null,
                url: href.startsWith("http") ? href : SS + (href.startsWith("/") ? "" : "/") + href });
   }
   return out;

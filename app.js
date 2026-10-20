@@ -228,8 +228,8 @@ function render() {
 function notaOferta(v, cant) {
   const pr = leerPromo(v.promo), antes = v.antes > v.p ? `<small class="antes">antes ${fmt(v.antes)}</small>` : "";
   if (!pr) return antes;
-  const total = pr.total ?? pr.paga * v.p, txt = pr.total != null ? `${pr.n} x ${fmt(pr.total)}` : `${pr.n}x${pr.paga}`;
-  if (!(total < pr.n * v.p - 0.004)) return antes;
+  const txt = pr.total != null ? `${pr.n} x ${fmt(pr.total)}` : pr.segundo != null ? `2.ª unidad al ${pr.segundo}% de descuento` : `${pr.n}x${pr.paga}`;
+  if (!(costo(v, pr.n) < Math.round(v.p * 100) * pr.n)) return antes;
   if (cant == null) return `${antes}<small class="promo">Oferta ${txt}</small>`;
   return `${antes}<small class="promo${cant >= pr.n ? " si" : ""}">Oferta ${txt}${cant >= pr.n ? ` · aplicada: ${fmt(costo(v, cant) / 100)} por ${cant}` : ` · lleva ${pr.n} para aplicarla`}</small>`;
 }
