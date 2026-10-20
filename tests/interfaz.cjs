@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const raiz = path.join(__dirname, '..');
 const leche = { nombre: 'Leche entera Salud 1 L', marca: 'Salud', q: 1000, u: 'ml', pu: 2, pl: 'L' };
 const fila = (tienda, id, precio, extra = {}) => ({ ...leche, tienda, id, precio, url: 'https://tienda.test/' + id, ...extra });
-const respuesta = { generado: '2026-10-17T12:00:00Z', tiendas: { Walmart: { ok: true, n: 1 }, 'Super Selectos': { ok: true, n: 1 }, 'Despensa de Don Juan': { ok: false }, 'Maxi Despensa': { ok: true, n: 0 } },
+const respuesta = { generado: '2026-10-17T12:00:00Z', tiendas: { Walmart: { ok: true, n: 1 }, 'Super Selectos': { ok: true, n: 1 }, 'Despensa de Don Juan': { ok: false }, 'Maxi Despensa': { ok: true, n: 0 }, Superea: { ok: true, n: 0 } },
   resultados: [fila('Walmart', '1', 2), fila('Super Selectos', '2', 1.75)] };
 const server = http.createServer((req, res) => {
   const archivos = { '/': 'index.html', '/app.js': 'app.js', '/comparador.js': 'comparador.js', '/exportar.js': 'exportar.js' };
