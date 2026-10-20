@@ -3,7 +3,7 @@
 // y devuelve los resultados en JSON. Guarda cada consulta 10 minutos en caché para no repetir peticiones.
 const UA = "CanastaSV/1.0 (comparador de precios sin fines de lucro)";
 const MAX = 12; // resultados por tienda
-const VERSION = "2026-10-18-b"; // aparece en cada respuesta: sirve para saber qué código está desplegado
+const VERSION = "2026-10-20-a"; // aparece en cada respuesta: sirve para saber qué código está desplegado
 
 // ---- tamaños (misma lógica que scraper/normalizar.mjs) ----
 const RE = /(?<![\d.,])(?:(\d+)\s*[x×]\s*)?(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|mg|lbs?|libras?|oz|ml|lts?|litros?|l|gal(?:on(?:es)?)?)(?![a-z])/i;
@@ -125,7 +125,8 @@ async function pricesmart(q, env) {
 }
 
 // Para agregar una farmacia u otra tienda: escribe una función igual a las de arriba y agrégala aquí.
-const TIENDAS = { "Walmart": vtex("https://www.walmart.com.sv"), "Despensa de Don Juan": vtex("https://www.ladespensadedonjuan.com.sv"), "Super Selectos": selectos, "PriceSmart": pricesmart };
+const TIENDAS = { "Walmart": vtex("https://www.walmart.com.sv"), "Despensa de Don Juan": vtex("https://www.ladespensadedonjuan.com.sv"),
+  "Maxi Despensa": vtex("https://www.maxidespensa.com.sv"), "Super Selectos": selectos, "PriceSmart": pricesmart };
 
 // ---- aportes: el sitio envía comparaciones confirmadas y se crea una issue en GitHub para revisarlas ----
 const limpio = (t, n) => String(t ?? "").replace(/[\u0000-\u001f`<>@|\\\[\]]/g, " ").replace(/\s+/g, " ").trim().slice(0, n);
