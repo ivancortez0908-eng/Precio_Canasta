@@ -24,6 +24,7 @@ Cada fila muestra marca, tamaño y la descripción de cada tienda (desplegable �
 Se configuran en `scraper/tiendas.mjs`.
 - **Super Selectos:** su página entrega el HTML ya armado. El scraper lee páginas de búsqueda (una por cada término de `scraper/canasta.json`) y unas pocas categorías, con 3 segundos de pausa entre peticiones. No descarga todo el catálogo: su `robots.txt` rechaza la extracción masiva. Solo se lee la primera página de cada búsqueda.
 - **Walmart**, **Despensa de Don Juan** y **Maxi Despensa:** tiendas VTEX del mismo grupo (Walmart Centroamérica); comparten muchos IDs de producto, pero cada una tiene sus propios precios. Si la consulta directa desde GitHub no devuelve productos, el scraper usa el Worker como puente.
+- **Superea:** supermercado solo en línea. Se consulta el índice público de Algolia que usa su propio buscador (la clave de solo búsqueda que el sitio entrega a todo visitante), con la bodega predeterminada del sitio; solo entran productos con precio y existencia. El catálogo usa los términos de `scraper/canasta.json`.
 - **Despensa Familiar:** no se incluye porque no tiene tienda en línea en El Salvador.
 
 Para ampliar la cobertura, agrega términos a `scraper/canasta.json`. Revisa términos de uso y `robots.txt` antes de activar cada tienda.

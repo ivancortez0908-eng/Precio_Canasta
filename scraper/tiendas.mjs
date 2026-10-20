@@ -1,6 +1,7 @@
 // Cada tienda con activa:true debe tener catalogo(): generador que entrega
 // { id, nombre, marca, ean, precio, url, cat } por cada producto disponible.
 import { readFile } from "node:fs/promises";
+import { parseTamano } from "./normalizar.mjs";
 const UA = "CanastaSV/1.0 (comparador de precios sin fines de lucro)";
 const CANASTA = JSON.parse(await readFile(new URL("./canasta.json", import.meta.url), "utf8"));
 const CONFIG_JS = await readFile(new URL("../config.js", import.meta.url), "utf8").catch(() => "");
@@ -188,11 +189,39 @@ function selectos() {
   };
 }
 
+// Superea: consulta el índice público de Algolia que usa su propio buscador, un término de canasta.json a la vez.
+// La clave es la de solo búsqueda que el sitio entrega a todo visitante; bodega 1 es la que usa sin dirección elegida.
+function superea() {
+  const app = "0L9N281WRT", clave = "6d8f296718166bdcfd63f9983931d63d";
+  return async function* () {
+    const vistos = new Set();
+    let n = 0;
+    for (const t of CANASTA.terminos) {
+      const p = new URLSearchParams({ query: t, hitsPerPage: "100", filters: "visible_in_wh_ids:1",
+        attributesToRetrieve: "id,name,slug,brand_name,description,final_price,available_balance,is_always_available,grammage",
+        "x-algolia-application-id": app, "x-algolia-api-key": clave });
+      const j = await getJson(`https://${app.toLowerCase()}-dsn.algolia.net/1/indexes/prod_SV_articles?${p}`);
+      await esp(1000);
+      for (const h of j.hits || []) {
+        const id = String(h.id ?? h.objectID);
+        if (vistos.has(id) || !h.slug || !(Number(h.final_price) > 0)) continue;
+        if (!(Number(h.is_always_available) === 1 || Number(h.available_balance) > 0)) continue;
+        vistos.add(id); n++;
+        yield { id, nombre: !parseTamano(h.name) && h.grammage ? `${h.name} ${h.grammage}` : h.name, marca: h.brand_name || "", ean: "",
+          desc: String(h.description || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 220),
+          precio: Number(h.final_price), url: `https://superea.sv/productos/${encodeURIComponent(h.slug)}`, cat: t };
+      }
+    }
+    console.log(`[Superea] ${n} productos en ${CANASTA.terminos.length} búsquedas`);
+  };
+}
+
 const pendiente = n => async function* () { throw new Error(n + ": adaptador pendiente"); };
 
 export const TIENDAS = [
   { nombre: "Walmart",              activa: true,  catalogo: vtex("https://www.walmart.com.sv", "Walmart"), sonda: async () => { await sondear("https://www.walmart.com.sv"); await sondearProductos("https://www.walmart.com.sv"); } }, // VERIFICAR en la primera corrida
   { nombre: "Super Selectos",       activa: true,  catalogo: selectos() },
+  { nombre: "Superea",              activa: true,  catalogo: superea() },
   { nombre: "Despensa de Don Juan", activa: true,  catalogo: vtex("https://www.ladespensadedonjuan.com.sv", "Despensa de Don Juan"), sonda: () => sondear("https://www.ladespensadedonjuan.com.sv") }, // VERIFICAR: es del grupo Walmart, pero no confirmado que use VTEX
   { nombre: "Maxi Despensa",        activa: true,  catalogo: vtex("https://www.maxidespensa.com.sv", "Maxi Despensa"), sonda: () => sondear("https://www.maxidespensa.com.sv") } // tienda en línea de Walmart Centroamérica desde 2024; VERIFICAR en la primera corrida
 ];

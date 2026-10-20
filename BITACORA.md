@@ -1,3 +1,27 @@
+# Bitácora — 20 de octubre de 2026 (Superea)
+
+## Solicitud
+Agregar https://superea.sv/ a la comparación y la búsqueda en vivo.
+
+## Diagnóstico
+- Superea es una aplicación Next.js. Su buscador consulta Algolia (aplicación `0L9N281WRT`, índice `prod_SV_articles`) con una clave pública de solo búsqueda incluida en el propio sitio, y filtra por la bodega 1 cuando no hay dirección elegida.
+- Campos verificados en la página real de un producto: `final_price` (número), `available_balance` (existencia), `is_always_available` (0/1), `brand_name`, `slug` y `grammage` (tamaño aparte, p. ej. «1 Litro»).
+- Las páginas de producto están en `/productos/<slug>`; los enlaces viejos (`/products/…`) ya dan 404.
+- No tiene `robots.txt` y en los términos no se encontró una prohibición de consultas automáticas.
+
+## Cambios
+- `worker/worker.js`: nueva tienda «Superea» para búsqueda en vivo y favoritos; versión `2026-10-20-b`.
+- `scraper/tiendas.mjs`: Superea en el catálogo, una búsqueda por término de `canasta.json` con 1 s de pausa.
+- Solo entran productos con precio mayor que cero y con existencia (o siempre disponibles). Si el nombre no trae el tamaño, se le agrega `grammage` para calcular el precio por unidad.
+
+## Validación
+- Worker y scraper probados con respuestas simuladas que copian los campos reales: se descartan productos sin existencia o sin precio, el tamaño y el precio por litro salen bien, y el enlace apunta a `/productos/<slug>`.
+- `node --test tests/canasta.test.cjs`, `node --check` y `node tests/interfaz.cjs` (ahora con cinco tiendas) aprobados.
+
+## Límites
+- Desde este entorno no se pudo llamar a Algolia (la red solo permite `superea.sv`), así que la consulta real se verifica tras publicar el Worker con `?q=leche&tiendas=Superea&fresh=1`.
+- Si Superea cambia de buscador o de clave, el Worker la mostrará como «no respondió» sin afectar a las demás tiendas.
+
 # Bitácora — 20 de octubre de 2026 (Maxi Despensa)
 
 ## Solicitud

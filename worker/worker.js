@@ -3,7 +3,7 @@
 // y devuelve los resultados en JSON. Guarda cada consulta 10 minutos en caché para no repetir peticiones.
 const UA = "CanastaSV/1.0 (comparador de precios sin fines de lucro)";
 const MAX = 12; // resultados por tienda
-const VERSION = "2026-10-20-a"; // aparece en cada respuesta: sirve para saber qué código está desplegado
+const VERSION = "2026-10-20-b"; // aparece en cada respuesta: sirve para saber qué código está desplegado
 
 // ---- tamaños (misma lógica que scraper/normalizar.mjs) ----
 const RE = /(?<![\d.,])(?:(\d+)\s*[x×]\s*)?(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|mg|lbs?|libras?|oz|ml|lts?|litros?|l|gal(?:on(?:es)?)?)(?![a-z])/i;
@@ -124,9 +124,23 @@ async function pricesmart(q, env) {
     .map(d => ({ id: String(d.pid), nombre: d.title, marca: d.brand || "", precio: Number(d.price_SV) / 10 ** (d.fractionDigits ?? 2), url: pagina }));
 }
 
+// Superea: su propio buscador usa Algolia con la clave pública de solo búsqueda que el sitio entrega a todo visitante.
+// Bodega 1 es la que el sitio usa cuando no hay dirección elegida; el tamaño viene aparte en "grammage".
+const SUPEREA = { app: "0L9N281WRT", clave: "6d8f296718166bdcfd63f9983931d63d", indice: "prod_SV_articles", bodega: 1 };
+async function superea(q) {
+  const p = new URLSearchParams({ query: q, hitsPerPage: String(MAX), filters: `visible_in_wh_ids:${SUPEREA.bodega}`,
+    attributesToRetrieve: "id,name,slug,brand_name,final_price,available_balance,is_always_available,grammage" });
+  const r = await pedir(`https://${SUPEREA.app.toLowerCase()}-dsn.algolia.net/1/indexes/${SUPEREA.indice}?${p}`, "application/json",
+    { headers: { "x-algolia-application-id": SUPEREA.app, "x-algolia-api-key": SUPEREA.clave } });
+  return ((await r.json()).hits || [])
+    .filter(h => Number(h.final_price) > 0 && (Number(h.is_always_available) === 1 || Number(h.available_balance) > 0) && h.slug)
+    .map(h => ({ id: String(h.id ?? h.objectID), nombre: !tamano(h.name) && h.grammage ? `${h.name} ${h.grammage}` : h.name,
+      marca: h.brand_name || "", precio: Number(h.final_price), url: `https://superea.sv/productos/${encodeURIComponent(h.slug)}` }));
+}
+
 // Para agregar una farmacia u otra tienda: escribe una función igual a las de arriba y agrégala aquí.
 const TIENDAS = { "Walmart": vtex("https://www.walmart.com.sv"), "Despensa de Don Juan": vtex("https://www.ladespensadedonjuan.com.sv"),
-  "Maxi Despensa": vtex("https://www.maxidespensa.com.sv"), "Super Selectos": selectos, "PriceSmart": pricesmart };
+  "Maxi Despensa": vtex("https://www.maxidespensa.com.sv"), "Super Selectos": selectos, "Superea": superea, "PriceSmart": pricesmart };
 
 // ---- aportes: el sitio envía comparaciones confirmadas y se crea una issue en GitHub para revisarlas ----
 const limpio = (t, n) => String(t ?? "").replace(/[\u0000-\u001f`<>@|\\\[\]]/g, " ").replace(/\s+/g, " ").trim().slice(0, n);
