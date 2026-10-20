@@ -3,7 +3,7 @@
 // y devuelve los resultados en JSON. Guarda cada consulta 10 minutos en caché para no repetir peticiones.
 const UA = "CanastaSV/1.0 (comparador de precios sin fines de lucro)";
 const MAX = 12; // resultados por tienda
-const VERSION = "2026-10-20-b"; // aparece en cada respuesta: sirve para saber qué código está desplegado
+const VERSION = "2026-10-21-a"; // aparece en cada respuesta: sirve para saber qué código está desplegado
 
 // ---- tamaños (misma lógica que scraper/normalizar.mjs) ----
 const RE = /(?<![\d.,])(?:(\d+)\s*[x×]\s*)?(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|mg|lbs?|libras?|oz|ml|lts?|litros?|l|gal(?:on(?:es)?)?)(?![a-z])/i;
@@ -56,6 +56,11 @@ const deco = s => s.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (m, e) =>
   e[0] === "#" ? String.fromCodePoint(e[1].toLowerCase() === "x" ? parseInt(e.slice(2), 16) : +e.slice(1)) : (ENT[e.toLowerCase()] ?? m));
 const texto = h => deco(h.replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
 const sinAcento = s => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+// Selectos y Maxi no encuentran nada con acentos («atún» → 0, «atun» → resultados). Se quitan tildes y se conserva la ñ.
+const sinTilde = s => s.normalize("NFD").replace(/[\u0300-\u0302\u0304-\u036f]/g, "").normalize("NFC");
+// Promociones por cantidad con texto claro: «2 x $2.20», «Seleccione 2X$0.90», «3x2». Otras no se interpretan.
+const PROMO = /^(?:seleccione\s+)?\d+\s*[x×]\s*(?:\$\s*\d+(?:[.,]\d{1,2})?|\d+)$/i;
+const promoDe = textos => textos.map(t => String(t || "").replace(/\s+/g, " ").trim()).find(t => PROMO.test(t)) || null;
 
 async function pedir(url, accept, init = {}) {
   const c = new AbortController(), t = setTimeout(() => c.abort(), 8000);
@@ -68,19 +73,23 @@ async function pedir(url, accept, init = {}) {
 
 // ---- tiendas: cada una recibe el texto buscado y devuelve [{id,nombre,marca,precio,url}] ----
 const vtex = base => async q => {
-  const r = await pedir(`${base}/api/catalog_system/pub/products/search?ft=${encodeURIComponent(q)}&_from=0&_to=${MAX - 1}`, "application/json");
+  const r = await pedir(`${base}/api/catalog_system/pub/products/search?ft=${encodeURIComponent(sinTilde(q))}&_from=0&_to=${MAX - 1}`, "application/json");
   const out = [];
   for (const it of await r.json()) {
     const o = it.items?.[0]?.sellers?.[0]?.commertialOffer;
     if (!o || !(o.Price > 0) || !(o.AvailableQuantity > 0)) continue;
-    out.push({ id: String(it.productId), nombre: it.productName, marca: it.brand || "", precio: o.Price, url: it.link || `${base}/${it.linkText}/p` });
+    // Nombres de las promociones activas (VTEX las envuelve como "<Name>k__BackingField" o "Name")
+    const textos = [...(o.Teasers || []), ...(o.PromotionTeasers || []), ...(o.DiscountHighLight || [])]
+      .flatMap(t => Object.entries(t || {}).filter(([k, v]) => /name/i.test(k) && typeof v === "string").map(([, v]) => v));
+    out.push({ id: String(it.productId), nombre: it.productName, marca: it.brand || "", precio: o.Price, url: it.link || `${base}/${it.linkText}/p`,
+      promo: promoDe(textos), antes: o.ListPrice > o.Price ? o.ListPrice : null });
   }
   return out;
 };
 
 async function selectos(q) {
   const SS = "https://www.superselectos.com";
-  const html = await (await pedir(`${SS}/products?keyword=${encodeURIComponent(q)}`, "text/html")).text();
+  const html = await (await pedir(`${SS}/products?keyword=${encodeURIComponent(sinTilde(q))}`, "text/html")).text();
   // marcas: el filtro "Marcas" de la página lista las de estos resultados
   const hit = html.match(/>\s*Marcas\s*</i);
   const fin = html.search(/<h1[\s>]/i);
@@ -98,12 +107,13 @@ async function selectos(q) {
   while ((m = re.exec(h)) && out.length < MAX) {
     const nombre = texto(m[3]);
     if (nombre.length < 3) continue;                // enlace de la imagen
-    const antes = texto(h.slice(ult, m.index)).replace(/Seleccione\s*\d+\s*X\s*\$\s*[\d.,]+/gi, "");
+    const tramo = texto(h.slice(ult, m.index)), oferta = tramo.match(/Seleccione\s*\d+\s*X\s*\$\s*[\d.,]*\d/i);
+    const antes = tramo.replace(/Seleccione\s*\d+\s*X\s*\$\s*[\d.,]+/gi, "");
     ult = m.index + m[0].length;
     const pr = antes.match(/\$\s*(\d{1,3}(?:,\d{3})*\.\d{2})/);
     if (!pr) continue;
     const href = deco(m[1]);
-    out.push({ id: m[2], nombre, marca: marcaDe(nombre), precio: parseFloat(pr[1].replace(",", "")),
+    out.push({ id: m[2], nombre, marca: marcaDe(nombre), precio: parseFloat(pr[1].replace(",", "")), promo: promoDe([oferta?.[0]]),
                url: href.startsWith("http") ? href : SS + (href.startsWith("/") ? "" : "/") + href });
   }
   return out;

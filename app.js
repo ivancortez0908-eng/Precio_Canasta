@@ -8,7 +8,9 @@ let D, limite = 60, RV = [], fechaRV = "", busquedaRV = "", ctl, actualizando = 
 const tiendasConocidas = new Set();
 // Consultas y opciones por favorito (el objeto, porque un producto puede estar en varias listas)
 const pendientes = new Map(), candidatos = new Map();
-const { equivalente, precioValido, resumir } = Canasta;
+const { equivalente, precioValido, resumir, leerPromo, costo } = Canasta;
+// Oferta y precio anterior que reporta cada tienda; solo valen para esa tienda
+const oferta = x => ({ promo: x.promo || null, antes: x.antes > x.precio ? x.antes : null });
 
 // ---------- Listas de favoritos (se guardan en este navegador) ----------
 // Cada tienda de un favorito: { p, url, nom, ref, id, f, manual, cambio, src: "cat" | "auto" }.
@@ -58,7 +60,7 @@ const favDeItem = it => ({ id: it.fid, n: it.n, m: it.m, q: it.q, u: it.u, pl: i
   t: Object.fromEntries(it.t.map(e => [D.supers[e[0]], { p: e[1], url: e[2], nom: e[4] || it.n, id: e[7] || "", f: D.actualizado, src: "cat" }])) });
 // El producto marcado en la búsqueda en vivo lo eligió la persona: queda como elección manual
 const favDeVivo = x => ({ id: x.id, n: x.nombre, m: x.marca, q: x.q, u: x.u, pl: x.pl, busqueda: busquedaRV,
-  t: { [x.tienda]: { p: x.precio, url: x.url, nom: x.nombre, ref: idVivo(x), id: pidDe(x), f: fechaRV || hoy(), manual: true } } });
+  t: { [x.tienda]: { p: x.precio, url: x.url, nom: x.nombre, ref: idVivo(x), id: pidDe(x), f: fechaRV || hoy(), manual: true, ...oferta(x) } } });
 const estrella = (attr, on) => `<button class="star" ${attr} aria-pressed="${on}" aria-label="${on ? "Guardado en una lista; cambiar listas" : "Guardar en una lista"}">${on ? "★" : "☆"}</button>`;
 
 // Agrega o quita un producto de una lista. Cada lista guarda su propia copia (cantidad y elecciones).
@@ -79,7 +81,7 @@ function mezclarCatalogo(f) {
       const s = D.supers[e[0]], previo = f.t[s];
       if (f.sin?.[s] || (previo?.manual && previo.url !== e[2])) continue;
       if (precioValido(e[1]) && (!previo || (D.actualizado || "") > (previo.f || "")))
-        f.t[s] = { ...previo, p: e[1], url: e[2], nom: e[4] || it.n, id: e[7] || previo?.id || "", f: D.actualizado, src: previo?.manual ? previo.src : "cat" };
+        f.t[s] = { ...previo, p: e[1], url: e[2], nom: e[4] || it.n, id: e[7] || previo?.id || "", f: D.actualizado, src: previo?.manual ? previo.src : "cat", promo: null, antes: null };
     }
   }
 }
@@ -98,7 +100,7 @@ function aplicarResultados(f, resultados, generado) {
     // Varias coincidencias en una tienda requieren revisión; una tienda descartada no se vuelve a llenar sola.
     const elegido = exacto || (!previo && !f.sin?.[s] && seguros.length === 1 ? seguros[0] : null);
     if (elegido && (!previo || (generado || hoy()) >= (previo.f || ""))) f.t[s] = { p: elegido.precio, url: elegido.url, nom: elegido.nombre,
-      ref: idVivo(elegido), id: pidDe(elegido) || previo?.id || "", f: generado || hoy(), manual: previo?.manual || false,
+      ref: idVivo(elegido), id: pidDe(elegido) || previo?.id || "", f: generado || hoy(), manual: previo?.manual || false, ...oferta(elegido),
       ...(exacto && previo.cambio ? { cambio: true } : {}), src: exacto ? previo.src || "auto" : "auto" };
   }
   candidatos.set(f, porTienda);
@@ -222,6 +224,16 @@ function render() {
   $("mas").hidden = r.length <= limite;
 }
 
+// Oferta de una tienda: si se cumple con la cantidad pedida, muestra el subtotal; si no, cuántas faltan
+function notaOferta(v, cant) {
+  const pr = leerPromo(v.promo), antes = v.antes > v.p ? `<small class="antes">antes ${fmt(v.antes)}</small>` : "";
+  if (!pr) return antes;
+  const total = pr.total ?? pr.paga * v.p, txt = pr.total != null ? `${pr.n} x ${fmt(pr.total)}` : `${pr.n}x${pr.paga}`;
+  if (!(total < pr.n * v.p - 0.004)) return antes;
+  if (cant == null) return `${antes}<small class="promo">Oferta ${txt}</small>`;
+  return `${antes}<small class="promo${cant >= pr.n ? " si" : ""}">Oferta ${txt}${cant >= pr.n ? ` · aplicada: ${fmt(costo(v, cant) / 100)} por ${cant}` : ` · lleva ${pr.n} para aplicarla`}</small>`;
+}
+
 // ---------- Búsqueda en vivo ----------
 function pintarVivo() {
   const o = $("ordv").value, r = [...RV];
@@ -231,7 +243,7 @@ function pintarVivo() {
     ? `<thead><tr><th>Producto</th><th>Tienda</th><th>Precio</th><th>Por unidad</th><th>Fav.</th></tr></thead><tbody>` + r.map(x => `<tr>
         <td>${esc(x.nombre)}<small>${x.marca ? `<span class="marca">${esc(x.marca)}</span>` : "Marca no indicada"}${tam(x) ? " · " + tam(x) : ""}</small></td>
         <td><span class="store">${esc(x.tienda)}</span></td>
-        <td class="${x.precio === min && r.length > 1 ? "best" : ""}"><a href="${esc(x.url)}" target="_blank" rel="noopener">${fmt(x.precio)}</a></td>
+        <td class="${x.precio === min && r.length > 1 ? "best" : ""}"><a href="${esc(x.url)}" target="_blank" rel="noopener">${fmt(x.precio)}</a>${notaOferta({ p: x.precio, ...oferta(x) })}</td>
         <td>${x.pu != null ? `${fpu(x.pu)}<small>por ${x.pl}</small>` : "—"}</td>
         <td>${estrella(`data-id="${esc(x.id)}"`, !!favoritoVivo(x))}</td></tr>`).join("") + "</tbody>"
     : "";
@@ -298,7 +310,7 @@ function pintarFav() {
   if (!FAV.length) { $("tfav").innerHTML = ""; pintarAyuda(); return; }
   let h = `<thead><tr><th>Producto y cantidad</th>${S.map(s => `<th>${esc(s)}</th>`).join("")}</tr></thead><tbody>`;
   for (const f of FAV) {
-    const ps = Object.values(f.t).map(v => v.p), min = Math.min(...ps), id = esc(f.id), consultando = pendientes.has(f);
+    const ps = Object.values(f.t).map(v => costo(v, f.cant)), min = Math.min(...ps), id = esc(f.id), consultando = pendientes.has(f);
     h += `<tr><td>${esc(f.n)}<small>${f.m ? `<span class="marca">${esc(f.m)}</span>` : "Marca no indicada"}${tam(f) ? " · " + tam(f) : ""}</small><small class="consulta">${esc(consultando ? "Consultando las tiendas…" : f.estado || "Precios guardados. Actualiza para consultar las tiendas.")}</small><span class="filafav"><span class="stp"><button data-a="menos" data-id="${id}" aria-label="Menos">−</button><input class="qty" type="number" min="1" max="99" value="${f.cant}" data-id="${id}" aria-label="Cantidad de ${esc(f.n)}"><button data-a="mas" data-id="${id}" aria-label="Más">+</button></span>` +
       `<button class="rm" data-a="rm" data-id="${id}">Quitar</button></span><button class="retry" data-a="refresh" data-id="${id}" ${consultando ? "disabled" : ""}>Consultar tiendas</button></td>` +
       S.map(s => {
@@ -306,7 +318,7 @@ function pintarFav() {
         const selector = opciones.length || v ? `<details class="opciones"><summary>${v ? "Cambiar producto" : `Elegir coincidencia (${opciones.length})`}</summary><label>Producto en ${esc(s)}<select data-fav="${id}" data-store="${esc(s)}" aria-label="Producto equivalente en ${esc(s)}"><option value="">Selecciona marca y presentación</option>${opciones.map((x, i) => `<option value="${i}">${esc(x.nombre)} · ${fmt(x.precio)}</option>`).join("")}${v ? `<option value="ninguno">No está en esta tienda</option>` : ""}</select></label><small>Se usará esta presentación para calcular tu compra.</small></details>` : "";
         if (!v) return `<td class="na"><span>${consultando ? "Consultando…" : f.fallos?.includes(s) ? "Tienda sin respuesta" : f.sin?.[s] ? "Descartado por ti" : "Sin coincidencia"}</span>${selector}</td>`;
         const p = v.url ? `<a href="${esc(v.url)}" target="_blank" rel="noopener">${fmt(v.p)}</a>` : fmt(v.p);
-        return `<td class="${v.p === min && ps.length > 1 ? "best" : ""}">${p}<small class="product-source">${esc(v.nom || f.n)}</small>${v.f ? `<small class="f">al ${fecha(v.f)}${v.manual ? " · Elegido por ti" : ""}</small>` : ""}${selector}</td>`;
+        return `<td class="${costo(v, f.cant) === min && ps.length > 1 ? "best" : ""}">${p}${notaOferta(v, f.cant)}<small class="product-source">${esc(v.nom || f.n)}</small>${v.f ? `<small class="f">al ${fecha(v.f)}${v.manual ? " · Elegido por ti" : ""}</small>` : ""}${selector}</td>`;
       }).join("") + "</tr>";
   }
   $("tfav").innerHTML = h + "</tbody>";
@@ -437,7 +449,7 @@ $("tfav").onchange = e => {
     else {
       const x = e.target.value !== "" && candidatos.get(f)?.get(s)?.[Number(e.target.value)];
       if (!x) return;
-      f.t[s] = { p: x.precio, url: x.url, nom: x.nombre, ref: idVivo(x), id: pidDe(x), f: f.consultado || fechaRV || hoy(), manual: true, cambio: true };
+      f.t[s] = { p: x.precio, url: x.url, nom: x.nombre, ref: idVivo(x), id: pidDe(x), f: f.consultado || fechaRV || hoy(), manual: true, cambio: true, ...oferta(x) };
       if (f.sin) delete f.sin[s];
     }
     guardar(); pintarFav(); pintarVivo(); render();

@@ -7,6 +7,8 @@ const CANASTA = JSON.parse(await readFile(new URL("./canasta.json", import.meta.
 const CONFIG_JS = await readFile(new URL("../config.js", import.meta.url), "utf8").catch(() => "");
 let avisos = 0;
 const esp = ms => new Promise(r => setTimeout(r, ms));
+// Selectos y Maxi no encuentran nada con acentos («atún» → 0, «atun» → resultados). Se quitan tildes y se conserva la ñ.
+const sinTilde = s => s.normalize("NFD").replace(/[\u0300-\u0302\u0304-\u036f]/g, "").normalize("NFC");
 
 async function getJson(url) {
   let ultimo = "sin respuesta";
@@ -77,7 +79,7 @@ function vtex(base, nombre) {
     let a = 0, n = 0;
     for (const t of CANASTA.terminos) {
       for (let d = 0; d < 100; d += 50) {
-        const items = await getJson(`${base}/api/catalog_system/pub/products/search?ft=${encodeURIComponent(t)}&_from=${d}&_to=${d + 49}`);
+        const items = await getJson(`${base}/api/catalog_system/pub/products/search?ft=${encodeURIComponent(sinTilde(t))}&_from=${d}&_to=${d + 49}`);
         await esp(500);
         if (n < 3) console.log(`[${nombre}] "${t}" (desde ${d}): ${items.length} recibidos`);
         for (const it of items) {
@@ -167,7 +169,7 @@ function selectos() {
   return async function* () {
     const vistos = new Set();
     const paginas = [
-      ...CANASTA.terminos.map(t => ({ cat: t, url: `${SS}/products?keyword=${encodeURIComponent(t)}` })),
+      ...CANASTA.terminos.map(t => ({ cat: t, url: `${SS}/products?keyword=${encodeURIComponent(sinTilde(t))}` })),
       ...CANASTA.categorias_selectos.map(c => ({ cat: c.nombre, url: `${SS}/products?category=${c.id}` }))
     ];
     const descargadas = [], marcas = new Set(CANASTA.marcas);

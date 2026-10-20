@@ -5,6 +5,16 @@ import { claveNombre, precioUnitario } from "./normalizar.mjs";
 
 // Selectos cambia el ?keyword= según la búsqueda: se compara por productId; en las demás, el enlace sin parámetros
 const normUrl = u => { const m = (u || "").match(/productId=(\d+)/); return m ? "id:" + m[1] : (u || "").split("?")[0].replace(/\/+$/, "").toLowerCase(); };
+// Código de barras (EAN/UPC/GTIN) solo si su dígito de control es correcto: un número mal capturado
+// (p. ej. un SKU interno en el campo del código) no debe unir productos distintos. Los códigos internos
+// cortos rellenos de ceros (frutas, pan a granel) no se usan: pueden coincidir entre empresas distintas.
+const gtin = s => {
+  const d = String(s || "").replace(/\D/g, "");
+  if (!/^(?:\d{8}|\d{12,14})$/.test(d) || d.replace(/^0+/, "").length < 8) return "";
+  let suma = 0;
+  for (let i = d.length - 2, w = 3; i >= 0; i--, w = 4 - w) suma += +d[i] * w;
+  return (10 - suma % 10) % 10 === +d.at(-1) ? d.padStart(14, "0") : "";
+};
 const archivos = (await readdir("data/catalogo")).filter(f => f.endsWith(".json")).sort();
 const supers = [], todos = [];
 for (const f of archivos) {
@@ -26,8 +36,8 @@ const porEan = new Map(), porClave = new Map(), porId = new Map(), porUrl = new 
 todos.forEach((it, i) => {
   porId.set(`${supers[it.ti]}#${it.id}`, i);
   if (it.url) porUrl.set(`${supers[it.ti]}#${normUrl(it.url)}`, i);
-  const e = (it.ean || "").replace(/\D/g, "").replace(/^0+/, "");
-  if (e.length >= 8) porEan.has(e) ? unir(i, porEan.get(e), "ean") : porEan.set(e, i);
+  const e = gtin(it.ean);
+  if (e) porEan.has(e) ? unir(i, porEan.get(e), "ean") : porEan.set(e, i);
   const k = claveNombre(it);
   if (k) porClave.has(k) ? unir(i, porClave.get(k), "nombre") : porClave.set(k, i);
 });

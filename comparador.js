@@ -27,11 +27,29 @@
     const fa = firma(a, comun), fb = firma(b, comun);
     return !!fa && fa === fb;
   }
+  // Promoción por cantidad con texto claro: «2 x $2.20» (2 por $2.20), «Seleccione 2X$0.90», «3x2» (lleva 3, paga 2).
+  // Cualquier otro texto no se interpreta.
+  function leerPromo(texto) {
+    const t = String(texto || "").trim().replace(/^seleccione\s+/i, "");
+    let m = t.match(/^(\d+)\s*[x×]\s*\$\s*(\d+(?:[.,]\d{1,2})?)$/i);
+    if (m && +m[1] >= 2 && +m[2].replace(",", ".") > 0) return { n: +m[1], total: +m[2].replace(",", ".") };
+    m = t.match(/^(\d+)\s*[x×]\s*(\d+)$/i);
+    if (m && +m[1] > +m[2] && +m[2] > 0) return { n: +m[1], paga: +m[2] };
+    return null;
+  }
+  // Costo en centavos de `cant` unidades en UNA tienda. La promoción de esa tienda se aplica por grupos completos
+  // (3 unidades con «2 x $2.20» = un grupo de 2 + 1 a precio normal), solo si abarata y sin acumular descuentos.
+  function costo(v, cant) {
+    const c = Math.round(v.p * 100), pr = leerPromo(v.promo);
+    if (!pr || cant < pr.n) return c * cant;
+    const grupo = pr.total != null ? Math.round(pr.total * 100) : pr.paga * c;
+    return grupo < pr.n * c ? Math.floor(cant / pr.n) * grupo + (cant % pr.n) * c : c * cant;
+  }
   function resumir(favoritos, tiendas) {
     const res = tiendas.map(s => {
       let centavos = 0, faltan = 0;
       for (const f of favoritos) {
-        if (precioValido(f.t[s]?.p)) centavos += Math.round(f.t[s].p * 100) * f.cant;
+        if (precioValido(f.t[s]?.p)) centavos += costo(f.t[s], f.cant);
         else faltan++;
       }
       return { s, total: centavos / 100, faltan };
@@ -39,15 +57,16 @@
     let centavos = 0, sinPrecio = 0;
     const por = {};
     for (const f of favoritos) {
-      const opciones = Object.entries(f.t).filter(([, v]) => precioValido(v.p)).sort((a, b) => a[1].p - b[1].p);
+      // La tienda más barata para la cantidad pedida, con su propia promoción
+      const opciones = Object.entries(f.t).filter(([, v]) => precioValido(v.p)).map(([s, v]) => [s, costo(v, f.cant)]).sort((a, b) => a[1] - b[1]);
       if (!opciones.length) { sinPrecio++; continue; }
-      const [s, v] = opciones[0];
-      centavos += Math.round(v.p * 100) * f.cant;
+      const [s, c] = opciones[0];
+      centavos += c;
       por[s] = (por[s] || 0) + f.cant;
     }
     return { res, mix: centavos / 100, por, sinPrecio };
   }
-  const api = { equivalente, precioValido, resumir };
+  const api = { equivalente, precioValido, resumir, leerPromo, costo };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.Canasta = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

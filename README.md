@@ -8,7 +8,7 @@ Comparador de precios de supermercados de El Salvador. Descarga el catálogo com
 3. Una GitHub Action ejecuta ambos pasos lunes y jueves (o a mano en **Actions → Actualizar precios → Run workflow**).
 
 ## Cómo se decide que dos productos son iguales
-1. **Código de barras (EAN):** la señal más confiable.
+1. **Código de barras (EAN):** la señal más confiable. Solo se usa si su dígito de control es correcto y tiene al menos 8 cifras significativas (los códigos internos cortos de productos a granel no se usan).
 2. **Marca + nombre + tamaño:** el tamaño se normaliza (1 lb = 454 g, 1 gal = 3785 ml…). Si el tamaño o la marca difieren, no se agrupan.
 3. **Manual:** `scraper/equivalencias.json` fuerza equivalencias que el algoritmo no detecta:
    ```json
@@ -35,6 +35,7 @@ Marca la ☆ en un producto del catálogo o de la búsqueda en vivo: se abre **G
 En la pestaña **Favoritos** eliges la lista que quieres ver y puedes crear otra, renombrarla o eliminarla. Para cada producto la página lo busca en todas las tiendas (usa el Worker de la búsqueda en vivo) y arma el comparativo: precio por tienda, cantidad (1 a 99) y total de la compra en cada tienda.
 - Solo se asigna un producto automáticamente si coinciden marca, nombre/variante y presentación, y hay una sola opción en esa tienda. Si hay varias o ninguna segura, la celda ofrece **Elegir coincidencia**; con **Cambiar producto** eliges otra presentación o indicas que **no está en esta tienda** (ya no se vuelve a llenar sola).
 - Si la primera búsqueda no encuentra el producto, se prueba con la marca y las palabras clave del nombre.
+- **Ofertas por cantidad:** si una tienda publica una oferta clara («2 x $2.20», «Seleccione 2X$0.90», «3x2»), se muestra en su celda y se aplica **solo en esa tienda** al llevar la cantidad necesaria, por grupos completos (3 unidades con «2 x $2.20» = 2 en oferta + 1 a precio normal). Los descuentos no se acumulan y los textos que no siguen ese formato no se interpretan. También se muestra el precio anterior cuando la tienda lo publica. La tienda más barata de cada producto se elige según la cantidad pedida.
 - Una tienda sin coincidencia o que no respondió no cuenta como $0: su total sale como **parcial** y no puede ganar la comparación.
 - Se actualiza al abrir la pestaña o cambiar de lista si no se consultó hoy, con **Actualizar precios** o con **Consultar tiendas** en cada fila. Si la red falla se conservan los precios guardados con su fecha.
 - Las listas se guardan en el navegador (no en GitHub). La primera vez, la lista anterior pasa a «Mi lista».

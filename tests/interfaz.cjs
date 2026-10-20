@@ -9,7 +9,7 @@ const raiz = path.join(__dirname, '..');
 const leche = { nombre: 'Leche entera Salud 1 L', marca: 'Salud', q: 1000, u: 'ml', pu: 2, pl: 'L' };
 const fila = (tienda, id, precio, extra = {}) => ({ ...leche, tienda, id, precio, url: 'https://tienda.test/' + id, ...extra });
 const respuesta = { generado: '2026-10-17T12:00:00Z', tiendas: { Walmart: { ok: true, n: 1 }, 'Super Selectos': { ok: true, n: 1 }, 'Despensa de Don Juan': { ok: false }, 'Maxi Despensa': { ok: true, n: 0 }, Superea: { ok: true, n: 0 }, PriceSmart: { ok: true, n: 0 } },
-  resultados: [fila('Walmart', '1', 2), fila('Super Selectos', '2', 1.75)] };
+  resultados: [fila('Walmart', '1', 2, { promo: '2 x $3.80', antes: 2.10 }), fila('Super Selectos', '2', 1.75)] };
 const server = http.createServer((req, res) => {
   const archivos = { '/': 'index.html', '/app.js': 'app.js', '/comparador.js': 'comparador.js', '/exportar.js': 'exportar.js' };
   if (req.url === '/config.js') { res.setHeader('Content-Type', 'text/javascript'); res.end('window.API_VIVO="https://worker.test";'); return; }
@@ -56,7 +56,9 @@ const server = http.createServer((req, res) => {
     assert.match(await page.locator('#favtot').innerText(), /total parcial/);
     await page.getByRole('button', { name: 'Más', exact: true }).click();
     assert.match(await page.locator('#favtot').innerText(), /\$3.50/);
-    assert.match(await page.locator('#favtot').innerText(), /\$4.00/);
+    // La oferta de Walmart se aplica al llevar 2, solo en Walmart
+    assert.match(await page.locator('#favtot').innerText(), /\$3.80/);
+    assert.match(await page.locator('#tfav').innerText(), /aplicada: \$3\.80 por 2/);
     assert.equal(await page.locator('#entrena').count(), 0);
     // Con seis tiendas en una ventana angosta, cantidad y Quitar siguen a la vista y la tabla se desplaza hasta la última tienda
     await page.setViewportSize({ width: 1000, height: 900 });
@@ -70,6 +72,9 @@ const server = http.createServer((req, res) => {
     if (process.env.CANASTA_CAPTURAS) await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'favoritos-1000px.png') });
     await tabla.evaluate(w => { w.scrollLeft = 0; });
     await page.setViewportSize({ width: 1440, height: 1100 });
+    // En pantallas anchas la tabla usa todo el ancho disponible (margen de 16 px por lado)
+    const ancho = await page.locator('#tfav').locator('xpath=..').evaluate(w => w.getBoundingClientRect().width);
+    assert.ok(ancho >= 1440 - 32 - 20, `la tabla mide ${ancho}px`);
     if (process.env.CANASTA_CAPTURAS) await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'favoritos-escritorio.png'), fullPage: true });
     // Descargas: Excel como archivo .xlsx y PDF con la impresión del navegador
     const [descarga] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Descargar Excel' }).click()]);
