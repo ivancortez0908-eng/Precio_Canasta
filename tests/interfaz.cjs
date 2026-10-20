@@ -70,6 +70,9 @@ const server = http.createServer((req, res) => {
     if (process.env.CANASTA_CAPTURAS) await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'favoritos-1000px.png') });
     await tabla.evaluate(w => { w.scrollLeft = 0; });
     await page.setViewportSize({ width: 1440, height: 1100 });
+    // En pantallas anchas la tabla usa todo el ancho disponible (margen de 16 px por lado)
+    const ancho = await page.locator('#tfav').locator('xpath=..').evaluate(w => w.getBoundingClientRect().width);
+    assert.ok(ancho >= 1440 - 32 - 20, `la tabla mide ${ancho}px`);
     if (process.env.CANASTA_CAPTURAS) await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'favoritos-escritorio.png'), fullPage: true });
     // Descargas: Excel como archivo .xlsx y PDF con la impresión del navegador
     const [descarga] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Descargar Excel' }).click()]);

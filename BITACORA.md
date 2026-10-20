@@ -1,3 +1,12 @@
+# Bitácora — 20 de octubre de 2026 (ancho completo)
+
+## Cambio
+La página tenía un ancho máximo de 1100 px. Ahora el contenido, la pregunta de aportes y el pie usan todo el ancho de la pantalla con 16 px de margen, para que las tablas con muchas tiendas quepan sin desplazarse en pantallas grandes. En pantallas angostas la tabla se sigue desplazando y la primera columna queda fija.
+
+## Validación
+- `node tests/interfaz.cjs`: a 1440 px la tabla mide todo el ancho menos los márgenes y muestra las seis tiendas; 1000 px y móvil sin cambios. Captura revisada.
+- `node --test tests/canasta.test.cjs` aprobado.
+
 # Bitácora — 20 de octubre de 2026 (cantidad y Quitar ocultos)
 
 ## Problema
