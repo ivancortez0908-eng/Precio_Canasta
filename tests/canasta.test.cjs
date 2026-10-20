@@ -31,7 +31,7 @@ test('totales por cantidad, centavos, cobertura parcial y compra combinada', () 
   assert.equal(resumir([{ cant: 1, t: {} }], ['A']).sinPrecio, 1);
 });
 
-function interfaz({ resultados = [], datos, fallo = false, guardados = [] } = {}) {
+function interfaz({ resultados = [], datos, fallo = false, guardados = [], porConsulta } = {}) {
   const elements = new Map();
   function el(id) {
     if (!elements.has(id)) elements.set(id, { value: '', textContent: '', innerHTML: '', hidden: false, checked: true,
@@ -39,20 +39,22 @@ function interfaz({ resultados = [], datos, fallo = false, guardados = [] } = {}
     return elements.get(id);
   }
   el('ordv').value = 'pu'; el('ord').value = 'pu';
-  let saved = JSON.stringify(guardados);
+  const CLAVE = 'canasta-sv-favoritos-v1', almacen = new Map([[CLAVE, JSON.stringify(guardados)]]), consultas = [];
   const context = vm.createContext({
     document: { getElementById: el, querySelector: () => el('tabs') },
     window: { API_VIVO: 'https://worker.test' },
-    localStorage: { getItem: () => saved, setItem: (_, value) => { saved = value; } },
+    localStorage: { getItem: k => almacen.get(k) ?? null, setItem: (k, value) => { almacen.set(k, value); } },
     AbortController, setTimeout, clearTimeout, console, confirm: () => true,
     fetch: async url => {
       if (url === 'data/productos.json') return { ok: !!datos, json: async () => datos };
       if (fallo) throw Error('Sin conexión');
-      return { ok: true, json: async () => respuesta(resultados) };
+      const q = decodeURIComponent(String(url).split('?q=')[1] || ''); consultas.push(q);
+      return { ok: true, json: async () => respuesta(porConsulta ? porConsulta(q) : resultados) };
     }
   });
   for (const file of ['comparador.js', 'app.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), context, { filename: file });
-  return { run: code => vm.runInContext(code, context), el, saved: () => JSON.parse(saved) };
+  return { run: code => vm.runInContext(code, context), el, consultas, saved: () => JSON.parse(almacen.get(CLAVE)),
+    registro: () => JSON.parse(almacen.get('canasta-sv-registro-v1') || '[]') };
 }
 const terminar = () => new Promise(resolve => setImmediate(resolve));
 
@@ -137,4 +139,41 @@ test('un catálogo nuevo conserva una presentación elegida manualmente', async 
   ] } }); await terminar();
   assert.equal(ui.saved()[0].t.Selectos.p, 3);
   assert.equal(ui.saved()[0].t.Selectos.manual, true);
+});
+test('descartar una tienda la quita y una consulta nueva no la vuelve a llenar', async () => {
+  const ui = interfaz({ resultados: [producto('Walmart', 2), producto('Selectos', 1.75)] });
+  await ui.run('vivo("leche salud")');
+  ui.run('alternar(favDeVivo(RV[0]));'); await terminar();
+  assert.equal(ui.saved()[0].t.Selectos.p, 1.75);
+  assert.equal(ui.saved()[0].t.Selectos.src, 'auto');
+  ui.run('$("tent").onclick({target:{closest:()=>({dataset:{a:"no",id:FAV[0].id,s:"Selectos"}})}})');
+  assert.equal(ui.saved()[0].t.Selectos, undefined);
+  await ui.run('completarFavorito(FAV[0])');
+  assert.equal(ui.saved()[0].t.Selectos, undefined);
+  assert.match(ui.el('tfav').innerHTML, /Descartado por ti/);
+  assert.equal(ui.registro().at(-1).accion, 'ninguno');
+});
+test('solo exporta equivalencias confirmadas, con el ID de cada tienda', async () => {
+  const ui = interfaz({ resultados: [producto('Walmart', 2), producto('Selectos', 1.75)] });
+  await ui.run('vivo("leche salud")');
+  ui.run('alternar(favDeVivo(RV[0]));'); await terminar();
+  assert.equal(ui.run('equivalenciasLocal().length'), 0);
+  ui.run('$("tent").onclick({target:{closest:()=>({dataset:{a:"ok",id:FAV[0].id,s:"Selectos"}})}})');
+  const grupos = ui.run('equivalenciasLocal()');
+  assert.deepEqual(JSON.parse(JSON.stringify(grupos)).map(g => g.map(x => x.tienda + ':' + x.id)), [['Walmart:Walmart-1', 'Selectos:Selectos-1']]);
+  assert.equal(ui.registro().at(-1).accion, 'confirmo');
+});
+test('favoritos de la versión anterior conservan sus elecciones manuales', async () => {
+  const ui = interfaz({ guardados: [{ id: 'v:Walmart:x', n: base.nombre, m: 'Salud', q: 1000, u: 'ml', cant: 2,
+    t: { Walmart: { p: 2, url: 'https://tienda.test/x', f: '2026-10-16', src: 'man', id: '9' } } }] }); await terminar();
+  assert.equal(ui.run('FAV[0].t.Walmart.manual'), true);
+  assert.equal(ui.run('FAV[0].cant'), 2);
+  assert.match(ui.el('tent').innerHTML, /Confirmado por ti/);
+});
+test('si la primera búsqueda no encuentra el producto, prueba con marca y palabras clave', async () => {
+  const ui = interfaz({ porConsulta: q => q === 'salud leche entera' ? [producto('Walmart', 2), producto('Selectos', 1.75)] : [producto('Walmart', 2)] });
+  ui.run(`alternar({ id: 'g:x', n: 'Leche entera Salud 1 L', m: 'Salud', q: 1000, u: 'ml', t: { Walmart: { p: 2, url: 'https://tienda.test/Walmart/1', src: 'cat' } } });`);
+  await terminar(); await terminar();
+  assert.deepEqual([...ui.consultas], ['Leche entera Salud 1 L', 'salud leche entera']);
+  assert.equal(ui.saved()[0].t.Selectos.p, 1.75);
 });

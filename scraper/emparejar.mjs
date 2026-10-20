@@ -3,6 +3,8 @@
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import { claveNombre, precioUnitario } from "./normalizar.mjs";
 
+// Selectos cambia el ?keyword= según la búsqueda: se compara por productId; en las demás, el enlace sin parámetros
+const normUrl = u => { const m = (u || "").match(/productId=(\d+)/); return m ? "id:" + m[1] : (u || "").split("?")[0].replace(/\/+$/, "").toLowerCase(); };
 const archivos = (await readdir("data/catalogo")).filter(f => f.endsWith(".json")).sort();
 const supers = [], todos = [];
 for (const f of archivos) {
@@ -23,7 +25,7 @@ const unir = (a, b, tipo) => {
 const porEan = new Map(), porClave = new Map(), porId = new Map(), porUrl = new Map();
 todos.forEach((it, i) => {
   porId.set(`${supers[it.ti]}#${it.id}`, i);
-  if (it.url) porUrl.set(`${supers[it.ti]}#${it.url}`, i);
+  if (it.url) porUrl.set(`${supers[it.ti]}#${normUrl(it.url)}`, i);
   const e = (it.ean || "").replace(/\D/g, "").replace(/^0+/, "");
   if (e.length >= 8) porEan.has(e) ? unir(i, porEan.get(e), "ean") : porEan.set(e, i);
   const k = claveNombre(it);
@@ -33,7 +35,7 @@ todos.forEach((it, i) => {
 // Equivalencias manuales: scraper/equivalencias.json = [[{tienda,id},{tienda,id}], ...]
 const manual = JSON.parse(await readFile("scraper/equivalencias.json", "utf8").catch(() => "[]"));
 for (const grupo of manual) {
-  const idx = grupo.map(x => porId.get(`${x.tienda}#${x.id}`) ?? porUrl.get(`${x.tienda}#${x.url}`)).filter(x => x !== undefined);
+  const idx = grupo.map(x => porId.get(`${x.tienda}#${x.id}`) ?? (x.url ? porUrl.get(`${x.tienda}#${normUrl(x.url)}`) : undefined)).filter(x => x !== undefined);
   for (let j = 1; j < idx.length; j++) unir(idx[j], idx[0], "manual");
 }
 

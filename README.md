@@ -23,13 +23,19 @@ Cada fila muestra marca, tamaño y la descripción de cada tienda (desplegable �
 ## Tiendas
 Se configuran en `scraper/tiendas.mjs`.
 - **Super Selectos:** su página entrega el HTML ya armado. El scraper lee páginas de búsqueda (una por cada término de `scraper/canasta.json`) y unas pocas categorías, con 3 segundos de pausa entre peticiones. No descarga todo el catálogo: su `robots.txt` rechaza la extracción masiva. Solo se lee la primera página de cada búsqueda.
-- **Walmart:** supone una tienda VTEX; falta verificarlo en la primera corrida.
-- **Despensa de Don Juan:** pendiente.
+- **Walmart** y **Despensa de Don Juan:** tiendas VTEX del mismo grupo; comparten muchos IDs de producto, pero cada una tiene sus propios precios. Si la consulta directa desde GitHub no devuelve productos, el scraper usa el Worker como puente.
 
 Para ampliar la cobertura, agrega términos a `scraper/canasta.json`. Revisa términos de uso y `robots.txt` antes de activar cada tienda.
 
 ## Favoritos
-Marca la ☆ en un producto: queda como **referencia**. La página lo busca en todas las tiendas (usa el Worker de la búsqueda en vivo) y arma el comparativo: precio por tienda y total de la compra. En cada celda se ve qué producto encontró; con "cambiar" eliges otra coincidencia o "Ninguno". Se actualiza al abrir la pestaña si no se hizo hoy, o con el botón. La lista se guarda en el navegador (no en GitHub).
+Marca la ☆ en un producto: queda como **referencia**. La página lo busca en todas las tiendas (usa el Worker de la búsqueda en vivo) y arma el comparativo: precio por tienda, cantidad (1 a 99) y total de la compra en cada tienda.
+- Solo se asigna un producto automáticamente si coinciden marca, nombre/variante y presentación, y hay una sola opción en esa tienda. Si hay varias o ninguna segura, la celda ofrece **Elegir coincidencia**; con **Cambiar producto** eliges otra presentación.
+- Si la primera búsqueda no encuentra el producto, se prueba con la marca y las palabras clave del nombre.
+- Una tienda sin coincidencia o que no respondió no cuenta como $0: su total sale como **parcial** y no puede ganar la comparación.
+- Se actualiza al abrir la pestaña si no se consultó hoy, con **Actualizar precios** o con **Consultar tiendas** en cada fila. Si la red falla se conservan los precios guardados con su fecha.
+- La lista se guarda en el navegador (no en GitHub).
+
+La interfaz está en `index.html` (diseño), `app.js` (comportamiento) y `comparador.js` (reglas de equivalencia y totales). Se publican juntos.
 
 ## Entrenar la comparación
 En Favoritos, el cuadro **Entrenar la comparación** lista qué producto encontró cada tienda y su estado (catálogo, automático o confirmado). Con ✓ / ✗ confirmas o descartas; lo que eliges con «cambiar» también cuenta. Cada decisión queda en el **registro** (en tu navegador; se puede descargar). **Descargar equivalencias.json** une lo ya publicado con tus nuevas confirmaciones: reemplaza `scraper/equivalencias.json` con ese archivo y corre la acción. El emparejador las usa por id o por enlace y esos productos salen como «Equivalencia verificada».
@@ -57,4 +63,6 @@ La pestaña **Buscar en vivo** consulta un solo producto en el momento en cada t
 ```bash
 node scraper/catalogo.mjs && node scraper/emparejar.mjs   # Node 20+
 python3 -m http.server                                    # abre http://localhost:8000
+node --test tests/canasta.test.cjs                        # reglas y flujo de favoritos
+node tests/interfaz.cjs                                   # en Chromium (requiere Playwright)
 ```

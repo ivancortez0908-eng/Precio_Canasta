@@ -30,7 +30,7 @@ const server = http.createServer((req, res) => {
     await page.route('https://worker.test/**', route => route.fulfill({ json: respuesta }));
     const url = 'http://127.0.0.1:' + server.address().port;
     await page.goto(url);
-    await page.getByRole('tab', { name: 'Buscar en vivo' }).click();
+    await page.getByRole('tab', { name: /En vivo/ }).click();
     await page.getByRole('searchbox', { name: 'Producto a buscar en vivo' }).fill('leche salud');
     await page.getByRole('button', { name: 'Buscar en las tiendas' }).click();
     await page.locator('#tv .star').first().click();
