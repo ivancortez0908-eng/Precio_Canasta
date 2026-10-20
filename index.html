@@ -73,7 +73,27 @@ details{margin-top:4px;font-size:.85rem;color:var(--mute)}details summary{cursor
 .d{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px}.d.v{background:var(--v)}.d.a{background:var(--a)}.d.r{background:var(--r)}
 .acc{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
 code{background:var(--bg);padding:0 4px;border-radius:4px}
-#entrena .wrap{overflow:auto;max-height:340px}#entrena th{top:0}
+/* listas y cuadro para elegir dónde guardar */
+.listas label{font-weight:600}.listas select{min-width:180px}
+dialog{border:0;border-radius:8px;padding:16px 18px;width:min(420px,calc(100vw - 32px));background:var(--surf);color:var(--ink);box-shadow:0 8px 30px rgba(0,0,0,.35)}
+dialog::backdrop{background:rgba(0,0,0,.45)}dialog h2{margin:0 0 4px;font-size:1.15rem}
+.dlopts{display:grid;gap:6px;margin:12px 0;max-height:40vh;overflow:auto}
+.dlopts label{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:6px;background:var(--bg);cursor:pointer}
+.dlopts input{width:18px;height:18px}.dlopts small{color:var(--mute)}
+.dlnueva{display:flex;gap:8px;flex-wrap:wrap}.dlnueva input{flex:1;min-width:150px;font:inherit;padding:8px 12px;border:1px solid var(--line);border-radius:6px;background:var(--surf);color:var(--ink)}
+/* hoja para imprimir o guardar como PDF */
+#imprimir{display:none}
+@media print{
+  @page{size:landscape;margin:12mm}
+  body{background:#fff;color:#000;font-size:11px}
+  body>*:not(#imprimir){display:none!important}
+  #imprimir{display:block}
+  #imprimir h1{font-size:18px;margin:0 0 4px}#imprimir p{margin:0 0 10px;color:#444}
+  #imprimir table{min-width:0;width:100%;border-collapse:collapse}
+  #imprimir th,#imprimir td{position:static;background:#fff;color:#000;border:1px solid #bbb;padding:4px 6px;white-space:normal;font-size:11px}
+  #imprimir thead th{background:#eee}#imprimir tfoot td{font-weight:700}
+  #imprimir th:nth-child(-n+3),#imprimir td:nth-child(-n+3){text-align:left}
+}
 .ayuda{max-width:1076px;width:calc(100% - 24px);margin:0 auto 16px;padding:14px 16px;background:var(--surf);border-radius:8px;box-shadow:var(--sh);border-left:8px solid var(--blue)}
 .ayuda h3{margin:0 0 4px;font-size:1.05rem}.ayuda ul{margin:6px 0;padding-left:20px}
 footer{max-width:1100px;margin:auto;padding:0 16px 40px;color:var(--mute);font-size:.85rem}
@@ -121,7 +141,14 @@ footer{max-width:1100px;margin:auto;padding:0 16px 40px;color:var(--mute);font-s
     <p class="msg">Los resultados salen directamente de cada tienda y pueden incluir presentaciones distintas. Verifica marca, concentración y presentación antes de comparar, sobre todo en medicamentos.</p>
   </div>
   <div id="p3" hidden>
-    <div class="controls"><p class="msg" id="favmsg" style="flex:1"></p><button id="favrefresh" hidden>Actualizar precios</button><button id="favclear" hidden>Vaciar favoritos</button></div>
+    <div class="controls listas">
+      <label for="lsel">Lista</label>
+      <select id="lsel"></select>
+      <button id="lnueva">Nueva lista</button>
+      <button id="lrenombrar">Renombrar</button>
+      <button id="lborrar" class="rm">Eliminar lista</button>
+    </div>
+    <div class="controls"><p class="msg" id="favmsg" style="flex:1"></p><button id="favrefresh" hidden>Actualizar precios</button><button id="favpdf" hidden>Descargar PDF</button><button id="favxlsx" hidden>Descargar Excel</button><button id="favclear" hidden>Vaciar lista</button></div>
     <p class="msg" id="favest"></p>
     <div class="wrap"><table id="tfav"></table></div>
     <section class="cart" id="favres" aria-live="polite" hidden>
@@ -130,26 +157,10 @@ footer{max-width:1100px;margin:auto;padding:0 16px 40px;color:var(--mute);font-s
       <p class="leyenda"><span><i class="d v"></i>Verde: la más barata (o hasta 2 % más)</span><span><i class="d a"></i>Amarillo: hasta 10 % más cara</span><span><i class="d r"></i>Rojo: más de 10 % más cara o le faltan productos</span></p>
       <p class="msg" id="favmix"></p>
     </section>
-    <section class="cart" id="entrena" hidden>
-      <h2>Entrenar la comparación</h2>
-      <p class="msg" id="entmsg"></p>
-      <p class="msg">Marca ✓ las coincidencias automáticas que sí son el mismo producto y ✗ las que no. Lo que elijas con «Elegir coincidencia» o «Cambiar producto» también cuenta. Todo queda anotado en el registro.</p>
-      <div class="wrap"><table id="tent"></table></div>
-      <details><summary>Registro de decisiones (<span id="nreg">0</span>)</summary><div class="wrap"><table id="treg"></table></div></details>
-      <details><summary>Opciones de administrador</summary>
-        <div class="acc">
-          <button id="expeq">Descargar equivalencias.json</button>
-          <button id="expcopy">Copiar</button>
-          <button id="expreg">Descargar registro</button>
-          <button id="reglimp" class="rm">Borrar registro</button>
-        </div>
-        <p class="msg">Para aplicarlo tú mismo: reemplaza el contenido de <code>scraper/equivalencias.json</code> en GitHub con el archivo descargado (ya incluye lo anterior) y corre Actions → Actualizar precios.</p>
-      </details>
-    </section>
   </div>
 </main>
 <section id="ayuda" class="ayuda" hidden aria-live="polite">
-  <h3>¿Nos ayudas con las nuevas comparaciones que utilizaste?</h3>
+  <h3>¿Nos ayudas con las comparaciones que cambiaste?</h3>
   <p class="msg" id="ayudamsg"></p>
   <div class="acc" id="ayudasn"><button id="ayudasi">Sí</button><button id="ayudano">No</button></div>
   <div id="ayudadet" hidden>
@@ -157,17 +168,27 @@ footer{max-width:1100px;margin:auto;padding:0 16px 40px;color:var(--mute);font-s
     <p class="msg">Solo se envían la tienda, el identificador, el enlace y el nombre de los productos que comparaste. No se envía ningún dato personal.</p>
     <div class="acc">
       <button id="aenviar">Enviar al proyecto</button>
-      <button id="adesc">Descargar archivo</button>
-      <button id="acorreo">Preparar correo</button>
       <button id="acancel">Cancelar</button>
     </div>
     <p class="msg" id="aest"></p>
   </div>
 </section>
 <footer id="foot"></footer>
+<dialog id="dlista" aria-labelledby="dltit">
+  <h2 id="dltit">Guardar en una lista</h2>
+  <p class="msg" id="dlprod"></p>
+  <div class="dlopts" id="dlopts"></div>
+  <form class="dlnueva" id="dlnueva">
+    <input id="dlnombre" maxlength="40" placeholder="Nombre de la nueva lista" aria-label="Nombre de la nueva lista">
+    <button type="submit">Crear y agregar</button>
+  </form>
+  <div class="acc"><button id="dlcerrar">Listo</button></div>
+</dialog>
+<section id="imprimir" aria-hidden="true"></section>
 
 <script src="config.js"></script>
 <script src="comparador.js"></script>
+<script src="exportar.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

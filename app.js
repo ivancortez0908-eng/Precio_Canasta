@@ -4,48 +4,71 @@ const esc = s => (s || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;",
 const fmt = n => "$" + n.toFixed(2);
 const fpu = n => "$" + n.toFixed(n < 0.1 ? 3 : 2);
 const TAG = { ean: "Mismo código de barras", nombre: "Coincide por nombre y tamaño", manual: "Equivalencia verificada" };
-let D, limite = 60, RV = [], fechaRV = "", busquedaRV = "", ctl, actualizando = false;
+let D, limite = 60, RV = [], fechaRV = "", busquedaRV = "", ctl, actualizando = false, porGuardar = null;
 const tiendasConocidas = new Set();
+// Consultas y opciones por favorito (el objeto, porque un producto puede estar en varias listas)
 const pendientes = new Map(), candidatos = new Map();
 const { equivalente, precioValido, resumir } = Canasta;
 
-// ---------- Favoritos (se guardan en este navegador) ----------
-// Cada tienda de un favorito: { p, url, nom, ref, id, f, manual, src: "cat" | "auto" }; f.sin marca tiendas descartadas.
-const CLAVE = "canasta-sv-favoritos-v1";
-let FAV = [];
-try { FAV = JSON.parse(localStorage.getItem(CLAVE) || "[]"); } catch {}
-if (!Array.isArray(FAV)) FAV = [];
-FAV = FAV.filter(f => f && typeof f.id === "string" && f.t && typeof f.t === "object").map(f => ({
+// ---------- Listas de favoritos (se guardan en este navegador) ----------
+// Cada tienda de un favorito: { p, url, nom, ref, id, f, manual, cambio, src: "cat" | "auto" }.
+// manual: elegido por la persona; cambio: elegido en la tabla de comparación; f.sin marca tiendas descartadas.
+const CLAVE = "canasta-sv-listas-v1", CLAVE_ANTERIOR = "canasta-sv-favoritos-v1";
+const limpiar = items => (Array.isArray(items) ? items : []).filter(f => f && typeof f.id === "string" && f.t && typeof f.t === "object").map(f => ({
   ...f, estado: "Precios guardados. Actualiza para consultar las tiendas.", cant: Math.max(1, Math.min(99, parseInt(f.cant) || 1)),
-  // src "man" viene de la versión anterior de la página: equivale a una elección manual
+  // src "man" viene de una versión anterior de la página: equivale a una elección manual
   t: Object.fromEntries(Object.entries(f.t).filter(([, v]) => v && precioValido(v.p)).map(([s, v]) => [s, v.src === "man" ? { ...v, manual: true } : v]))
 }));
+let LISTAS = [], ACTIVA;
+try {
+  const d = JSON.parse(localStorage.getItem(CLAVE) || "null");
+  if (d && Array.isArray(d.listas)) {
+    LISTAS = d.listas.filter(l => l && typeof l.id === "string").map(l => ({ id: l.id, nombre: String(l.nombre || "Mi lista").slice(0, 40), items: limpiar(l.items) }));
+    ACTIVA = LISTAS.find(l => l.id === d.activa);
+  }
+} catch {}
+if (!LISTAS.length) {   // primera vez: los favoritos de la versión de una sola lista pasan a «Mi lista»
+  let previos = [];
+  try { previos = JSON.parse(localStorage.getItem(CLAVE_ANTERIOR) || "[]"); } catch {}
+  LISTAS = [{ id: "l1", nombre: "Mi lista", items: limpiar(previos) }];
+}
+ACTIVA = ACTIVA || LISTAS[0];
+let FAV = ACTIVA.items;   // favoritos de la lista que se está viendo
+const todos = () => LISTAS.flatMap(l => l.items);
+const guardado = f => LISTAS.some(l => l.items.includes(f));
 const contar = () => { $("nf").textContent = FAV.length; };
-const guardar = () => { try { localStorage.setItem(CLAVE, JSON.stringify(FAV)); } catch {} contar(); };
+const guardar = () => { try { localStorage.setItem(CLAVE, JSON.stringify({ activa: ACTIVA.id, listas: LISTAS })); } catch {} contar(); };
+function crearLista(nombre) {
+  const l = { id: "l" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), nombre: nombre.trim().slice(0, 40) || "Lista", items: [] };
+  LISTAS.push(l); guardar(); return l;
+}
+function activar(l) { ACTIVA = l; FAV = l.items; guardar(); }
+
 const hoy = () => new Date().toISOString().slice(0, 10);
 const fecha = f => (f ? f.slice(8, 10) + "/" + f.slice(5, 7) : "");
 const idGrupo = it => "g:" + norm(it.n) + "|" + (it.q || "") + (it.u || "");
 const idVivo = x => x.ref || (String(x.id || "").startsWith("v:") ? x.id : "v:" + x.tienda + ":" + (x.id || x.url));
 const pidDe = x => String(x.pid ?? (String(x.id || "").startsWith("v:") ? "" : x.id || ""));
-const favoritoVivo = x => FAV.find(f => f.id === idVivo(x) || Object.entries(f.t).some(([s, v]) =>
+const favoritoVivo = (x, items = todos()) => items.find(f => f.id === idVivo(x) || Object.entries(f.t).some(([s, v]) =>
   s === x.tienda && (v.ref === idVivo(x) || (v.url === x.url && !/[?&]q=/.test(x.url || "")))));
-const favoritoItem = it => FAV.find(f => f.id === it.fid || it.t.some(e =>
+const favoritoItem = (it, items = todos()) => items.find(f => f.id === it.fid || it.t.some(e =>
   Object.values(f.t).some(v => v.url && v.url === e[2] && !/[?&]q=/.test(v.url))));
-function cancelar(id) { pendientes.get(id)?.abort(); pendientes.delete(id); candidatos.delete(id); }
+function cancelar(f) { pendientes.get(f)?.abort(); pendientes.delete(f); candidatos.delete(f); }
 const favDeItem = it => ({ id: it.fid, n: it.n, m: it.m, q: it.q, u: it.u, pl: it.pl,
   t: Object.fromEntries(it.t.map(e => [D.supers[e[0]], { p: e[1], url: e[2], nom: e[4] || it.n, id: e[7] || "", f: D.actualizado, src: "cat" }])) });
 // El producto marcado en la búsqueda en vivo lo eligió la persona: queda como elección manual
 const favDeVivo = x => ({ id: x.id, n: x.nombre, m: x.marca, q: x.q, u: x.u, pl: x.pl, busqueda: busquedaRV,
   t: { [x.tienda]: { p: x.precio, url: x.url, nom: x.nombre, ref: idVivo(x), id: pidDe(x), f: fechaRV || hoy(), manual: true } } });
-const estrella = (attr, on) => `<button class="star" ${attr} aria-pressed="${on}" aria-label="${on ? "Quitar de favoritos" : "Agregar a favoritos"}">${on ? "★" : "☆"}</button>`;
+const estrella = (attr, on) => `<button class="star" ${attr} aria-pressed="${on}" aria-label="${on ? "Guardado en una lista; cambiar listas" : "Guardar en una lista"}">${on ? "★" : "☆"}</button>`;
 
-function alternar(f, b) {
-  const i = FAV.findIndex(x => x.id === f.id);
-  i >= 0 ? FAV.splice(i, 1) : FAV.push({ ...f, cant: 1 });
+// Agrega o quita un producto de una lista. Cada lista guarda su propia copia (cantidad y elecciones).
+function alternar(f, lista = ACTIVA) {
+  const i = lista.items.findIndex(x => x.id === f.id);
+  let nuevo;
+  if (i >= 0) cancelar(lista.items.splice(i, 1)[0]);
+  else { nuevo = { ...JSON.parse(JSON.stringify(f)), cant: 1 }; lista.items.push(nuevo); }
   guardar(); pintarFav();
-  if (b) { const on = i < 0; b.setAttribute("aria-pressed", on); b.textContent = on ? "★" : "☆"; b.setAttribute("aria-label", on ? "Quitar de favoritos" : "Agregar a favoritos"); }
-  if (i < 0) completarFavorito(FAV.find(x => x.id === f.id));
-  else cancelar(f.id);
+  if (nuevo) completarFavorito(nuevo);
 }
 function mezclarCatalogo(f) {
   if (!D) return;
@@ -75,9 +98,10 @@ function aplicarResultados(f, resultados, generado) {
     // Varias coincidencias en una tienda requieren revisión; una tienda descartada no se vuelve a llenar sola.
     const elegido = exacto || (!previo && !f.sin?.[s] && seguros.length === 1 ? seguros[0] : null);
     if (elegido && (!previo || (generado || hoy()) >= (previo.f || ""))) f.t[s] = { p: elegido.precio, url: elegido.url, nom: elegido.nombre,
-      ref: idVivo(elegido), id: pidDe(elegido) || previo?.id || "", f: generado || hoy(), manual: previo?.manual || false, src: exacto ? previo.src || "auto" : "auto" };
+      ref: idVivo(elegido), id: pidDe(elegido) || previo?.id || "", f: generado || hoy(), manual: previo?.manual || false,
+      ...(exacto && previo.cambio ? { cambio: true } : {}), src: exacto ? previo.src || "auto" : "auto" };
   }
-  candidatos.set(f.id, porTienda);
+  candidatos.set(f, porTienda);
 }
 // Textos de búsqueda: el original y, como respaldo, la marca con las palabras clave del nombre
 const PARASITAS = new Set("de la el los las con en y para por del al un una bolsa caja paquete pack unidades unidad ud uds g gr kg lb lbs ml l lt oz".split(" "));
@@ -89,7 +113,7 @@ function consultas(f) {
   return [...new Set([(f.busqueda || f.n || "").trim().slice(0, 60), a, b])].filter(q => q.length >= 2);
 }
 async function completarFavorito(f) {
-  if (!f || pendientes.has(f.id)) return;
+  if (!f || pendientes.has(f)) return;
   mezclarCatalogo(f);
   aplicarResultados(f, RV, fechaRV);
   if (!window.API_VIVO) {
@@ -97,11 +121,11 @@ async function completarFavorito(f) {
     guardar(); pintarFav(); return;
   }
   const control = new AbortController();
-  pendientes.set(f.id, control);
+  pendientes.set(f, control);
   f.estado = "Consultando precios en las demás tiendas…";
   guardar(); pintarFav();
   const timeout = setTimeout(() => control.abort(), 25000);
-  const sigue = () => !control.signal.aborted && FAV.includes(f);
+  const sigue = () => !control.signal.aborted && guardado(f);
   try {
     const tiendas = {}, resultados = [], vistos = new Set();
     let generado = "", error;
@@ -133,27 +157,28 @@ async function completarFavorito(f) {
     aplicarResultados(f, resultados, generado);
     f.estado = f.fallos.length ? `No respondieron: ${f.fallos.join(", ")}. Puedes reintentar.` : "Consulta terminada. Revisa las opciones donde falte una coincidencia.";
   } catch (e) {
-    if (FAV.includes(f)) f.estado = e.name === "AbortError" ? "La consulta tardó demasiado. Puedes reintentar." : "No se pudo actualizar: " + e.message;
+    if (guardado(f)) f.estado = e.name === "AbortError" ? "La consulta tardó demasiado. Puedes reintentar." : "No se pudo actualizar: " + e.message;
   } finally {
     clearTimeout(timeout);
-    if (pendientes.get(f.id) === control) pendientes.delete(f.id);
+    if (pendientes.get(f) === control) pendientes.delete(f);
     guardar(); pintarFav(); pintarVivo(); render();
   }
 }
 // Procesar en serie evita disparar todas las tiendas por cada favorito a la vez.
-async function actualizarLista(lista) {
-  if (actualizando || !lista.length) return;
+async function actualizarItems(items) {
+  if (actualizando || !items.length) return;
   actualizando = true; $("favrefresh").disabled = true;
   try {
-    for (let i = 0; i < lista.length; i++) if (FAV.includes(lista[i])) {
-      $("favest").textContent = `Consultando las tiendas… (${i + 1} de ${lista.length})`;
-      await completarFavorito(lista[i]);
+    for (let i = 0; i < items.length; i++) if (guardado(items[i])) {
+      $("favest").textContent = `Consultando las tiendas… (${i + 1} de ${items.length})`;
+      await completarFavorito(items[i]);
     }
   } finally { actualizando = false; $("favest").textContent = ""; pintarFav(); }
 }
+const actualizarViejos = () => { if (window.API_VIVO) actualizarItems(FAV.filter(f => (f.consultado || "").slice(0, 10) !== hoy())); };
 // Al cargar datos nuevos, actualiza los precios de los favoritos (por producto o por enlace de tienda)
 function refrescarFavs() {
-  FAV.forEach(mezclarCatalogo);
+  todos().forEach(mezclarCatalogo);
   guardar();
 }
 
@@ -230,23 +255,55 @@ async function vivo(q) {
   } catch (e) { if (e.name !== "AbortError") $("estv").textContent = "No se pudo consultar: " + e.message; }
 }
 
-// ---------- Vista de favoritos: cantidades, quitar y comparación de la compra ----------
+// ---------- Cuadro «Guardar en una lista» (se abre con la ☆) ----------
+const buscarEn = (lista, o) => o.tipo === "item" ? favoritoItem(o.x, lista.items) : favoritoVivo(o.x, lista.items);
+const nuevoDe = o => o.tipo === "item" ? favDeItem(o.x) : favDeVivo(o.x);
+function pintarDialogo() {
+  const o = porGuardar; if (!o) return;
+  $("dlprod").textContent = o.tipo === "item" ? o.x.n : `${o.x.nombre} · ${o.x.tienda}`;
+  $("dlopts").innerHTML = LISTAS.map(l => `<label><input type="checkbox" data-l="${esc(l.id)}"${buscarEn(l, o) ? " checked" : ""}><span>${esc(l.nombre)} <small>(${l.items.length})</small></span></label>`).join("");
+}
+function abrirListas(o) {
+  porGuardar = o; pintarDialogo();
+  const d = $("dlista");
+  if (d.showModal) { if (!d.open) d.showModal(); } else d.setAttribute("open", "");
+  $("dlopts").querySelector("input")?.focus();
+}
+const trasCambio = () => { pintarDialogo(); render(); pintarVivo(); };
+$("dlopts").onchange = e => {
+  const l = LISTAS.find(x => x.id === e.target.dataset.l); if (!l || !porGuardar) return;
+  const ya = buscarEn(l, porGuardar);
+  if (!!ya !== e.target.checked) alternar(ya || nuevoDe(porGuardar), l);
+  trasCambio();
+};
+$("dlnueva").onsubmit = e => {
+  e.preventDefault();
+  const nombre = $("dlnombre").value.trim(); if (!nombre || !porGuardar) return;
+  $("dlnombre").value = "";
+  alternar(nuevoDe(porGuardar), crearLista(nombre));
+  trasCambio();
+};
+$("dlcerrar").onclick = () => $("dlista").close?.();
+$("dlista").onclose = () => { porGuardar = null; };
+
+// ---------- Vista de favoritos: listas, cantidades, quitar y comparación de la compra ----------
+const tiendasFav = () => [...new Set([...(D ? D.supers : []), ...tiendasConocidas, ...FAV.flatMap(f => [...Object.keys(f.t), ...(f.tiendas || [])])])];
 function pintarFav() {
-  const S = [...new Set([...(D ? D.supers : []), ...tiendasConocidas, ...FAV.flatMap(f => [...Object.keys(f.t), ...(f.tiendas || [])])])];
-  $("favmsg").textContent = FAV.length ? `${FAV.length} producto(s). Cada uno se busca en todas las tiendas y solo estos se comparan para tu compra.` : "Aún no tienes favoritos. Marca la ☆ en el catálogo o en la búsqueda en vivo para armar tu lista de compra.";
-  $("favclear").hidden = !FAV.length; $("favres").hidden = !FAV.length;
-  $("favrefresh").hidden = !FAV.length;
+  const S = tiendasFav();
+  $("lsel").innerHTML = LISTAS.map(l => `<option value="${esc(l.id)}"${l === ACTIVA ? " selected" : ""}>${esc(l.nombre)} (${l.items.length})</option>`).join("");
+  $("favmsg").textContent = FAV.length ? `${FAV.length} producto(s) en «${ACTIVA.nombre}». Cada uno se busca en todas las tiendas y solo estos se comparan para tu compra.` : `«${ACTIVA.nombre}» está vacía. Marca la ☆ en el catálogo o en la búsqueda en vivo y elige esta lista.`;
+  for (const id of ["favclear", "favres", "favrefresh", "favpdf", "favxlsx"]) $(id).hidden = !FAV.length;
   $("favrefresh").disabled = actualizando || pendientes.size > 0;
   $("favrefresh").textContent = pendientes.size ? `Consultando ${pendientes.size} producto(s)…` : "Actualizar precios";
-  if (!FAV.length) { $("tfav").innerHTML = ""; pintarEntrena(); return; }
+  if (!FAV.length) { $("tfav").innerHTML = ""; pintarAyuda(); return; }
   let h = `<thead><tr><th>Producto</th>${S.map(s => `<th>${esc(s)}</th>`).join("")}<th>Cantidad</th><th></th></tr></thead><tbody>`;
   for (const f of FAV) {
-    const ps = Object.values(f.t).map(v => v.p), min = Math.min(...ps), id = esc(f.id);
-    h += `<tr><td>${esc(f.n)}<small>${f.m ? `<span class="marca">${esc(f.m)}</span>` : "Marca no indicada"}${tam(f) ? " · " + tam(f) : ""}</small><small class="consulta">${esc(pendientes.has(f.id) ? "Consultando las tiendas…" : f.estado || "Precios guardados. Actualiza para consultar las tiendas.")}</small><button class="retry" data-a="refresh" data-id="${id}" ${pendientes.has(f.id) ? "disabled" : ""}>Consultar tiendas</button></td>` +
+    const ps = Object.values(f.t).map(v => v.p), min = Math.min(...ps), id = esc(f.id), consultando = pendientes.has(f);
+    h += `<tr><td>${esc(f.n)}<small>${f.m ? `<span class="marca">${esc(f.m)}</span>` : "Marca no indicada"}${tam(f) ? " · " + tam(f) : ""}</small><small class="consulta">${esc(consultando ? "Consultando las tiendas…" : f.estado || "Precios guardados. Actualiza para consultar las tiendas.")}</small><button class="retry" data-a="refresh" data-id="${id}" ${consultando ? "disabled" : ""}>Consultar tiendas</button></td>` +
       S.map(s => {
-        const v = f.t[s], opciones = candidatos.get(f.id)?.get(s) || [];
-        const selector = opciones.length ? `<details class="opciones"><summary>${v ? "Cambiar producto" : `Elegir coincidencia (${opciones.length})`}</summary><label>Producto en ${esc(s)}<select data-fav="${id}" data-store="${esc(s)}" aria-label="Producto equivalente en ${esc(s)}"><option value="">Selecciona marca y presentación</option>${opciones.map((x, i) => `<option value="${i}">${esc(x.nombre)} · ${fmt(x.precio)}</option>`).join("")}</select></label><small>Se usará esta presentación para calcular tu compra.</small></details>` : "";
-        if (!v) return `<td class="na"><span>${pendientes.has(f.id) ? "Consultando…" : f.fallos?.includes(s) ? "Tienda sin respuesta" : f.sin?.[s] ? "Descartado por ti" : "Sin coincidencia"}</span>${selector}</td>`;
+        const v = f.t[s], opciones = candidatos.get(f)?.get(s) || [];
+        const selector = opciones.length || v ? `<details class="opciones"><summary>${v ? "Cambiar producto" : `Elegir coincidencia (${opciones.length})`}</summary><label>Producto en ${esc(s)}<select data-fav="${id}" data-store="${esc(s)}" aria-label="Producto equivalente en ${esc(s)}"><option value="">Selecciona marca y presentación</option>${opciones.map((x, i) => `<option value="${i}">${esc(x.nombre)} · ${fmt(x.precio)}</option>`).join("")}${v ? `<option value="ninguno">No está en esta tienda</option>` : ""}</select></label><small>Se usará esta presentación para calcular tu compra.</small></details>` : "";
+        if (!v) return `<td class="na"><span>${consultando ? "Consultando…" : f.fallos?.includes(s) ? "Tienda sin respuesta" : f.sin?.[s] ? "Descartado por ti" : "Sin coincidencia"}</span>${selector}</td>`;
         const p = v.url ? `<a href="${esc(v.url)}" target="_blank" rel="noopener">${fmt(v.p)}</a>` : fmt(v.p);
         return `<td class="${v.p === min && ps.length > 1 ? "best" : ""}">${p}<small class="product-source">${esc(v.nom || f.n)}</small>${v.f ? `<small class="f">al ${fecha(v.f)}${v.manual ? " · Elegido por ti" : ""}</small>` : ""}${selector}</td>`;
       }).join("") +
@@ -268,44 +325,47 @@ function pintarFav() {
   $("favmix").textContent = `Comprando cada producto donde es más barato: ${fmt(mix)} (${Object.entries(por).map(([s, n]) => `${n} unidad(es) en ${s}`).join(", ")})` +
     (sinPrecio ? `. Total parcial: ${sinPrecio} producto(s) sin precio.` : "") +
     (gan && mix < min - 0.004 ? `. Ahorras ${fmt(min - mix)} frente a comprar todo en ${gan.s}.` : ".");
-  pintarEntrena();
+  pintarAyuda();
 }
+function descartar(f, s) { f.sin = { ...f.sin, [s]: true }; delete f.t[s]; }
 
-// ---------- Registro de decisiones y entrenamiento de la base ----------
-const REGK = "canasta-sv-registro-v1";
-let REG = [];
-try { REG = JSON.parse(localStorage.getItem(REGK) || "[]"); } catch {}
-REG = Array.isArray(REG) ? REG.filter(x => x && typeof x.fecha === "string" && x.ref && typeof x.tienda === "string") : [];
-const guardarReg = () => { try { localStorage.setItem(REGK, JSON.stringify(REG)); } catch {} };
-function anotar(f, tienda, accion, v) {   // accion: eligio | confirmo | ninguno
-  REG.push({ fecha: new Date().toISOString(), ref: { n: f.n, m: f.m || "", q: f.q || null, u: f.u || null }, tienda, accion,
-    producto: v ? { id: v.id || "", nombre: v.nom || "", precio: v.p ?? null, url: v.url || "" } : null });
-  if (REG.length > 500) REG.shift();
-  guardarReg();
+// ---------- Descargar la lista: PDF (impresión del navegador) o Excel ----------
+const archivo = () => (norm(ACTIVA.nombre).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "lista") + "-" + hoy();
+const nota = () => `Canasta SV · ${new Date().toLocaleDateString("es-SV", { day: "numeric", month: "long", year: "numeric" })} · Precios en USD de las tiendas en línea; pueden variar en sala. Una tienda sin precio no cuenta como $0.`;
+function descargar(nombre, datos, tipo) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([datos], { type: tipo })); a.download = nombre;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
-function descartar(f, s) { const v = f.t[s]; f.sin = { ...f.sin, [s]: true }; delete f.t[s]; anotar(f, s, "ninguno", v); }
-// Grupos de productos que confirmaste como equivalentes (formato de scraper/equivalencias.json).
-// Solo entran precios del catálogo o elegidos por ti; un enlace de búsqueda no identifica un producto.
+$("favxlsx").onclick = () => descargar(archivo() + ".xlsx", Exportar.xlsx(ACTIVA.nombre, nota(), Exportar.tablaLista(FAV, tiendasFav(), tam)),
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+$("favpdf").onclick = () => {
+  const t = Exportar.tablaLista(FAV, tiendasFav(), tam);
+  const celda = (v, i) => typeof v === "number" && i !== 3 ? fmt(v) : esc(String(v));
+  const filas = (lista, etq) => lista.map(f => `<tr>${f.map((v, i) => `<${etq}>${celda(v, i)}</${etq}>`).join("")}</tr>`).join("");
+  $("imprimir").innerHTML = `<h1>${esc(ACTIVA.nombre)}</h1><p>${esc(nota())}</p><table><thead>${filas([t.cabecera], "th")}</thead><tbody>${filas(t.filas, "td")}</tbody><tfoot>${filas(t.pie, "td")}</tfoot></table>`;
+  // El título de la página es el nombre que el navegador propone para el PDF
+  const titulo = document.title;
+  document.title = archivo();
+  window.addEventListener("afterprint", () => { document.title = titulo; }, { once: true });
+  window.print();
+};
+
+// ---------- Pregunta al pie: compartir las comparaciones que cambiaste en la tabla ----------
+// Solo entran grupos con al menos un producto elegido en la tabla; junto a él van los del catálogo o elegidos por ti.
+// Un enlace de búsqueda no identifica un producto.
 function equivalenciasLocal() {
-  const out = [];
-  for (const f of FAV) {
+  const out = new Map();
+  for (const f of todos()) {
     const es = Object.entries(f.t).filter(([, v]) => (v.manual || v.src === "cat") && (v.id || (v.url && !/[?&]q=/.test(v.url))));
-    if (es.length >= 2 && es.some(([, v]) => v.manual))
-      out.push(es.map(([s, v]) => ({ tienda: s, id: v.id ? String(v.id) : "", url: v.url || "", nombre: v.nom || "" })));
+    if (es.length < 2 || !es.some(([, v]) => v.cambio)) continue;
+    const g = es.map(([s, v]) => ({ tienda: s, id: v.id ? String(v.id) : "", url: v.url || "", nombre: v.nom || "" }));
+    out.set(claveGrupo(g), g);
   }
-  return out;
+  return [...out.values()];
 }
 const claveGrupo = g => g.map(x => x.tienda + "#" + (x.id || x.url)).sort().join("|");
-async function armarEquivalencias() {   // junta lo que ya está publicado con lo nuevo
-  let base = [];
-  try { const r = await fetch("scraper/equivalencias.json", { cache: "no-store" }); if (r.ok) { const j = await r.json(); if (Array.isArray(j)) base = j; } } catch {}
-  const vistos = new Set(base.map(claveGrupo));
-  for (const g of equivalenciasLocal()) if (!vistos.has(claveGrupo(g))) { base.push(g); vistos.add(claveGrupo(g)); }
-  return base;
-}
-const descargar = (nombre, obj) => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(obj, null, 1)], { type: "application/json" })); a.download = nombre; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
-
-// ---------- Pregunta al pie: compartir las comparaciones nuevas ----------
 const ENVK = "canasta-sv-aportes-v1";
 let ENV = {}, graciasHasta = 0;
 try { ENV = JSON.parse(localStorage.getItem(ENVK) || "{}"); } catch {}
@@ -313,23 +373,16 @@ if (!ENV || typeof ENV !== "object" || Array.isArray(ENV)) ENV = {};
 const guardarEnv = () => { try { localStorage.setItem(ENVK, JSON.stringify(ENV)); } catch {} };
 const aportesPendientes = () => equivalenciasLocal().filter(g => !ENV[claveGrupo(g)]);   // ENV[clave] = "enviado" | "no"
 function pintarAyuda() {
-  const p = aportesPendientes();
+  const p = window.API_VIVO ? aportesPendientes() : [];
   $("ayuda").hidden = !p.length && Date.now() > graciasHasta;
   if (!p.length) return;
-  if ($("ayudadet").hidden) $("ayudamsg").textContent = `Tienes ${p.length} comparación(es) nueva(s) que confirmaste. Si las compartes, mejoran la base para todos.`;
+  if ($("ayudadet").hidden) $("ayudamsg").textContent = `Cambiaste ${p.length} comparación(es) en la tabla de precios. Si las compartes, mejoran la base para todos.`;
   $("ayudalista").innerHTML = p.map(g => `<li><b>${esc(g[0].nombre)}</b> — ${g.map(x => esc(x.tienda)).join(" ↔ ")}</li>`).join("");
-  $("aenviar").hidden = !window.API_VIVO; $("acorreo").hidden = !window.CORREO_APORTES;
 }
 const cerrarAyuda = () => { $("ayudadet").hidden = true; $("ayudasn").hidden = false; };
 $("ayudasi").onclick = () => { $("ayudadet").hidden = false; $("ayudasn").hidden = true; $("aest").textContent = ""; $("ayudamsg").textContent = "Esto es lo que se enviaría:"; };
 $("ayudano").onclick = () => { for (const g of aportesPendientes()) ENV[claveGrupo(g)] = "no"; guardarEnv(); pintarAyuda(); };
 $("acancel").onclick = () => { cerrarAyuda(); pintarAyuda(); };
-$("adesc").onclick = () => descargar("aporte-equivalencias.json", aportesPendientes());
-$("acorreo").onclick = () => {
-  descargar("aporte-equivalencias.json", aportesPendientes());
-  $("aest").textContent = "Se descargó el archivo. Adjúntalo al correo que se abrirá.";
-  location.href = `mailto:${window.CORREO_APORTES}?subject=${encodeURIComponent("Aporte de equivalencias - Canasta SV")}&body=${encodeURIComponent("Adjunto el archivo aporte-equivalencias.json.")}`;
-};
 $("aenviar").onclick = async () => {
   const p = aportesPendientes(); $("aest").textContent = "Enviando…";
   try {
@@ -338,28 +391,15 @@ $("aenviar").onclick = async () => {
     p.forEach(g => { ENV[claveGrupo(g)] = "enviado"; }); guardarEnv();
     cerrarAyuda(); graciasHasta = Date.now() + 8000; $("ayudamsg").textContent = "¡Gracias! Tu aporte se envió" + (j.numero ? ` (#${j.numero})` : "") + " y será revisado.";
     setTimeout(pintarAyuda, 8100);
-  } catch (e) { $("aest").textContent = "No se pudo enviar: " + e.message + ". Puedes descargar el archivo o prepararlo por correo."; }
+  } catch (e) { $("aest").textContent = "No se pudo enviar: " + e.message + ". Puedes intentarlo más tarde."; }
 };
-function pintarEntrena() {
-  pintarAyuda();
-  $("entrena").hidden = !FAV.length && !REG.length;
-  if ($("entrena").hidden) return;
-  const estado = v => v.manual ? "Confirmado por ti" : v.src === "cat" ? "Catálogo" : "Automático (sin confirmar)", filas = [];
-  for (const f of FAV) for (const [s, v] of Object.entries(f.t)) filas.push([f, s, v]);
-  $("tent").innerHTML = filas.length ? `<thead><tr><th>Producto de referencia</th><th>Tienda</th><th>Producto encontrado</th><th>Estado</th><th>¿Es el mismo?</th></tr></thead><tbody>` +
-    filas.map(([f, s, v]) => `<tr><td>${esc(f.n)}</td><td>${esc(s)}</td><td>${esc(v.nom || "")}<small>${fmt(v.p)}</small></td><td>${estado(v)}</td><td><span class="stp">${!v.manual && v.src !== "cat" ? `<button data-a="ok" data-id="${esc(f.id)}" data-s="${esc(s)}">✓ Sí</button>` : ""}<button class="rm" data-a="no" data-id="${esc(f.id)}" data-s="${esc(s)}">✗ No</button></span></td></tr>`).join("") + "</tbody>" : "";
-  $("nreg").textContent = REG.length;
-  $("treg").innerHTML = REG.length ? `<thead><tr><th>Fecha</th><th>Referencia</th><th>Tienda</th><th>Decisión</th><th>Producto</th></tr></thead><tbody>` +
-    [...REG].reverse().slice(0, 100).map(x => `<tr><td>${esc(x.fecha.slice(0, 16).replace("T", " "))}</td><td>${esc(x.ref.n)}</td><td>${esc(x.tienda)}</td><td>${{ eligio: "Eligió", ninguno: "Descartó", confirmo: "Confirmó" }[x.accion] || ""}</td><td>${esc(x.producto ? x.producto.nombre : "—")}</td></tr>`).join("") + "</tbody>" : "";
-  $("entmsg").textContent = `${equivalenciasLocal().length} equivalencia(s) listas para entrenar la base · ${REG.length} decisión(es) en el registro.`;
-}
 
 // ---------- Pestañas y eventos ----------
 function pestana(n) {
   for (const i of [1, 2, 3]) { $("p" + i).hidden = i !== n; $("tab" + i).setAttribute("aria-selected", i === n); $("tab" + i).tabIndex = i === n ? 0 : -1; }
   if (n === 1) render(); if (n === 2) pintarVivo();
   // Al abrir Favoritos se consultan los que no se actualizaron hoy
-  if (n === 3) { pintarFav(); if (window.API_VIVO) actualizarLista(FAV.filter(f => (f.consultado || "").slice(0, 10) !== hoy())); }
+  if (n === 3) { pintarFav(); actualizarViejos(); }
 }
 $("tab1").onclick = () => pestana(1);
 $("tab2").onclick = () => { pestana(2); $("qv").focus(); };
@@ -376,51 +416,49 @@ $("mas").onclick = () => { limite += 60; render(); };
 $("tabla").onclick = e => {
   if (e.target.classList.contains("envivo")) { $("qv").value = $("q").value.trim(); pestana(2); vivo($("qv").value); return; }
   const b = e.target.closest(".star");
-  if (b) { const it = D.items[+b.dataset.i]; alternar(favoritoItem(it) || favDeItem(it), b); render(); pintarVivo(); }
+  if (b) abrirListas({ tipo: "item", x: D.items[+b.dataset.i] });
 };
 $("fvivo").onsubmit = e => { e.preventDefault(); const q = $("qv").value.trim(); if (q.length >= 2) vivo(q); };
 $("ordv").onchange = pintarVivo;
 $("tv").onclick = e => {
   const b = e.target.closest(".star"), x = b && RV.find(r => r.id === b.dataset.id);
-  if (x) { alternar(favoritoVivo(x) || favDeVivo(x), b); pintarVivo(); render(); }
+  if (x) abrirListas({ tipo: "vivo", x });
 };
 $("tfav").onclick = e => {
   const b = e.target.closest("button"), f = b && FAV.find(x => x.id === b.dataset.id); if (!f) return;
   if (b.dataset.a === "refresh") { completarFavorito(f); return; }
-  if (b.dataset.a === "rm") { cancelar(f.id); FAV.splice(FAV.indexOf(f), 1); }
+  if (b.dataset.a === "rm") { cancelar(f); FAV.splice(FAV.indexOf(f), 1); }
   else f.cant = Math.max(1, Math.min(99, f.cant + (b.dataset.a === "mas" ? 1 : -1)));
   guardar(); pintarFav(); pintarVivo(); render();
 };
 $("tfav").onchange = e => {
   if (e.target.matches("select[data-fav]")) {
-    const f = FAV.find(x => x.id === e.target.dataset.fav), s = e.target.dataset.store;
-    const x = e.target.value !== "" && candidatos.get(f?.id)?.get(s)?.[Number(e.target.value)];
-    if (x) {
-      f.t[s] = { p: x.precio, url: x.url, nom: x.nombre, ref: idVivo(x), id: pidDe(x), f: f.consultado || fechaRV || hoy(), manual: true };
+    const f = FAV.find(x => x.id === e.target.dataset.fav), s = e.target.dataset.store; if (!f) return;
+    if (e.target.value === "ninguno") descartar(f, s);
+    else {
+      const x = e.target.value !== "" && candidatos.get(f)?.get(s)?.[Number(e.target.value)];
+      if (!x) return;
+      f.t[s] = { p: x.precio, url: x.url, nom: x.nombre, ref: idVivo(x), id: pidDe(x), f: f.consultado || fechaRV || hoy(), manual: true, cambio: true };
       if (f.sin) delete f.sin[s];
-      anotar(f, s, "eligio", f.t[s]);
-      guardar(); pintarFav(); pintarVivo(); render();
     }
+    guardar(); pintarFav(); pintarVivo(); render();
     return;
   }
   const f = e.target.classList.contains("qty") && FAV.find(x => x.id === e.target.dataset.id);
   if (f) { f.cant = Math.max(1, Math.min(99, parseInt(e.target.value) || 1)); guardar(); pintarFav(); }
 };
-$("tent").onclick = e => {
-  const b = e.target.closest("button"), f = b && FAV.find(x => x.id === b.dataset.id); if (!f || !f.t[b.dataset.s]) return;
-  const s = b.dataset.s;
-  if (b.dataset.a === "ok") { f.t[s].manual = true; anotar(f, s, "confirmo", f.t[s]); } else descartar(f, s);
-  guardar(); pintarFav(); pintarVivo(); render();
+$("lsel").onchange = e => { const l = LISTAS.find(x => x.id === e.target.value); if (l) { activar(l); pintarFav(); actualizarViejos(); } };
+$("lnueva").onclick = () => { const n = prompt("Nombre de la nueva lista:"); if (n && n.trim()) { activar(crearLista(n)); pintarFav(); } };
+$("lrenombrar").onclick = () => { const n = prompt("Nuevo nombre de la lista:", ACTIVA.nombre); if (n && n.trim()) { ACTIVA.nombre = n.trim().slice(0, 40); guardar(); pintarFav(); } };
+$("lborrar").onclick = () => {
+  if (!confirm(`¿Eliminar la lista «${ACTIVA.nombre}» y sus ${FAV.length} producto(s)?`)) return;
+  FAV.forEach(cancelar);
+  LISTAS.splice(LISTAS.indexOf(ACTIVA), 1);
+  if (!LISTAS.length) LISTAS.push({ id: "l1", nombre: "Mi lista", items: [] });
+  activar(LISTAS[0]); pintarFav(); pintarVivo(); render();
 };
-$("expeq").onclick = async () => descargar("equivalencias.json", await armarEquivalencias());
-$("expcopy").onclick = async () => {
-  try { await navigator.clipboard.writeText(JSON.stringify(await armarEquivalencias(), null, 1)); $("entmsg").textContent = "Copiado. Pégalo en scraper/equivalencias.json de GitHub."; }
-  catch { $("entmsg").textContent = "No se pudo copiar; usa «Descargar»."; }
-};
-$("expreg").onclick = () => descargar("registro-decisiones.json", REG);
-$("reglimp").onclick = () => { if (confirm("¿Borrar el registro de decisiones? No afecta tus favoritos.")) { REG = []; guardarReg(); pintarEntrena(); } };
-$("favclear").onclick = () => { if (confirm("¿Vaciar toda la lista de favoritos?")) { pendientes.forEach((_, id) => cancelar(id)); candidatos.clear(); FAV = []; guardar(); pintarFav(); pintarVivo(); render(); } };
-$("favrefresh").onclick = () => actualizarLista([...FAV]);
+$("favclear").onclick = () => { if (confirm(`¿Vaciar la lista «${ACTIVA.nombre}»?`)) { FAV.forEach(cancelar); FAV.length = 0; guardar(); pintarFav(); pintarVivo(); render(); } };
+$("favrefresh").onclick = () => actualizarItems([...FAV]);
 
 contar();
 pintarFav();

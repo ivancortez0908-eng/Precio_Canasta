@@ -27,22 +27,25 @@ Se configuran en `scraper/tiendas.mjs`.
 
 Para ampliar la cobertura, agrega términos a `scraper/canasta.json`. Revisa términos de uso y `robots.txt` antes de activar cada tienda.
 
-## Favoritos
-Marca la ☆ en un producto: queda como **referencia**. La página lo busca en todas las tiendas (usa el Worker de la búsqueda en vivo) y arma el comparativo: precio por tienda, cantidad (1 a 99) y total de la compra en cada tienda.
-- Solo se asigna un producto automáticamente si coinciden marca, nombre/variante y presentación, y hay una sola opción en esa tienda. Si hay varias o ninguna segura, la celda ofrece **Elegir coincidencia**; con **Cambiar producto** eliges otra presentación.
+## Listas de favoritos
+Marca la ☆ en un producto del catálogo o de la búsqueda en vivo: se abre **Guardar en una lista**, donde marcas en qué listas va o creas una nueva. Un producto puede estar en varias listas y cada una guarda su propia cantidad y sus elecciones.
+
+En la pestaña **Favoritos** eliges la lista que quieres ver y puedes crear otra, renombrarla o eliminarla. Para cada producto la página lo busca en todas las tiendas (usa el Worker de la búsqueda en vivo) y arma el comparativo: precio por tienda, cantidad (1 a 99) y total de la compra en cada tienda.
+- Solo se asigna un producto automáticamente si coinciden marca, nombre/variante y presentación, y hay una sola opción en esa tienda. Si hay varias o ninguna segura, la celda ofrece **Elegir coincidencia**; con **Cambiar producto** eliges otra presentación o indicas que **no está en esta tienda** (ya no se vuelve a llenar sola).
 - Si la primera búsqueda no encuentra el producto, se prueba con la marca y las palabras clave del nombre.
 - Una tienda sin coincidencia o que no respondió no cuenta como $0: su total sale como **parcial** y no puede ganar la comparación.
-- Se actualiza al abrir la pestaña si no se consultó hoy, con **Actualizar precios** o con **Consultar tiendas** en cada fila. Si la red falla se conservan los precios guardados con su fecha.
-- La lista se guarda en el navegador (no en GitHub).
+- Se actualiza al abrir la pestaña o cambiar de lista si no se consultó hoy, con **Actualizar precios** o con **Consultar tiendas** en cada fila. Si la red falla se conservan los precios guardados con su fecha.
+- Las listas se guardan en el navegador (no en GitHub). La primera vez, la lista anterior pasa a «Mi lista».
 
-La interfaz está en `index.html` (diseño), `app.js` (comportamiento) y `comparador.js` (reglas de equivalencia y totales). Se publican juntos.
+### Descargar la lista
+- **Descargar Excel:** genera un archivo `.xlsx` con cada producto, su cantidad, el precio en cada tienda, dónde conviene comprarlo, la fecha del precio y los totales por tienda (marcados como parciales si faltan productos).
+- **Descargar PDF:** abre la ventana de impresión del navegador con la misma tabla; elige **Guardar como PDF** como destino.
 
-## Entrenar la comparación
-En Favoritos, el cuadro **Entrenar la comparación** lista qué producto encontró cada tienda y su estado (catálogo, automático o confirmado). Con ✓ / ✗ confirmas o descartas; lo que eliges con «cambiar» también cuenta. Cada decisión queda en el **registro** (en tu navegador; se puede descargar). **Descargar equivalencias.json** une lo ya publicado con tus nuevas confirmaciones: reemplaza `scraper/equivalencias.json` con ese archivo y corre la acción. El emparejador las usa por id o por enlace y esos productos salen como «Equivalencia verificada».
+La interfaz está en `index.html` (diseño), `app.js` (comportamiento), `comparador.js` (reglas de equivalencia y totales) y `exportar.js` (Excel y tabla para PDF). Se publican juntos.
 
 ## Aportes de comparaciones (pregunta al pie de la página)
-Cuando un usuario confirma comparaciones nuevas, al pie aparece «¿Nos ayudas con las nuevas comparaciones que utilizaste? Sí / No». Si dice Sí ve qué se enviaría y puede **enviarlo al proyecto**, **descargar el archivo** o **preparar un correo** (si `config.js` define `window.CORREO_APORTES`).
-- **Enviar al proyecto:** el Worker valida el aporte y crea una *issue* en GitHub con la lista y el JSON. Tú la revisas y le pones la etiqueta `aprobado`: el workflow `aplicar-aporte.yml` la une a `scraper/equivalencias.json` y la cierra. Nada entra a la base sin tu aprobación.
+Cuando eliges o cambias a mano un producto en la tabla de precios de Favoritos, al pie aparece «¿Nos ayudas con las comparaciones que cambiaste? Sí / No». Si dice Sí, la persona ve qué se enviaría y puede **enviarlo al proyecto**. Las coincidencias automáticas nunca se envían.
+- **Enviar al proyecto:** el Worker valida el aporte y crea una *issue* en GitHub con la lista y el JSON. Tú la revisas y le pones la etiqueta `aprobado`: el workflow `aplicar-aporte.yml` la une a `scraper/equivalencias.json` y la cierra. Nada entra a la base sin tu aprobación. El emparejador usa esas equivalencias por id o por enlace y esos productos salen como «Equivalencia verificada».
 - **Activarlo:** (1) crea un token fine-grained de GitHub solo para este repositorio con permiso *Issues: Read and write*; (2) en Cloudflare agrega el secreto `GITHUB_TOKEN_APORTES` y, si el repositorio no es `ivancortez0908-eng/Precio_Canasta`, la variable `GITHUB_REPO`; (3) crea en GitHub la etiqueta `aprobado`.
 
 ## Búsqueda en vivo (producto específico)
