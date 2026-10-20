@@ -3,6 +3,7 @@
 // y devuelve los resultados en JSON. Guarda cada consulta 10 minutos en caché para no repetir peticiones.
 const UA = "CanastaSV/1.0 (comparador de precios sin fines de lucro)";
 const MAX = 12; // resultados por tienda
+const VERSION = "2026-10-18-b"; // aparece en cada respuesta: sirve para saber qué código está desplegado
 
 // ---- tamaños (misma lógica que scraper/normalizar.mjs) ----
 const RE = /(?<![\d.,])(?:(\d+)\s*[x×]\s*)?(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|mg|lbs?|libras?|oz|ml|lts?|litros?|l|gal(?:on(?:es)?)?)(?![a-z])/i;
@@ -154,8 +155,11 @@ async function aporte(req, env, ctx, salida) {
   const llave = new Request("https://canasta.cache/aporte/" + (req.headers.get("CF-Connecting-IP") || "?"));
   const hayCache = typeof caches !== "undefined";
   if (hayCache && await caches.default.match(llave)) return salida({ error: "Espera unos minutos antes de enviar otro aporte." }, 429);
-  const cuerpo = ["Aporte enviado desde el sitio. Para aplicarlo a la base, agrega la etiqueta `aprobado`.", "",
-    ...grupos.map((g, i) => `**${i + 1}.** ` + g.map(x => `${x.tienda}: ${x.nombre || x.id}`).join(" ↔ ")), "", "```json", JSON.stringify(grupos, null, 1), "```"].join("\n");
+  const tabla = (g, i) => [`### Comparación ${i + 1}`, "", "| Tienda | Producto | Enlace |", "|---|---|---|",
+    ...g.map(x => `| ${x.tienda} | ${x.nombre || x.id} | ${x.url ? `[ver producto](${x.url})` : "—"} |`), ""].join("\n");
+  const cuerpo = ["Aporte enviado desde el sitio.", "",
+    "**Para aplicarlo a la base:** revisa que cada tabla sea el mismo producto y agrega la etiqueta `aprobado`. **Para rechazarlo:** ciérralo como *not planned*.", "",
+    ...grupos.map(tabla), "<details><summary>JSON (lo usa la automatización)</summary>", "", "```json", JSON.stringify(grupos, null, 1), "```", "", "</details>"].join("\n");
   const r = await fetch(`https://api.github.com/repos/${env.GITHUB_REPO || "ivancortez0908-eng/Precio_Canasta"}/issues`, {
     method: "POST",
     headers: { authorization: `Bearer ${env.GITHUB_TOKEN_APORTES}`, accept: "application/vnd.github+json", "user-agent": UA, "x-github-api-version": "2022-11-28", "content-type": "application/json" },
@@ -185,19 +189,26 @@ export default {
 
     const solo = (new URL(req.url).searchParams.get("tiendas") || "").split(",").map(x => x.trim()).filter(Boolean);
     const nombres = Object.keys(TIENDAS).filter(n => (!solo.length || solo.includes(n)) && (n !== "PriceSmart" || env.PRICESMART_KEY));
+    const fresco = new URL(req.url).searchParams.has("fresh");   // ?fresh=1 salta la caché (para diagnosticar)
     const hayCache = typeof caches !== "undefined";
     const llave = new Request("https://canasta.cache/" + encodeURIComponent(sinAcento(q)) + "/" + nombres.join(","));
-    if (hayCache) { const hit = await caches.default.match(llave); if (hit) return salida(await hit.json(), 200, { "x-cache": "HIT" }); }
+    if (hayCache && !fresco) { const hit = await caches.default.match(llave); if (hit) return salida(await hit.json(), 200, { "x-cache": "HIT" }); }
 
-    const res = await Promise.allSettled(nombres.map(n => TIENDAS[n](q, env)));
+    const res = await Promise.allSettled(nombres.map(async n => {
+      const t0 = Date.now();
+      try { return { v: await TIENDAS[n](q, env), ms: Date.now() - t0 }; }
+      catch (e) { e.ms = Date.now() - t0; throw e; }
+    }));
     const tiendas = {}, resultados = [];
     res.forEach((r, i) => {
-      if (r.status === "fulfilled") { tiendas[nombres[i]] = { ok: true, n: r.value.length }; r.value.forEach(x => resultados.push(fila(nombres[i], x))); }
-      else tiendas[nombres[i]] = { ok: false, error: String(r.reason?.message || r.reason).slice(0, 80) };
+      if (r.status === "fulfilled") { tiendas[nombres[i]] = { ok: true, n: r.value.v.length, ms: r.value.ms }; r.value.v.forEach(x => resultados.push(fila(nombres[i], x))); }
+      else tiendas[nombres[i]] = { ok: false, error: String(r.reason?.message || r.reason).slice(0, 80), ms: r.reason?.ms };
     });
-    const cuerpo = { q, generado: new Date().toISOString(), tiendas, resultados };
-    if (hayCache && resultados.length) ctx.waitUntil(caches.default.put(llave,
+    const omitidas = Object.keys(TIENDAS).filter(n => !nombres.includes(n) && !solo.length).map(n => n + (n === "PriceSmart" ? " (falta la variable PRICESMART_KEY)" : ""));
+    const cuerpo = { version: VERSION, q, generado: new Date().toISOString(), tiendas, omitidas, resultados };
+    // Solo se guarda en caché si TODAS las tiendas respondieron: un fallo pasajero no debe repetirse 10 minutos
+    if (hayCache && resultados.length && Object.values(tiendas).every(t => t.ok)) ctx.waitUntil(caches.default.put(llave,
       new Response(JSON.stringify(cuerpo), { headers: { "content-type": "application/json", "cache-control": "max-age=600" } })));
-    return salida(cuerpo, 200, { "x-cache": "MISS" });
+    return salida(cuerpo, 200, { "x-cache": "MISS", "x-version": VERSION });
   }
 };
