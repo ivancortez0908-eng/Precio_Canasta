@@ -193,6 +193,7 @@ const pendiente = n => async function* () { throw new Error(n + ": adaptador pen
 export const TIENDAS = [
   { nombre: "Walmart",              activa: true,  catalogo: vtex("https://www.walmart.com.sv", "Walmart"), sonda: async () => { await sondear("https://www.walmart.com.sv"); await sondearProductos("https://www.walmart.com.sv"); } }, // VERIFICAR en la primera corrida
   { nombre: "Super Selectos",       activa: true,  catalogo: selectos() },
-  { nombre: "Despensa de Don Juan", activa: true,  catalogo: vtex("https://www.ladespensadedonjuan.com.sv", "Despensa de Don Juan"), sonda: () => sondear("https://www.ladespensadedonjuan.com.sv") } // VERIFICAR: es del grupo Walmart, pero no confirmado que use VTEX
+  { nombre: "Despensa de Don Juan", activa: true,  catalogo: vtex("https://www.ladespensadedonjuan.com.sv", "Despensa de Don Juan"), sonda: () => sondear("https://www.ladespensadedonjuan.com.sv") }, // VERIFICAR: es del grupo Walmart, pero no confirmado que use VTEX
+  { nombre: "Maxi Despensa",        activa: true,  catalogo: vtex("https://www.maxidespensa.com.sv", "Maxi Despensa"), sonda: () => sondear("https://www.maxidespensa.com.sv") } // tienda en línea de Walmart Centroamérica desde 2024; VERIFICAR en la primera corrida
 ];
 export const slug = n => n.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-");

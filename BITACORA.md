@@ -1,3 +1,21 @@
+# Bitácora — 20 de octubre de 2026 (Maxi Despensa)
+
+## Solicitud
+Agregar Maxi Despensa y Despensa Familiar a la comparación y la búsqueda en vivo.
+
+## Cambios
+- **Maxi Despensa** se agregó al Worker (búsqueda en vivo y favoritos) y al scraper (catálogo), con la misma consulta VTEX que Walmart y Despensa de Don Juan, sobre `https://www.maxidespensa.com.sv` (tienda en línea de Walmart Centroamérica desde julio de 2024). La versión del Worker pasa a `2026-10-20-a`.
+- **Despensa Familiar** no se agregó: no se encontró una tienda en línea en El Salvador (sus compras en línea en Guatemala van por el sitio de Maxi Despensa de ese país). Sin datos propios, aparecería siempre vacía.
+- La interfaz no necesitó cambios: toma las tiendas que reporta el Worker y las del catálogo.
+
+## Validación
+- Worker probado sin red con una respuesta VTEX simulada: Maxi Despensa aparece en `tiendas` y sus resultados traen tamaño y precio por unidad.
+- `node --test tests/canasta.test.cjs`, `node --check` y `node tests/interfaz.cjs` (ahora con una cuarta tienda) aprobados.
+
+## Límites
+- Desde este entorno no fue posible abrir `maxidespensa.com.sv` (la red bloquea sitios externos), así que no se confirmó que use VTEX. Si no lo usa, el Worker la mostrará como «no respondió» sin afectar a las demás tiendas, y el workflow de catálogo registrará el fallo y seguirá con las otras.
+- Para que aparezca en la búsqueda en vivo hay que pegar el nuevo `worker/worker.js` en Cloudflare.
+
 # Bitácora — 20 de octubre de 2026 (segunda entrega)
 
 ## Solicitud

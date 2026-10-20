@@ -23,7 +23,8 @@ Cada fila muestra marca, tamaño y la descripción de cada tienda (desplegable �
 ## Tiendas
 Se configuran en `scraper/tiendas.mjs`.
 - **Super Selectos:** su página entrega el HTML ya armado. El scraper lee páginas de búsqueda (una por cada término de `scraper/canasta.json`) y unas pocas categorías, con 3 segundos de pausa entre peticiones. No descarga todo el catálogo: su `robots.txt` rechaza la extracción masiva. Solo se lee la primera página de cada búsqueda.
-- **Walmart** y **Despensa de Don Juan:** tiendas VTEX del mismo grupo; comparten muchos IDs de producto, pero cada una tiene sus propios precios. Si la consulta directa desde GitHub no devuelve productos, el scraper usa el Worker como puente.
+- **Walmart**, **Despensa de Don Juan** y **Maxi Despensa:** tiendas VTEX del mismo grupo (Walmart Centroamérica); comparten muchos IDs de producto, pero cada una tiene sus propios precios. Si la consulta directa desde GitHub no devuelve productos, el scraper usa el Worker como puente.
+- **Despensa Familiar:** no se incluye porque no tiene tienda en línea en El Salvador.
 
 Para ampliar la cobertura, agrega términos a `scraper/canasta.json`. Revisa términos de uso y `robots.txt` antes de activar cada tienda.
 
