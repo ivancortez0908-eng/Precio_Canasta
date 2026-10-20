@@ -296,19 +296,18 @@ function pintarFav() {
   $("favrefresh").disabled = actualizando || pendientes.size > 0;
   $("favrefresh").textContent = pendientes.size ? `Consultando ${pendientes.size} producto(s)…` : "Actualizar precios";
   if (!FAV.length) { $("tfav").innerHTML = ""; pintarAyuda(); return; }
-  let h = `<thead><tr><th>Producto</th>${S.map(s => `<th>${esc(s)}</th>`).join("")}<th>Cantidad</th><th></th></tr></thead><tbody>`;
+  let h = `<thead><tr><th>Producto y cantidad</th>${S.map(s => `<th>${esc(s)}</th>`).join("")}</tr></thead><tbody>`;
   for (const f of FAV) {
     const ps = Object.values(f.t).map(v => v.p), min = Math.min(...ps), id = esc(f.id), consultando = pendientes.has(f);
-    h += `<tr><td>${esc(f.n)}<small>${f.m ? `<span class="marca">${esc(f.m)}</span>` : "Marca no indicada"}${tam(f) ? " · " + tam(f) : ""}</small><small class="consulta">${esc(consultando ? "Consultando las tiendas…" : f.estado || "Precios guardados. Actualiza para consultar las tiendas.")}</small><button class="retry" data-a="refresh" data-id="${id}" ${consultando ? "disabled" : ""}>Consultar tiendas</button></td>` +
+    h += `<tr><td>${esc(f.n)}<small>${f.m ? `<span class="marca">${esc(f.m)}</span>` : "Marca no indicada"}${tam(f) ? " · " + tam(f) : ""}</small><small class="consulta">${esc(consultando ? "Consultando las tiendas…" : f.estado || "Precios guardados. Actualiza para consultar las tiendas.")}</small><span class="filafav"><span class="stp"><button data-a="menos" data-id="${id}" aria-label="Menos">−</button><input class="qty" type="number" min="1" max="99" value="${f.cant}" data-id="${id}" aria-label="Cantidad de ${esc(f.n)}"><button data-a="mas" data-id="${id}" aria-label="Más">+</button></span>` +
+      `<button class="rm" data-a="rm" data-id="${id}">Quitar</button></span><button class="retry" data-a="refresh" data-id="${id}" ${consultando ? "disabled" : ""}>Consultar tiendas</button></td>` +
       S.map(s => {
         const v = f.t[s], opciones = candidatos.get(f)?.get(s) || [];
         const selector = opciones.length || v ? `<details class="opciones"><summary>${v ? "Cambiar producto" : `Elegir coincidencia (${opciones.length})`}</summary><label>Producto en ${esc(s)}<select data-fav="${id}" data-store="${esc(s)}" aria-label="Producto equivalente en ${esc(s)}"><option value="">Selecciona marca y presentación</option>${opciones.map((x, i) => `<option value="${i}">${esc(x.nombre)} · ${fmt(x.precio)}</option>`).join("")}${v ? `<option value="ninguno">No está en esta tienda</option>` : ""}</select></label><small>Se usará esta presentación para calcular tu compra.</small></details>` : "";
         if (!v) return `<td class="na"><span>${consultando ? "Consultando…" : f.fallos?.includes(s) ? "Tienda sin respuesta" : f.sin?.[s] ? "Descartado por ti" : "Sin coincidencia"}</span>${selector}</td>`;
         const p = v.url ? `<a href="${esc(v.url)}" target="_blank" rel="noopener">${fmt(v.p)}</a>` : fmt(v.p);
         return `<td class="${v.p === min && ps.length > 1 ? "best" : ""}">${p}<small class="product-source">${esc(v.nom || f.n)}</small>${v.f ? `<small class="f">al ${fecha(v.f)}${v.manual ? " · Elegido por ti" : ""}</small>` : ""}${selector}</td>`;
-      }).join("") +
-      `<td><span class="stp"><button data-a="menos" data-id="${id}" aria-label="Menos">−</button><input class="qty" type="number" min="1" max="99" value="${f.cant}" data-id="${id}" aria-label="Cantidad de ${esc(f.n)}"><button data-a="mas" data-id="${id}" aria-label="Más">+</button></span></td>` +
-      `<td><button class="rm" data-a="rm" data-id="${id}">Quitar</button></td></tr>`;
+      }).join("") + "</tr>";
   }
   $("tfav").innerHTML = h + "</tbody>";
   const { res, mix, por, sinPrecio } = resumir(FAV, S);

@@ -1,3 +1,16 @@
+# Bitácora — 20 de octubre de 2026 (cantidad y Quitar ocultos)
+
+## Problema
+Con seis tiendas, la tabla de favoritos era más ancha que la pantalla. En computadora (900 px o más) el recuadro usaba `overflow:clip`, que recorta en vez de desplazar: las columnas «Cantidad» y «Quitar» quedaban fuera de la vista.
+
+## Cambios
+- Cantidad (− / +) y «Quitar» pasan a la primera columna («Producto y cantidad»), que queda fija al desplazarse; siempre están a la vista sin importar cuántas tiendas haya.
+- Las tablas se desplazan a lo ancho también en computadora (antes solo en móvil); el encabezado queda fijo dentro del recuadro.
+
+## Validación
+- `node tests/interfaz.cjs`: con seis tiendas en una ventana de 1000 px, «Más» y «Quitar» están en pantalla; la tabla se desplaza hasta PriceSmart y la primera columna sigue visible. Capturas de 1000 px y móvil revisadas.
+- `node --test tests/canasta.test.cjs` y `node --check` aprobados.
+
 # Bitácora — 20 de octubre de 2026 (Superea)
 
 ## Solicitud
