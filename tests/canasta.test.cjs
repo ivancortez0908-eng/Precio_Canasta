@@ -283,19 +283,25 @@ async function worker(respuestas) {
     return { pedidas, consultar: async q => (await w.fetch(new Request('https://w.test/?fresh=1&q=' + encodeURIComponent(q)), {}, { waitUntil() {} })).json() };
   } finally { fs.rmSync(tmp); setImmediate(() => { globalThis.fetch = original; }); }
 }
-test('Worker: quita tildes, lee ofertas claras de VTEX y de Selectos', async () => {
+test('Worker: quita tildes y lee las ofertas internas de VTEX (vigentes y que cuadran) y las de Selectos', async () => {
   const vtex = (id, nombre, Price, extra = {}) => ({ productId: id, productName: nombre, brand: 'Coca Cola', link: 'https://maxi.test/' + id + '/p',
     items: [{ sellers: [{ commertialOffer: { Price, AvailableQuantity: 5, ...extra } }] }] });
   const w = await worker({
-    'maxidespensa.com.sv/api': [vtex('1', 'Gaseosa Coca Cola Pet 1250 ml', 1.33, { ListPrice: 1.5, Teasers: [{ '<Name>k__BackingField': '2 x $2.20' }] }),
-      vtex('2', 'Gaseosa Coca Cola Pet 3000 ml', 2.49, { Teasers: [{ Name: 'PROMO INTERNA COCA' }] })],
+    // Formatos reales de Walmart Centroamérica (observados el 2026-10-21); fechas de fin futuras para que la prueba no caduque
+    'maxidespensa.com.sv/api': [
+      vtex('1', 'Gaseosa Coca Cola Pet 1250 ml', 1.33, { ListPrice: 1.5, PromotionTeasers: [{ Name: 'Promo,1.1x2,2026-09-17-2099-12-31-120535-14 TYPE_PROMO_GPP', Conditions: { MinimumQuantity: 2 } }] }),
+      vtex('2', 'Café Cappuccino Sobre - 25 g', .54, { Teasers: [{ '<Name>k__BackingField': 'PromoCombinaEnFijo,0.5x3,2026-10-05-2099-01-05-123044-14 TYPE_PROMO_CMF',
+        '<Conditions>k__BackingField': { '<MinimumQuantity>k__BackingField': 3 } }] }),
+      vtex('3', 'Gaseosa Coca Cola Pet 3000 ml', 2.49, { PromotionTeasers: [{ Name: 'Promo,2.1x2,2020-01-01-2020-12-31-1 TYPE_PROMO_GPP' }] }),   // vencida
+      vtex('4', 'Gaseosa Coca Cola Lata 354 ml', .78, { PromotionTeasers: [{ Name: 'Promo,0.7x2,2026-01-01-2099-12-31-1 TYPE_PROMO_GPP', Conditions: { MinimumQuantity: 3 } }] }),   // no cuadra
+      vtex('5', 'Gaseosa Coca Cola Pet 600 ml', .8, { PromotionTeasers: [{ Name: 'PROMO INTERNA COCA' }] })],
     'superselectos.com': fs.readFileSync(path.join(__dirname, 'datos', 'selectos-busqueda.html'), 'utf8')
   });
   const d = await w.consultar('Atún café ñame');
   assert.ok(w.pedidas.some(u => u.includes('superselectos.com/products?keyword=Atun%20cafe%20%C3%B1ame')), w.pedidas.join(' '));
   assert.ok(w.pedidas.some(u => u.includes('maxidespensa.com.sv/api/catalog_system/pub/products/search?ft=Atun%20cafe%20%C3%B1ame')));
   const maxi = d.resultados.filter(x => x.tienda === 'Maxi Despensa');
-  assert.deepEqual(maxi.map(x => [x.id, x.promo, x.antes]), [['1', '2 x $2.20', 1.5], ['2', null, null]]);
+  assert.deepEqual(maxi.map(x => [x.id, x.promo, x.antes]), [['1', '2 x $2.20', 1.5], ['2', '3 x $1.50', null], ['3', null, null], ['4', null, null], ['5', null, null]]);
   const sel = d.resultados.filter(x => x.tienda === 'Super Selectos');
   assert.deepEqual(sel.map(x => [x.id, x.precio, x.promo]), [['21702', .5, 'Seleccione 2X$0.90'], ['89275', 1.1, null]]);
 });

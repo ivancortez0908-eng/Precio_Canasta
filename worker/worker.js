@@ -3,7 +3,7 @@
 // y devuelve los resultados en JSON. Guarda cada consulta 10 minutos en caché para no repetir peticiones.
 const UA = "CanastaSV/1.0 (comparador de precios sin fines de lucro)";
 const MAX = 12; // resultados por tienda
-const VERSION = "2026-10-21-a"; // aparece en cada respuesta: sirve para saber qué código está desplegado
+const VERSION = "2026-10-21-b"; // aparece en cada respuesta: sirve para saber qué código está desplegado
 
 // ---- tamaños (misma lógica que scraper/normalizar.mjs) ----
 const RE = /(?<![\d.,])(?:(\d+)\s*[x×]\s*)?(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|mg|lbs?|libras?|oz|ml|lts?|litros?|l|gal(?:on(?:es)?)?)(?![a-z])/i;
@@ -61,6 +61,20 @@ const sinTilde = s => s.normalize("NFD").replace(/[\u0300-\u0302\u0304-\u036f]/g
 // Promociones por cantidad con texto claro: «2 x $2.20», «Seleccione 2X$0.90», «3x2». Otras no se interpretan.
 const PROMO = /^(?:seleccione\s+)?\d+\s*[x×]\s*(?:\$\s*\d+(?:[.,]\d{1,2})?|\d+)$/i;
 const promoDe = textos => textos.map(t => String(t || "").replace(/\s+/g, " ").trim()).find(t => PROMO.test(t)) || null;
+// Walmart, Maxi y Despensa de Don Juan publican sus ofertas con nombres internos (verificado el 2026-10-21):
+//   «Promo,1.1x2,2026-09-17-2026-12-31-… TYPE_PROMO_GPP»            = $1.10 c/u llevando 2 → «2 x $2.20»
+//   «PromoCombinaEnFijo,0.5x3,2026-10-05-2027-01-05-… TYPE_PROMO_CMF» = 3 por $1.50 (la tienda deja combinar
+//   productos de la promoción; aquí solo se aplica al mismo producto). Fuera de sus fechas no valen.
+function promoVtex(t, hoy) {
+  const nombre = t.Name ?? t["<Name>k__BackingField"];
+  const cond = t.Conditions ?? t["<Conditions>k__BackingField"] ?? {};
+  const minimo = cond.MinimumQuantity ?? cond["<MinimumQuantity>k__BackingField"];
+  const m = String(nombre || "").match(/^Promo(?:CombinaEnFijo)?,(\d+(?:\.\d+)?)x(\d+),(\d{4}-\d{2}-\d{2})-(\d{4}-\d{2}-\d{2})/);
+  if (!m) return promoDe([nombre]);
+  const n = +m[2];
+  if (n < 2 || (minimo != null && +minimo !== n) || hoy < m[3] || hoy > m[4]) return null;
+  return `${n} x $${(Math.round(+m[1] * n * 100) / 100).toFixed(2)}`;
+}
 
 async function pedir(url, accept, init = {}) {
   const c = new AbortController(), t = setTimeout(() => c.abort(), 8000);
@@ -74,15 +88,13 @@ async function pedir(url, accept, init = {}) {
 // ---- tiendas: cada una recibe el texto buscado y devuelve [{id,nombre,marca,precio,url}] ----
 const vtex = base => async q => {
   const r = await pedir(`${base}/api/catalog_system/pub/products/search?ft=${encodeURIComponent(sinTilde(q))}&_from=0&_to=${MAX - 1}`, "application/json");
-  const out = [];
+  const out = [], hoy = new Date(Date.now() - 6 * 36e5).toISOString().slice(0, 10);   // fecha de El Salvador (UTC−6)
   for (const it of await r.json()) {
     const o = it.items?.[0]?.sellers?.[0]?.commertialOffer;
     if (!o || !(o.Price > 0) || !(o.AvailableQuantity > 0)) continue;
-    // Nombres de las promociones activas (VTEX las envuelve como "<Name>k__BackingField" o "Name")
-    const textos = [...(o.Teasers || []), ...(o.PromotionTeasers || []), ...(o.DiscountHighLight || [])]
-      .flatMap(t => Object.entries(t || {}).filter(([k, v]) => /name/i.test(k) && typeof v === "string").map(([, v]) => v));
+    const promo = [...(o.PromotionTeasers || []), ...(o.Teasers || [])].map(t => promoVtex(t || {}, hoy)).find(Boolean) || null;
     out.push({ id: String(it.productId), nombre: it.productName, marca: it.brand || "", precio: o.Price, url: it.link || `${base}/${it.linkText}/p`,
-      promo: promoDe(textos), antes: o.ListPrice > o.Price ? o.ListPrice : null });
+      promo, antes: o.ListPrice > o.Price ? o.ListPrice : null });
   }
   return out;
 };

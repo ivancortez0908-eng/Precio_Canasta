@@ -1,3 +1,23 @@
+# Bitácora — 21 de octubre de 2026 (ofertas de Walmart, Maxi y Despensa)
+
+## Problema
+Con el Worker `2026-10-21-a` publicado, las tiendas VTEX devolvían `promo: null`.
+
+## Diagnóstico (con acceso a las tiendas reales)
+- Las ofertas sí vienen en el servicio de datos (`commertialOffer.PromotionTeasers` y `Teasers`), pero con nombres internos: `Promo,1.1x2,2026-09-17-2026-12-31-120535-14 TYPE_PROMO_GPP` (precio por unidad × cantidad mínima) y `PromoCombinaEnFijo,0.5x3,2026-10-05-2027-01-05-… TYPE_PROMO_CMF` (precio fijo por grupo, combinable entre productos de la promoción). `Conditions.MinimumQuantity` confirma la cantidad.
+- Coincide con lo que el otro proyecto vio en la página de Maxi: Coca Cola 1.25 L «2 x $2.20» (`1.1x2`) y 3 L «2 x $4.20» (`2.1x2`).
+- La página de búsqueda de la tienda ya no trae las ofertas en su HTML (las dibuja con JavaScript), así que el servicio de datos es la fuente correcta y la más ligera.
+
+## Cambios
+- `worker/worker.js` (versión `2026-10-21-b`): convierte esos nombres a «N x $T», solo si la oferta está vigente según sus fechas (hora de El Salvador) y la cantidad coincide con `MinimumQuantity`. «Combina» se aplica solo al mismo producto (cálculo prudente).
+
+## Validación
+- Worker ejecutado contra las tiendas reales: Walmart Oreo 12 Pack «2 x $5.50»; Maxi y Despensa, cappuccino Nescafé «3 x $1.50» y Coca Cola «2 x $2.20» / «2 x $2.26». La búsqueda con acentos («café nescafé») devolvió resultados. Maxi Despensa respondió correctamente.
+- Prueba del Worker con los formatos reales: vigente, combinable, vencida, cantidad que no cuadra y nombre desconocido. 23 pruebas aprobadas.
+
+## Límites
+- Con 3 unidades y «2 x $2.20» se calcula un grupo en oferta + 1 a precio normal; si la tienda cobrara las 3 a $1.10, el total real sería algo menor (nunca mayor).
+
 # Bitácora — 21 de octubre de 2026 (acentos, códigos de barras y ofertas)
 
 ## Solicitud
