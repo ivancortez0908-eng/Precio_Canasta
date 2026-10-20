@@ -1,3 +1,22 @@
+# Bitácora — 21 de octubre de 2026 (acentos, códigos de barras y ofertas)
+
+## Solicitud
+A partir de la revisión del proyecto comparador-precios-sv: (1) quitar acentos en las búsquedas, (2) validar códigos de barras y (3) aplicar ofertas al aumentar cantidades, solo en la tienda que las tiene activas.
+
+## Cambios
+- **Acentos:** el Worker y el scraper envían las búsquedas a Selectos y a las tiendas VTEX sin tildes, conservando la ñ («Atún café» → «Atun cafe»). Ese proyecto comprobó que Selectos devuelve 0 resultados con «atún» y 20 con «atun».
+- **Códigos de barras:** `scraper/emparejar.mjs` valida el dígito de control y exige al menos 8 cifras significativas. Con los catálogos actuales el resultado es idéntico (4,993 códigos, ninguno inválido); se descartó unir por códigos internos cortos (frutas, pan a granel) porque pueden coincidir entre empresas.
+- **Ofertas:** el Worker devuelve `promo` (texto de la oferta) y `antes` (precio anterior). En Selectos se toma la insignia «Seleccione 2X$0.90» de cada producto; en VTEX, los nombres de `Teasers`, `PromotionTeasers` y `DiscountHighLight`, aceptando solo textos con formato claro. `comparador.js` agrega `leerPromo` y `costo`: la oferta se aplica por grupos completos, solo en su tienda y solo si abarata. Los totales por tienda, la compra combinada, el resaltado de la tienda más barata y las descargas (nueva columna «Ofertas») usan ese costo. Las celdas muestran «Oferta 2 x $2.20 · lleva 2 para aplicarla» o «aplicada: $X por N» y el precio anterior tachado.
+
+## Validación
+- `node --test tests/canasta.test.cjs`: 23 pruebas. Nuevas: ofertas por cantidad (solo en su tienda, grupos, sin abaratar de más), flujo de favoritos con oferta, catálogo nuevo sin oferta vieja, y Worker (tildes, ofertas VTEX, página real de Selectos en `tests/datos/selectos-busqueda.html`).
+- `node tests/interfaz.cjs`: con «2 x $3.80» en Walmart, al llevar 2 su total baja a $3.80 y Selectos sigue en $3.50. Captura revisada.
+- `scraper/emparejar.mjs` ejecutado sin red en una copia: mismos 3,624 productos.
+
+## Límites
+- No fue posible consultar desde este entorno las tiendas VTEX (Walmart, Despensa de Don Juan, Maxi Despensa), así que el formato real de sus nombres de promoción no se vio. Si no siguen el formato «N x $T», no se muestra oferta (nunca una equivocada). Verificar con el Worker publicado.
+- El catálogo (pestaña Catálogo) todavía no muestra ofertas; los favoritos las toman de la consulta en vivo.
+
 # Bitácora — 20 de octubre de 2026 (ancho completo)
 
 ## Cambio

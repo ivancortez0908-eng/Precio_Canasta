@@ -6,20 +6,22 @@
   // Filas de la lista: producto, presentación, cantidad, precio por tienda y dónde conviene comprar.
   // Los precios son números; una tienda sin precio queda vacía, nunca en cero.
   function tablaLista(items, tiendas, presentacion = () => "") {
-    const cabecera = ["Producto", "Marca", "Presentación", "Cantidad", ...tiendas, "Más barato en", "Subtotal", "Precio consultado"];
+    const cabecera = ["Producto", "Marca", "Presentación", "Cantidad", ...tiendas, "Más barato en", "Subtotal", "Ofertas", "Precio consultado"];
     const filas = items.map(f => {
-      const ops = tiendas.filter(s => C.precioValido(f.t[s]?.p)).sort((a, b) => f.t[a].p - f.t[b].p), mejor = ops[0];
+      // La tienda más barata para la cantidad pedida, cada una con su propia oferta
+      const ops = tiendas.filter(s => C.precioValido(f.t[s]?.p)).sort((a, b) => C.costo(f.t[a], f.cant) - C.costo(f.t[b], f.cant)), mejor = ops[0];
+      const ofertas = tiendas.filter(s => C.precioValido(f.t[s]?.p) && C.leerPromo(f.t[s].promo)).map(s => `${s}: ${f.t[s].promo}`).join("; ");
       const fechas = Object.values(f.t).map(v => (v.f || "").slice(0, 10)).filter(Boolean).sort();
       return [f.n || "", f.m || "", presentacion(f), f.cant, ...tiendas.map(s => C.precioValido(f.t[s]?.p) ? f.t[s].p : ""),
-        mejor || "Sin precio", mejor ? Math.round(f.t[mejor].p * 100) * f.cant / 100 : "",
+        mejor || "Sin precio", mejor ? C.costo(f.t[mejor], f.cant) / 100 : "", ofertas,
         fechas.length ? (fechas[0] === fechas.at(-1) ? fechas[0] : `${fechas[0]} a ${fechas.at(-1)}`) : ""];
     });
     const { res, mix, sinPrecio } = C.resumir(items, tiendas);
     const n = items.length;
     const pie = [
-      ["Total por tienda", "", "", items.reduce((a, f) => a + f.cant, 0), ...res.map(r => r.faltan === n ? "" : r.total), "", "", ""],
-      ["Productos con precio", "", "", "", ...res.map(r => `${n - r.faltan} de ${n}${r.faltan ? " (total parcial)" : ""}`), "", "", ""],
-      ["Comprando cada producto donde es más barato", "", "", "", ...tiendas.map(() => ""), sinPrecio ? `Parcial: ${sinPrecio} sin precio` : "", mix, ""]
+      ["Total por tienda", "", "", items.reduce((a, f) => a + f.cant, 0), ...res.map(r => r.faltan === n ? "" : r.total), "", "", "", ""],
+      ["Productos con precio", "", "", "", ...res.map(r => `${n - r.faltan} de ${n}${r.faltan ? " (total parcial)" : ""}`), "", "", "", ""],
+      ["Comprando cada producto donde es más barato", "", "", "", ...tiendas.map(() => ""), sinPrecio ? `Parcial: ${sinPrecio} sin precio` : "", mix, "", ""]
     ];
     return { cabecera, filas, pie };
   }

@@ -3,7 +3,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
-const { equivalente, resumir } = require('../comparador.js');
+const { equivalente, resumir, leerPromo, costo } = require('../comparador.js');
+const os = require('node:os');
+const { pathToFileURL } = require('node:url');
 const { tablaLista, xlsx } = require('../exportar.js');
 const base = { nombre: 'Leche entera Salud 1 L', marca: 'Salud', q: 1000, u: 'ml' };
 const producto = (tienda, precio, extra = {}) => ({ ...base, tienda, precio, id: tienda + '-1', url: 'https://tienda.test/' + tienda + '/1', ...extra });
@@ -218,13 +220,82 @@ test('la lista exportada respeta cantidades, centavos y totales parciales', () =
     { n: 'Arroz', m: '', cant: 2, t: { A: { p: 1.25, f: '2026-10-18' } } }];
   const t = tablaLista(items, ['A', 'B'], () => '1 L');
   assert.deepEqual(t.cabecera.slice(3, 8), ['Cantidad', 'A', 'B', 'Más barato en', 'Subtotal']);
-  assert.deepEqual(t.filas[0].slice(3), [3, .1, .2, 'A', .3, '2026-10-17 a 2026-10-18']);
+  assert.deepEqual(t.filas[0].slice(3), [3, .1, .2, 'A', .3, '', '2026-10-17 a 2026-10-18']);
   assert.deepEqual(t.pie[0].slice(3, 6), [5, 2.8, .6]);
   assert.deepEqual(t.pie[1].slice(4, 6), ['2 de 2', '1 de 2 (total parcial)']);
-  assert.equal(t.pie[2].at(-2), 2.8);
+  assert.equal(t.pie[2].at(-3), 2.8);
   const libro = Buffer.from(xlsx('Lista <1>', 'nota', t));
   assert.equal(libro.readUInt32LE(0), 0x04034b50);
   const fin = libro.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
   assert.equal(libro.readUInt16LE(fin + 10), 6);
   assert.match(libro.toString('utf8'), /Lista &lt;1&gt;/);
+});
+
+test('ofertas por cantidad: solo en su tienda, por grupos completos y sin abaratar de más', () => {
+  assert.deepEqual(leerPromo('2 x $2.20'), { n: 2, total: 2.2 });
+  assert.deepEqual(leerPromo('Seleccione 2X$0.90'), { n: 2, total: .9 });
+  assert.deepEqual(leerPromo('3x2'), { n: 3, paga: 2 });
+  for (const t of ['15% descuento', '2x3', 'Promo coca', '1 x $1.00', '', null]) assert.equal(leerPromo(t), null);
+  const v = { p: 1.33, promo: '2 x $2.20' };
+  assert.deepEqual([1, 2, 3, 4].map(n => costo(v, n)), [133, 220, 353, 440]);
+  assert.deepEqual([2, 3, 4].map(n => costo({ p: 1, promo: '3x2' }, n)), [200, 200, 300]);
+  assert.equal(costo({ p: 1, promo: '2 x $2.50' }, 2), 200);   // la «oferta» no abarata: precio normal
+  const lista = [{ cant: 1, t: { A: { p: 1.33, promo: '2 x $2.20' }, B: { p: 1.2 } } }];
+  assert.deepEqual(resumir(lista, ['A', 'B']).por, { B: 1 });
+  lista[0].cant = 2;
+  const r = resumir(lista, ['A', 'B']);
+  assert.deepEqual(r.res.map(x => x.total), [2.2, 2.4]);   // B no recibe la oferta de A
+  assert.equal(r.mix, 2.2);
+  assert.deepEqual(r.por, { A: 2 });
+});
+test('la oferta de una tienda se guarda con su precio y se aplica al subir la cantidad', async () => {
+  const ui = interfaz({ resultados: [producto('Walmart', 2, { promo: '2 x $3.20', antes: 2.25 }), producto('Selectos', 1.75)] });
+  await ui.run('vivo("leche salud")');
+  ui.run('alternar(favDeVivo(RV[0]));'); await terminar();
+  assert.equal(ui.saved()[0].t.Walmart.promo, '2 x $3.20');
+  assert.equal(ui.saved()[0].t.Selectos.promo, null);
+  assert.match(ui.el('tfav').innerHTML, /Oferta 2 x \$3\.20 · lleva 2 para aplicarla/);
+  assert.match(ui.el('tfav').innerHTML, /antes \$2\.25/);
+  assert.match(ui.el('favtot').innerHTML, /\$2\.00[^]*\$1\.75/);
+  ui.run('$("tfav").onclick({target:{closest:()=>({dataset:{a:"mas",id:FAV[0].id}})}})');
+  assert.match(ui.el('tfav').innerHTML, /Oferta 2 x \$3\.20 · aplicada: \$3\.20 por 2/);
+  assert.match(ui.el('favtot').innerHTML, /\$3\.20[^]*\$3\.50/);
+  assert.match(ui.el('favmix').textContent, /\$3\.20 \(2 unidad\(es\) en Walmart\)/);
+});
+test('un catálogo más nuevo no conserva una oferta que ya no puede confirmar', async () => {
+  const favorito = { id: 'g:leche entera salud 1 l|1000ml', n: base.nombre, m: 'Salud', q: 1000, u: 'ml', cant: 2,
+    t: { Walmart: { p: 2, url: 'https://tienda.test/Walmart/1', f: '2026-10-15', promo: '2 x $3.20' } } };
+  const ui = interfaz({ guardados: [favorito], datos: { supers: ['Walmart'], actualizado: '2026-10-17', items: [
+    { n: base.nombre, m: 'Salud', q: 1000, u: 'ml', t: [[0, 1.9, 'https://tienda.test/Walmart/1']] }] } });
+  await terminar();
+  assert.equal(ui.saved()[0].t.Walmart.p, 1.9);
+  assert.equal(ui.saved()[0].t.Walmart.promo, null);
+});
+async function worker(respuestas) {
+  const tmp = path.join(os.tmpdir(), `canasta-worker-${process.pid}-${Date.now()}.mjs`);
+  fs.copyFileSync(path.join(__dirname, '..', 'worker', 'worker.js'), tmp);
+  const pedidas = [], original = globalThis.fetch;
+  globalThis.fetch = async url => { url = String(url); pedidas.push(url);
+    const [, cuerpo] = Object.entries(respuestas).find(([k]) => url.includes(k)) || [, '[]'];
+    return new Response(typeof cuerpo === 'string' ? cuerpo : JSON.stringify(cuerpo)); };
+  try {
+    const w = (await import(pathToFileURL(tmp).href)).default;
+    return { pedidas, consultar: async q => (await w.fetch(new Request('https://w.test/?fresh=1&q=' + encodeURIComponent(q)), {}, { waitUntil() {} })).json() };
+  } finally { fs.rmSync(tmp); setImmediate(() => { globalThis.fetch = original; }); }
+}
+test('Worker: quita tildes, lee ofertas claras de VTEX y de Selectos', async () => {
+  const vtex = (id, nombre, Price, extra = {}) => ({ productId: id, productName: nombre, brand: 'Coca Cola', link: 'https://maxi.test/' + id + '/p',
+    items: [{ sellers: [{ commertialOffer: { Price, AvailableQuantity: 5, ...extra } }] }] });
+  const w = await worker({
+    'maxidespensa.com.sv/api': [vtex('1', 'Gaseosa Coca Cola Pet 1250 ml', 1.33, { ListPrice: 1.5, Teasers: [{ '<Name>k__BackingField': '2 x $2.20' }] }),
+      vtex('2', 'Gaseosa Coca Cola Pet 3000 ml', 2.49, { Teasers: [{ Name: 'PROMO INTERNA COCA' }] })],
+    'superselectos.com': fs.readFileSync(path.join(__dirname, 'datos', 'selectos-busqueda.html'), 'utf8')
+  });
+  const d = await w.consultar('Atún café ñame');
+  assert.ok(w.pedidas.some(u => u.includes('superselectos.com/products?keyword=Atun%20cafe%20%C3%B1ame')), w.pedidas.join(' '));
+  assert.ok(w.pedidas.some(u => u.includes('maxidespensa.com.sv/api/catalog_system/pub/products/search?ft=Atun%20cafe%20%C3%B1ame')));
+  const maxi = d.resultados.filter(x => x.tienda === 'Maxi Despensa');
+  assert.deepEqual(maxi.map(x => [x.id, x.promo, x.antes]), [['1', '2 x $2.20', 1.5], ['2', null, null]]);
+  const sel = d.resultados.filter(x => x.tienda === 'Super Selectos');
+  assert.deepEqual(sel.map(x => [x.id, x.precio, x.promo]), [['21702', .5, 'Seleccione 2X$0.90'], ['89275', 1.1, null]]);
 });
