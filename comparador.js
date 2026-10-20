@@ -27,14 +27,16 @@
     const fa = firma(a, comun), fb = firma(b, comun);
     return !!fa && fa === fb;
   }
-  // Promoción por cantidad con texto claro: «2 x $2.20» (2 por $2.20), «Seleccione 2X$0.90», «3x2» (lleva 3, paga 2).
-  // Cualquier otro texto no se interpreta.
+  // Promoción por cantidad con texto claro: «2 x $2.20» (2 por $2.20), «Seleccione 2X$0.90», «3x2» (lleva 3, paga 2),
+  // «Segundo al 50%» (la segunda unidad con 50 % de descuento). Cualquier otro texto no se interpreta.
   function leerPromo(texto) {
     const t = String(texto || "").trim().replace(/^seleccione\s+/i, "");
     let m = t.match(/^(\d+)\s*[x×]\s*\$\s*(\d+(?:[.,]\d{1,2})?)$/i);
     if (m && +m[1] >= 2 && +m[2].replace(",", ".") > 0) return { n: +m[1], total: +m[2].replace(",", ".") };
     m = t.match(/^(\d+)\s*[x×]\s*(\d+)$/i);
     if (m && +m[1] > +m[2] && +m[2] > 0) return { n: +m[1], paga: +m[2] };
+    m = t.match(/^segundo al (\d{1,2})\s*%$/i);
+    if (m && +m[1] > 0) return { n: 2, segundo: +m[1] };
     return null;
   }
   // Costo en centavos de `cant` unidades en UNA tienda. La promoción de esa tienda se aplica por grupos completos
@@ -42,7 +44,7 @@
   function costo(v, cant) {
     const c = Math.round(v.p * 100), pr = leerPromo(v.promo);
     if (!pr || cant < pr.n) return c * cant;
-    const grupo = pr.total != null ? Math.round(pr.total * 100) : pr.paga * c;
+    const grupo = pr.total != null ? Math.round(pr.total * 100) : pr.segundo != null ? c + Math.round(c * (100 - pr.segundo) / 100) : pr.paga * c;
     return grupo < pr.n * c ? Math.floor(cant / pr.n) * grupo + (cant % pr.n) * c : c * cant;
   }
   function resumir(favoritos, tiendas) {

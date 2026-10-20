@@ -1,3 +1,21 @@
+# Bitácora — 21 de octubre de 2026 (ofertas de Súper Selectos)
+
+## Problema
+Las ofertas de Walmart y las despensas ya aparecían, pero las de Súper Selectos marcadas con imagen («2X1», «Segundo al 50%»…) no.
+
+## Diagnóstico
+- `robots.txt` de Selectos permite las páginas públicas para `*` y bloquea bots de IA de entrenamiento y extracción masiva; solo se consultaron las páginas necesarias para entender los códigos.
+- Cada oferta en imagen es `tipoPromoMM/<código>.png` dentro del producto, también en la búsqueda normal (`/products?keyword=`).
+- Los filtros oficiales de `/special-deals` dan el significado: `2-1` 2x1; `2-3` paga 2 lleva 3; `3-4`, `4-5`, `4-6`, `5-6`, `6-7`, `8-12` paga/lleva; `2-40`, `2-50`, `2-75` segundo al 40/50/75 %; `COMBO`. El orden de los números no es constante (2-1 frente a 2-3), por eso no se adivinó. El `2-50` del atún observado por el otro proyecto es «Segundo al 50%», no «2 x $2.50».
+
+## Cambios
+- `worker/worker.js` (versión `2026-10-21-c`): lee el código de imagen de cada producto y lo traduce («2x1», «3x2», «Segundo al 50%»…); el texto «Seleccione NX$T» tiene prioridad. COMBO y otras no se interpretan.
+- `comparador.js`: nuevo tipo «Segundo al X%» (la segunda unidad con X % de descuento, por pares). `app.js` lo muestra como «2.ª unidad al X% de descuento».
+
+## Validación
+- Worker contra Selectos real: Servilletas Scott en rollo $1.25 «2x1» (la de la captura), Papel higiénico húmedo «Seleccione 2X$3.50», galletas Club «Seleccione 2X$2.35».
+- Pruebas: extracto real con imagen `2-50` → «Segundo al 50%»; costos de 2x1, 3x2 y segundo al 50 %; pantalla de favoritos con ambas ofertas solo en Selectos. 24 pruebas aprobadas.
+
 # Bitácora — 21 de octubre de 2026 (ofertas de Walmart, Maxi y Despensa)
 
 ## Problema
