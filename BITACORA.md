@@ -1,3 +1,23 @@
+# Bitácora — 20 de octubre de 2026 (segunda entrega)
+
+## Solicitud
+Quitar «Entrenar la comparación», dejar solo el envío de comparaciones cuando hay cambios manuales en la tabla de precios, descargar la lista en PDF o Excel y manejar varias listas de favoritos.
+
+## Cambios
+- Se quitó «Entrenar la comparación»: tabla ✓ / ✗, registro de decisiones y opciones de administrador. Para descartar un producto equivocado, el selector de cada celda ofrece «No está en esta tienda».
+- La pregunta al pie aparece solo cuando la persona elige o cambia un producto en la tabla de precios (marca `cambio`), y solo ofrece «Enviar al proyecto». Se quitaron «Descargar archivo» y «Preparar correo».
+- Varias listas: la ☆ abre el cuadro «Guardar en una lista» para marcar listas existentes o crear una nueva. En Favoritos se elige, crea, renombra o elimina la lista. Cada lista guarda su copia del producto; quitarlo de una no lo quita de otra. Las consultas pendientes se cancelan al quitar el producto, vaciar o eliminar la lista. Los datos pasan a `canasta-sv-listas-v1`; la lista anterior se migra a «Mi lista» sin borrar la clave vieja.
+- Descargas: **Excel** genera un `.xlsx` real en el navegador (`exportar.js`, sin librerías) con cantidades, precio por tienda, dónde conviene comprar, fecha del precio y totales (parciales marcados). **PDF** usa la impresión del navegador con una hoja limpia en horizontal; se elige «Guardar como PDF».
+
+## Validación
+- `node --test tests/canasta.test.cjs`: 19 pruebas aprobadas. Nuevas o actualizadas: listas (dos listas con cantidades propias, quitar de una sola, eliminar lista cancela consultas), envío solo tras cambios en la tabla, exportación (centavos, parciales, archivo ZIP válido) y descartar tienda.
+- `node tests/interfaz.cjs` en Chromium: guardar en dos listas desde el cuadro, cantidades, descarga de Excel, vista de impresión, móvil sin desbordamiento, recarga, quitar y cambiar de lista. Capturas revisadas. Precios simulados.
+- El `.xlsx` generado se abrió con `openpyxl`: valores, formato de moneda y negritas correctos.
+
+## Límites
+- El PDF depende de la impresión del navegador: en el celular, la opción se llama «Guardar como PDF» o «Imprimir → PDF» según el navegador.
+- Las listas viven en el navegador de cada persona; no se sincronizan entre dispositivos.
+
 # Bitácora — 20 de octubre de 2026
 
 ## Diagnóstico

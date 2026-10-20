@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 const { equivalente, resumir } = require('../comparador.js');
+const { tablaLista, xlsx } = require('../exportar.js');
 const base = { nombre: 'Leche entera Salud 1 L', marca: 'Salud', q: 1000, u: 'ml' };
 const producto = (tienda, precio, extra = {}) => ({ ...base, tienda, precio, id: tienda + '-1', url: 'https://tienda.test/' + tienda + '/1', ...extra });
 const respuesta = resultados => ({ resultados, generado: '2026-10-17T12:00:00Z', tiendas: {
@@ -35,11 +36,12 @@ function interfaz({ resultados = [], datos, fallo = false, guardados = [], porCo
   const elements = new Map();
   function el(id) {
     if (!elements.has(id)) elements.set(id, { value: '', textContent: '', innerHTML: '', hidden: false, checked: true,
-      dataset: {}, setAttribute(k, v) { this[k] = String(v); }, getAttribute(k) { return this[k]; }, focus() {}, parentElement: {} });
+      dataset: {}, setAttribute(k, v) { this[k] = String(v); }, getAttribute(k) { return this[k]; }, focus() {}, querySelector: () => null, parentElement: {} });
     return elements.get(id);
   }
   el('ordv').value = 'pu'; el('ord').value = 'pu';
-  const CLAVE = 'canasta-sv-favoritos-v1', almacen = new Map([[CLAVE, JSON.stringify(guardados)]]), consultas = [];
+  el('ayudadet').hidden = true;
+  const ANTERIOR = 'canasta-sv-favoritos-v1', LISTAS = 'canasta-sv-listas-v1', almacen = new Map([[ANTERIOR, JSON.stringify(guardados)]]), consultas = [];
   const context = vm.createContext({
     document: { getElementById: el, querySelector: () => el('tabs') },
     window: { API_VIVO: 'https://worker.test' },
@@ -52,9 +54,11 @@ function interfaz({ resultados = [], datos, fallo = false, guardados = [], porCo
       return { ok: true, json: async () => respuesta(porConsulta ? porConsulta(q) : resultados) };
     }
   });
-  for (const file of ['comparador.js', 'app.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), context, { filename: file });
-  return { run: code => vm.runInContext(code, context), el, consultas, saved: () => JSON.parse(almacen.get(CLAVE)),
-    registro: () => JSON.parse(almacen.get('canasta-sv-registro-v1') || '[]') };
+  for (const file of ['comparador.js', 'exportar.js', 'app.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), context, { filename: file });
+  const listas = () => JSON.parse(almacen.get(LISTAS) || 'null');
+  // saved(): productos de la lista activa, tal como quedaron guardados
+  return { run: code => vm.runInContext(code, context), el, consultas, listas,
+    saved: () => { const d = listas(); return d ? d.listas.find(l => l.id === d.activa).items : JSON.parse(almacen.get(ANTERIOR)); } };
 }
 const terminar = () => new Promise(resolve => setImmediate(resolve));
 
@@ -146,29 +150,31 @@ test('descartar una tienda la quita y una consulta nueva no la vuelve a llenar',
   ui.run('alternar(favDeVivo(RV[0]));'); await terminar();
   assert.equal(ui.saved()[0].t.Selectos.p, 1.75);
   assert.equal(ui.saved()[0].t.Selectos.src, 'auto');
-  ui.run('$("tent").onclick({target:{closest:()=>({dataset:{a:"no",id:FAV[0].id,s:"Selectos"}})}})');
+  ui.run('$("tfav").onchange({target:{matches:()=>true,dataset:{fav:FAV[0].id,store:"Selectos"},value:"ninguno"}})');
   assert.equal(ui.saved()[0].t.Selectos, undefined);
   await ui.run('completarFavorito(FAV[0])');
   assert.equal(ui.saved()[0].t.Selectos, undefined);
   assert.match(ui.el('tfav').innerHTML, /Descartado por ti/);
-  assert.equal(ui.registro().at(-1).accion, 'ninguno');
 });
-test('solo exporta equivalencias confirmadas, con el ID de cada tienda', async () => {
+test('solo propone enviar comparaciones cambiadas a mano en la tabla, con el ID de cada tienda', async () => {
   const ui = interfaz({ resultados: [producto('Walmart', 2), producto('Selectos', 1.75)] });
   await ui.run('vivo("leche salud")');
   ui.run('alternar(favDeVivo(RV[0]));'); await terminar();
+  // Una coincidencia automática no se envía ni hace aparecer la pregunta
   assert.equal(ui.run('equivalenciasLocal().length'), 0);
-  ui.run('$("tent").onclick({target:{closest:()=>({dataset:{a:"ok",id:FAV[0].id,s:"Selectos"}})}})');
+  assert.equal(ui.el('ayuda').hidden, true);
+  ui.run('$("tfav").onchange({target:{matches:()=>true,dataset:{fav:FAV[0].id,store:"Selectos"},value:"0"}})');
   const grupos = ui.run('equivalenciasLocal()');
   assert.deepEqual(JSON.parse(JSON.stringify(grupos)).map(g => g.map(x => x.tienda + ':' + x.id)), [['Walmart:Walmart-1', 'Selectos:Selectos-1']]);
-  assert.equal(ui.registro().at(-1).accion, 'confirmo');
+  assert.equal(ui.el('ayuda').hidden, false);
+  assert.match(ui.el('ayudamsg').textContent, /Cambiaste 1 comparación/);
 });
 test('favoritos de la versión anterior conservan sus elecciones manuales', async () => {
   const ui = interfaz({ guardados: [{ id: 'v:Walmart:x', n: base.nombre, m: 'Salud', q: 1000, u: 'ml', cant: 2,
     t: { Walmart: { p: 2, url: 'https://tienda.test/x', f: '2026-10-16', src: 'man', id: '9' } } }] }); await terminar();
   assert.equal(ui.run('FAV[0].t.Walmart.manual'), true);
   assert.equal(ui.run('FAV[0].cant'), 2);
-  assert.match(ui.el('tent').innerHTML, /Confirmado por ti/);
+  assert.equal(ui.run('ACTIVA.nombre'), 'Mi lista');
 });
 test('si la primera búsqueda no encuentra el producto, prueba con marca y palabras clave', async () => {
   const ui = interfaz({ porConsulta: q => q === 'salud leche entera' ? [producto('Walmart', 2), producto('Selectos', 1.75)] : [producto('Walmart', 2)] });
@@ -176,4 +182,49 @@ test('si la primera búsqueda no encuentra el producto, prueba con marca y palab
   await terminar(); await terminar();
   assert.deepEqual([...ui.consultas], ['Leche entera Salud 1 L', 'salud leche entera']);
   assert.equal(ui.saved()[0].t.Selectos.p, 1.75);
+});
+test('un producto puede estar en varias listas, cada una con su cantidad', async () => {
+  const ui = interfaz({ resultados: [producto('Walmart', 2), producto('Selectos', 1.75)] });
+  await ui.run('vivo("leche salud")');
+  ui.run('abrirListas({ tipo: "vivo", x: RV[0] })');
+  assert.match(ui.el('dlopts').innerHTML, /Mi lista/);
+  ui.run('$("dlopts").onchange({ target: { dataset: { l: "l1" }, checked: true } })'); await terminar();
+  ui.run('$("dlnombre").value = "Mensual"; $("dlnueva").onsubmit({ preventDefault() {} })'); await terminar();
+  const d = ui.listas();
+  assert.deepEqual(d.listas.map(l => [l.nombre, l.items.length]), [['Mi lista', 1], ['Mensual', 1]]);
+  assert.equal(d.activa, 'l1');
+  assert.match(ui.el('dlopts').innerHTML, /checked[^]*checked/);
+  ui.run('FAV[0].cant = 4; guardar();');
+  assert.deepEqual(ui.listas().listas.map(l => l.items[0].cant), [4, 1]);
+  // Quitarlo de una lista no lo quita de la otra
+  const mensual = d.listas[1].id;
+  ui.run(`$("dlopts").onchange({ target: { dataset: { l: "${mensual}" }, checked: false } })`);
+  assert.deepEqual(ui.listas().listas.map(l => l.items.length), [1, 0]);
+  assert.equal(ui.run('!!favoritoVivo(RV[0])'), true);
+});
+test('cambiar de lista muestra sus productos y eliminarla cancela sus consultas', async () => {
+  const ui = interfaz(); await terminar();
+  ui.run('fetch = () => new Promise(() => {});');
+  ui.run(`activar(crearLista("Fiesta")); alternar(favDeVivo(${JSON.stringify(producto('Walmart', 2))}));`);
+  assert.equal(ui.run('pendientes.size'), 1);
+  assert.match(ui.el('favmsg').textContent, /en «Fiesta»/);
+  ui.run('$("lborrar").onclick()');
+  assert.equal(ui.run('pendientes.size'), 0);
+  assert.deepEqual(ui.listas().listas.map(l => l.nombre), ['Mi lista']);
+  assert.equal(ui.run('ACTIVA.nombre'), 'Mi lista');
+});
+test('la lista exportada respeta cantidades, centavos y totales parciales', () => {
+  const items = [{ n: 'Leche', m: 'Salud', cant: 3, t: { A: { p: .1, f: '2026-10-17' }, B: { p: .2, f: '2026-10-18T09:00:00Z' } } },
+    { n: 'Arroz', m: '', cant: 2, t: { A: { p: 1.25, f: '2026-10-18' } } }];
+  const t = tablaLista(items, ['A', 'B'], () => '1 L');
+  assert.deepEqual(t.cabecera.slice(3, 8), ['Cantidad', 'A', 'B', 'Más barato en', 'Subtotal']);
+  assert.deepEqual(t.filas[0].slice(3), [3, .1, .2, 'A', .3, '2026-10-17 a 2026-10-18']);
+  assert.deepEqual(t.pie[0].slice(3, 6), [5, 2.8, .6]);
+  assert.deepEqual(t.pie[1].slice(4, 6), ['2 de 2', '1 de 2 (total parcial)']);
+  assert.equal(t.pie[2].at(-2), 2.8);
+  const libro = Buffer.from(xlsx('Lista <1>', 'nota', t));
+  assert.equal(libro.readUInt32LE(0), 0x04034b50);
+  const fin = libro.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+  assert.equal(libro.readUInt16LE(fin + 10), 6);
+  assert.match(libro.toString('utf8'), /Lista &lt;1&gt;/);
 });
