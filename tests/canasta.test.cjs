@@ -321,3 +321,25 @@ test('ofertas de imagen de Selectos (2x1, segundo al 50%) se muestran y aplican 
   ui.run('FAV[0].t.Selectos.promo = "Segundo al 50%"; pintarFav();');
   assert.match(ui.el('tfav').innerHTML, /Oferta 2\.ª unidad al 50% de descuento · aplicada: \$2\.63 por 2/);
 });
+test('celular: lista compacta con precios por tienda y solo un producto abierto a la vez', async () => {
+  const ui = interfaz({ resultados: [producto('Walmart', 2), producto('Selectos', 1.75)] });
+  await ui.run('vivo("leche salud")');
+  ui.run('alternar(favDeVivo(RV[0])); alternar({ id: "g:arroz", n: "Arroz blanco 1 lb", m: "Precisa", q: 454, u: "g", t: { Walmart: { p: .9, src: "cat" } } });');
+  await terminar(); await terminar();
+  const html = () => ui.el('mfav').innerHTML;
+  assert.match(html(), /Selectos <b>\$1\.75<\/b>[^]*Walmart <b>\$2\.00<\/b>/);
+  assert.doesNotMatch(html(), /class="mdet"/);
+  const abrir = i => ui.run(`$("mfav").onclick({ target: { closest: () => ({ dataset: { a: "abrir", id: FAV[${i}].id } }) } })`);
+  abrir(0);
+  assert.equal((html().match(/class="mdet"/g) || []).length, 1);
+  assert.match(html(), /aria-expanded="true"[^]*Leche entera Salud/);
+  abrir(1);   // abrir otro cierra el anterior
+  assert.equal((html().match(/class="mdet"/g) || []).length, 1);
+  assert.match(html(), /aria-expanded="false"><span class="mnom">Leche[^]*aria-expanded="true"><span class="mnom">Arroz/);
+  abrir(1);   // tocar el abierto lo cierra
+  assert.doesNotMatch(html(), /class="mdet"/);
+  // la cantidad se cambia igual desde el detalle
+  abrir(0);
+  ui.run('$("mfav").onclick({ target: { closest: s => s === "[data-a]" ? { dataset: { a: "mas", id: FAV[0].id } } : { dataset: { a: "mas", id: FAV[0].id } } } })');
+  assert.equal(ui.saved()[0].cant, 2);
+});

@@ -1,3 +1,19 @@
+# Bitácora — 21 de octubre de 2026 (celular compacto)
+
+## Solicitud
+En celular: tabla de favoritos más compacta (nombre y precios, sin perder de qué supermercado es cada precio), detalle al tocar un producto y solo uno abierto a la vez; barras de listas y de acciones en una sola fila.
+
+## Cambios
+- `#mfav`: lista compacta solo en celular (≤ 700 px). Cada producto muestra nombre, cantidad y precios como etiquetas con la tienda, del más barato al más caro (el más barato en verde, «oferta» si tiene una); las tiendas sin precio se resumen. Al tocarlo se abre el detalle con marca, cantidad, Quitar, Consultar tiendas y una fila por tienda (producto, fecha, oferta, Cambiar producto). Solo uno abierto; tocarlo de nuevo lo cierra.
+- `pintarFav` arma cada celda una vez y la usan la tabla y la lista compacta.
+- Barras en una sola fila en celular: «Lista · Nueva · Renombrar · Eliminar» y «Actualizar · PDF · Excel · Vaciar», con textos cortos y `aria-label` completos. «Vaciar lista» pasa a rojo como las demás acciones que borran.
+- Celular más compacto: sin frase de introducción, menos relleno y totales en 2 columnas. En computadora no cambia nada más.
+- Skill `interfaz-canasta` actualizado con estas reglas.
+
+## Validación
+- `node tests/interfaz.cjs` a 390 px: barras en una fila, tabla oculta, renglón con «Super Selectos $1.75 … Walmart $2.00 … 4 sin precio», detalle al tocar con la oferta y Cambiar producto; recarga, Quitar y cambio de lista desde el detalle. Capturas de celular y escritorio revisadas.
+- Prueba nueva: con dos productos, abrir uno cierra el otro y la cantidad se cambia desde el detalle. 25 pruebas aprobadas.
+
 # Bitácora — 21 de octubre de 2026 (solo modo claro)
 
 ## Cambio

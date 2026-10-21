@@ -97,7 +97,41 @@ dialog::backdrop{background:rgba(0,0,0,.45)}dialog h2{margin:0 0 4px;font-size:1
 .ayuda{width:calc(100% - 32px);margin:0 auto 16px;padding:14px 16px;background:var(--surf);border-radius:8px;box-shadow:var(--sh);border-left:8px solid var(--blue)}
 .ayuda h3{margin:0 0 4px;font-size:1.05rem}.ayuda ul{margin:6px 0;padding-left:20px}
 footer{padding:0 16px 40px;color:var(--mute);font-size:.85rem}
-@media (max-width:700px){.brand b,.sp{display:none}.tabs button{padding:0 10px;font-size:.8rem}header.top{padding:0 6px}}
+/* barra de acciones de Favoritos: mensaje y botones */
+.acciones #favmsg{flex:1;min-width:220px}.botones{display:flex;flex-wrap:wrap;gap:10px}
+/* lista compacta de favoritos: solo en celular */
+.mfav{display:none}
+.mitem{background:var(--surf);border-radius:8px;box-shadow:var(--sh);overflow:hidden}
+.mcab{display:grid;grid-template-columns:1fr auto;gap:4px 8px;width:100%;padding:10px 12px;border-radius:0;background:none;text-align:left;font-weight:400}
+.mcab:hover{background:none}.mitem.abierto .mcab{background:var(--bg)}
+.mnom{font-weight:600}.mcant{color:var(--mute);font-size:.85rem}
+.mprecios{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px}
+.chip{display:inline-flex;gap:4px;align-items:baseline;padding:2px 8px;border-radius:999px;background:var(--bg);font-size:.78rem;color:var(--mute)}
+.chip b{color:var(--ink)}.chip.best{background:var(--best);color:var(--bestInk)}.chip.best b{color:var(--bestInk)}.chip i{font-style:normal;font-weight:600;color:#9a6a00}
+.chip.na{background:none;padding-left:2px}
+.mdet{display:grid;border-top:1px solid var(--line)}
+.mprod,.mtienda{padding:8px 12px;border-bottom:1px solid var(--line)}.mtienda:last-child{border-bottom:0}
+.mprod small{display:block;color:var(--mute)}
+.mtienda{display:grid;grid-template-columns:minmax(90px,35%) 1fr;gap:8px;text-align:right;font-size:.9rem}
+.mtienda .mts{text-align:left}.mtienda small{display:block;color:var(--mute);font-weight:400}
+.mtienda.best{background:var(--best);color:var(--bestInk)}.mtienda.best small{color:var(--bestInk)}.mtienda.na{color:var(--mute);font-size:.85rem}
+.mtienda a{color:inherit;font-weight:700}.mtienda small.promo{display:inline-block}.mtienda small.f,.mtienda small.product-source{font-size:.72rem}
+@media (max-width:700px){
+  .brand b,.sp{display:none}.tabs button{padding:0 10px;font-size:.8rem}header.top{padding:0 6px}
+  /* celular compacto */
+  main{margin-top:10px;gap:8px}.intro{display:none}#p1,#p2,#p3{gap:8px}
+  .controls{padding:8px 10px;gap:6px}.controls button{padding:6px 9px;font-size:.8rem}
+  .larga{display:none}
+  .listas{flex-wrap:nowrap}.listas label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .listas select{flex:1;min-width:0;padding:6px 8px;font-size:.85rem}.listas button{flex:none}
+  .acciones{display:grid;gap:6px}.acciones #favmsg{min-width:0;font-size:.82rem}
+  .botones{flex-wrap:nowrap;gap:6px}.botones button{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .solo-escritorio{display:none}.mfav{display:grid;gap:8px}
+  section.cart{padding:10px}section.cart h2{font-size:1.05rem}
+  .totals{grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+  .tot{padding:8px 24px 8px 10px;border-left-width:5px}.tot .dot{width:10px;height:10px;top:10px;right:10px}
+  .tot b{font-size:1.15rem}.tn{font-size:.85rem}.tl{font-size:.72rem}
+}
 </style>
 </head>
 <body>
@@ -144,13 +178,16 @@ footer{padding:0 16px 40px;color:var(--mute);font-size:.85rem}
     <div class="controls listas">
       <label for="lsel">Lista</label>
       <select id="lsel"></select>
-      <button id="lnueva">Nueva lista</button>
+      <button id="lnueva" aria-label="Nueva lista">Nueva<span class="larga"> lista</span></button>
       <button id="lrenombrar">Renombrar</button>
-      <button id="lborrar" class="rm">Eliminar lista</button>
+      <button id="lborrar" class="rm" aria-label="Eliminar lista">Eliminar<span class="larga"> lista</span></button>
     </div>
-    <div class="controls"><p class="msg" id="favmsg" style="flex:1"></p><button id="favrefresh" hidden>Actualizar precios</button><button id="favpdf" hidden>Descargar PDF</button><button id="favxlsx" hidden>Descargar Excel</button><button id="favclear" hidden>Vaciar lista</button></div>
+    <div class="controls acciones"><p class="msg" id="favmsg"></p>
+      <div class="botones"><button id="favrefresh" hidden>Actualizar precios</button><button id="favpdf" hidden aria-label="Descargar PDF"><span class="larga">Descargar </span>PDF</button><button id="favxlsx" hidden aria-label="Descargar Excel"><span class="larga">Descargar </span>Excel</button><button id="favclear" class="rm" hidden aria-label="Vaciar lista">Vaciar<span class="larga"> lista</span></button></div>
+    </div>
     <p class="msg" id="favest"></p>
-    <div class="wrap"><table id="tfav"></table></div>
+    <div class="wrap solo-escritorio"><table id="tfav"></table></div>
+    <div class="mfav" id="mfav"></div>
     <section class="cart" id="favres" aria-live="polite" hidden>
       <h2>Comparación de tu compra</h2>
       <div class="totals" id="favtot"></div>

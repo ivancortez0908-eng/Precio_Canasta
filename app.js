@@ -4,7 +4,7 @@ const esc = s => (s || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;",
 const fmt = n => "$" + n.toFixed(2);
 const fpu = n => "$" + n.toFixed(n < 0.1 ? 3 : 2);
 const TAG = { ean: "Mismo código de barras", nombre: "Coincide por nombre y tamaño", manual: "Equivalencia verificada" };
-let D, limite = 60, RV = [], fechaRV = "", busquedaRV = "", ctl, actualizando = false, porGuardar = null;
+let D, limite = 60, RV = [], fechaRV = "", busquedaRV = "", ctl, actualizando = false, porGuardar = null, abierto = null;
 const tiendasConocidas = new Set();
 // Consultas y opciones por favorito (el objeto, porque un producto puede estar en varias listas)
 const pendientes = new Map(), candidatos = new Map();
@@ -306,22 +306,37 @@ function pintarFav() {
   $("favmsg").textContent = FAV.length ? `${FAV.length} producto(s) en «${ACTIVA.nombre}». Cada uno se busca en todas las tiendas y solo estos se comparan para tu compra.` : `«${ACTIVA.nombre}» está vacía. Marca la ☆ en el catálogo o en la búsqueda en vivo y elige esta lista.`;
   for (const id of ["favclear", "favres", "favrefresh", "favpdf", "favxlsx"]) $(id).hidden = !FAV.length;
   $("favrefresh").disabled = actualizando || pendientes.size > 0;
-  $("favrefresh").textContent = pendientes.size ? `Consultando ${pendientes.size} producto(s)…` : "Actualizar precios";
-  if (!FAV.length) { $("tfav").innerHTML = ""; pintarAyuda(); return; }
-  let h = `<thead><tr><th>Producto y cantidad</th>${S.map(s => `<th>${esc(s)}</th>`).join("")}</tr></thead><tbody>`;
-  for (const f of FAV) {
+  // En celular se ve la versión corta; el nombre completo queda para lectores de pantalla
+  $("favrefresh").innerHTML = pendientes.size ? `Consultando<span class="larga"> ${pendientes.size} producto(s)</span>…` : `Actualizar<span class="larga"> precios</span>`;
+  $("favrefresh").setAttribute("aria-label", pendientes.size ? `Consultando ${pendientes.size} producto(s)…` : "Actualizar precios");
+  if (!FAV.length) { $("tfav").innerHTML = $("mfav").innerHTML = ""; pintarAyuda(); return; }
+  // Contenido de cada producto y tienda; lo usan la tabla (computadora) y la lista compacta (celular)
+  const filas = FAV.map(f => {
     const ps = Object.values(f.t).map(v => costo(v, f.cant)), min = Math.min(...ps), id = esc(f.id), consultando = pendientes.has(f);
-    h += `<tr><td>${esc(f.n)}<small>${f.m ? `<span class="marca">${esc(f.m)}</span>` : "Marca no indicada"}${tam(f) ? " · " + tam(f) : ""}</small><small class="consulta">${esc(consultando ? "Consultando las tiendas…" : f.estado || "Precios guardados. Actualiza para consultar las tiendas.")}</small><span class="filafav"><span class="stp"><button data-a="menos" data-id="${id}" aria-label="Menos">−</button><input class="qty" type="number" min="1" max="99" value="${f.cant}" data-id="${id}" aria-label="Cantidad de ${esc(f.n)}"><button data-a="mas" data-id="${id}" aria-label="Más">+</button></span>` +
-      `<button class="rm" data-a="rm" data-id="${id}">Quitar</button></span><button class="retry" data-a="refresh" data-id="${id}" ${consultando ? "disabled" : ""}>Consultar tiendas</button></td>` +
-      S.map(s => {
-        const v = f.t[s], opciones = candidatos.get(f)?.get(s) || [];
-        const selector = opciones.length || v ? `<details class="opciones"><summary>${v ? "Cambiar producto" : `Elegir coincidencia (${opciones.length})`}</summary><label>Producto en ${esc(s)}<select data-fav="${id}" data-store="${esc(s)}" aria-label="Producto equivalente en ${esc(s)}"><option value="">Selecciona marca y presentación</option>${opciones.map((x, i) => `<option value="${i}">${esc(x.nombre)} · ${fmt(x.precio)}</option>`).join("")}${v ? `<option value="ninguno">No está en esta tienda</option>` : ""}</select></label><small>Se usará esta presentación para calcular tu compra.</small></details>` : "";
-        if (!v) return `<td class="na"><span>${consultando ? "Consultando…" : f.fallos?.includes(s) ? "Tienda sin respuesta" : f.sin?.[s] ? "Descartado por ti" : "Sin coincidencia"}</span>${selector}</td>`;
-        const p = v.url ? `<a href="${esc(v.url)}" target="_blank" rel="noopener">${fmt(v.p)}</a>` : fmt(v.p);
-        return `<td class="${costo(v, f.cant) === min && ps.length > 1 ? "best" : ""}">${p}${notaOferta(v, f.cant)}<small class="product-source">${esc(v.nom || f.n)}</small>${v.f ? `<small class="f">al ${fecha(v.f)}${v.manual ? " · Elegido por ti" : ""}</small>` : ""}${selector}</td>`;
-      }).join("") + "</tr>";
-  }
-  $("tfav").innerHTML = h + "</tbody>";
+    const info = `<small>${f.m ? `<span class="marca">${esc(f.m)}</span>` : "Marca no indicada"}${tam(f) ? " · " + tam(f) : ""}</small>`, nombre = esc(f.n) + info;
+    const acciones = `<small class="consulta">${esc(consultando ? "Consultando las tiendas…" : f.estado || "Precios guardados. Actualiza para consultar las tiendas.")}</small><span class="filafav"><span class="stp"><button data-a="menos" data-id="${id}" aria-label="Menos">−</button><input class="qty" type="number" min="1" max="99" value="${f.cant}" data-id="${id}" aria-label="Cantidad de ${esc(f.n)}"><button data-a="mas" data-id="${id}" aria-label="Más">+</button></span>` +
+      `<button class="rm" data-a="rm" data-id="${id}">Quitar</button></span><button class="retry" data-a="refresh" data-id="${id}" ${consultando ? "disabled" : ""}>Consultar tiendas</button>`;
+    const celdas = S.map(s => {
+      const v = f.t[s], opciones = candidatos.get(f)?.get(s) || [];
+      const selector = opciones.length || v ? `<details class="opciones"><summary>${v ? "Cambiar producto" : `Elegir coincidencia (${opciones.length})`}</summary><label>Producto en ${esc(s)}<select data-fav="${id}" data-store="${esc(s)}" aria-label="Producto equivalente en ${esc(s)}"><option value="">Selecciona marca y presentación</option>${opciones.map((x, i) => `<option value="${i}">${esc(x.nombre)} · ${fmt(x.precio)}</option>`).join("")}${v ? `<option value="ninguno">No está en esta tienda</option>` : ""}</select></label><small>Se usará esta presentación para calcular tu compra.</small></details>` : "";
+      if (!v) return { s, cls: "na", html: `<span>${consultando ? "Consultando…" : f.fallos?.includes(s) ? "Tienda sin respuesta" : f.sin?.[s] ? "Descartado por ti" : "Sin coincidencia"}</span>${selector}` };
+      const p = v.url ? `<a href="${esc(v.url)}" target="_blank" rel="noopener">${fmt(v.p)}</a>` : fmt(v.p), mejor = costo(v, f.cant) === min && ps.length > 1;
+      return { s, v, mejor, cls: mejor ? "best" : "", html: `${p}${notaOferta(v, f.cant)}<small class="product-source">${esc(v.nom || f.n)}</small>${v.f ? `<small class="f">al ${fecha(v.f)}${v.manual ? " · Elegido por ti" : ""}</small>` : ""}${selector}` };
+    });
+    return { f, id, nombre, info, acciones, celdas };
+  });
+  $("tfav").innerHTML = `<thead><tr><th>Producto y cantidad</th>${S.map(s => `<th>${esc(s)}</th>`).join("")}</tr></thead><tbody>` +
+    filas.map(r => `<tr><td>${r.nombre}${r.acciones}</td>${r.celdas.map(c => `<td class="${c.cls}">${c.html}</td>`).join("")}</tr>`).join("") + "</tbody>";
+  // Celular: nombre, cantidad y precios con su tienda (de más barato a más caro); al tocar se abre el detalle, uno a la vez
+  if (!filas.some(r => r.f.id === abierto)) abierto = null;
+  $("mfav").innerHTML = filas.map(r => {
+    const con = r.celdas.filter(c => c.v).sort((a, b) => costo(a.v, r.f.cant) - costo(b.v, r.f.cant)), sin = r.celdas.length - con.length, open = r.f.id === abierto;
+    return `<article class="mitem${open ? " abierto" : ""}"><button class="mcab" data-a="abrir" data-id="${r.id}" aria-expanded="${open}">` +
+      `<span class="mnom">${esc(r.f.n)}</span><span class="mcant">× ${r.f.cant}</span><span class="mprecios">` +
+      con.map(c => `<span class="chip${c.mejor ? " best" : ""}">${esc(c.s)} <b>${fmt(c.v.p)}</b>${leerPromo(c.v.promo) ? "<i>oferta</i>" : ""}</span>`).join("") +
+      (sin ? `<span class="chip na">${sin} sin precio</span>` : "") + `</span></button>` +
+      (open ? `<div class="mdet"><div class="mprod">${r.info}${r.acciones}</div>${r.celdas.map(c => `<div class="mtienda ${c.cls}"><b class="mts">${esc(c.s)}</b><div>${c.html}</div></div>`).join("")}</div>` : "") + "</article>";
+  }).join("");
   const { res, mix, por, sinPrecio } = resumir(FAV, S);
   const ok = res.filter(r => !r.faltan), min = ok.length ? Math.min(...ok.map(r => r.total)) : null;
   // Semáforo: verde hasta 2 % sobre la más barata, amarillo hasta 10 %, rojo si es más cara o está incompleta
@@ -458,6 +473,13 @@ $("tfav").onchange = e => {
   const f = e.target.classList.contains("qty") && FAV.find(x => x.id === e.target.dataset.id);
   if (f) { f.cant = Math.max(1, Math.min(99, parseInt(e.target.value) || 1)); guardar(); pintarFav(); }
 };
+// Lista compacta del celular: tocar un producto abre su detalle y cierra el anterior; el resto, igual que la tabla
+$("mfav").onclick = e => {
+  const b = e.target.closest("[data-a]");
+  if (b?.dataset.a === "abrir") { abierto = abierto === b.dataset.id ? null : b.dataset.id; pintarFav(); return; }
+  $("tfav").onclick(e);
+};
+$("mfav").onchange = e => $("tfav").onchange(e);
 $("lsel").onchange = e => { const l = LISTAS.find(x => x.id === e.target.value); if (l) { activar(l); pintarFav(); actualizarViejos(); } };
 $("lnueva").onclick = () => { const n = prompt("Nombre de la nueva lista:"); if (n && n.trim()) { activar(crearLista(n)); pintarFav(); } };
 $("lrenombrar").onclick = () => { const n = prompt("Nuevo nombre de la lista:", ACTIVA.nombre); if (n && n.trim()) { ACTIVA.nombre = n.trim().slice(0, 40); guardar(); pintarFav(); } };

@@ -95,14 +95,28 @@ const server = http.createServer((req, res) => {
     await page.emulateMedia({ media: 'screen' });
     await page.setViewportSize({ width: 390, height: 844 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    // Celular: cada barra en una sola fila
+    const filas = async ids => new Set(await Promise.all(ids.map(id => page.locator(id).evaluate(b => Math.round(b.getBoundingClientRect().top))))).size;
+    assert.equal(await filas(['#lsel', '#lnueva', '#lrenombrar', '#lborrar']), 1);
+    assert.equal(await filas(['#favrefresh', '#favpdf', '#favxlsx', '#favclear']), 1);
+    // Lista compacta: nombre y precios con su supermercado (el más barato primero); el detalle se abre al tocar
+    assert.equal(await page.locator('#tfav').isVisible(), false);
+    const producto = page.locator('#mfav .mcab').first();
+    assert.match(await producto.innerText(), /Leche entera Salud 1 L[^]*Super Selectos\s*\$1\.75[^]*Walmart\s*\$2\.00[^]*4 sin precio/);
+    assert.equal(await page.getByRole('spinbutton').count(), 0);
+    await producto.click();
+    assert.equal(await producto.getAttribute('aria-expanded'), 'true');
+    assert.match(await page.locator('#mfav .mdet').innerText(), /Walmart[^]*Oferta 2 x \$3\.80[^]*Cambiar producto/);
     if (process.env.CANASTA_CAPTURAS) await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'favoritos-movil.png'), fullPage: true });
     await page.reload();
     await page.getByRole('tab', { name: /Favoritos/ }).click();
+    await page.locator('#mfav .mcab').first().click();
     assert.equal(await page.getByRole('spinbutton').inputValue(), '2');
     await page.getByRole('button', { name: 'Quitar', exact: true }).click();
     assert.match(await page.locator('#favmsg').innerText(), /está vacía/);
     // La otra lista conserva el producto con su propia cantidad
     await page.getByRole('combobox', { name: 'Lista' }).selectOption({ label: 'Mensual (1)' });
+    if (!(await page.getByRole('spinbutton').count())) await page.locator('#mfav .mcab').first().click();
     assert.equal(await page.getByRole('spinbutton').inputValue(), '1');
     assert.deepEqual(errores, []);
     console.log('Interfaz verificada: búsqueda → guardar en dos listas → cantidades → Excel y PDF → móvil → persistencia → quitar → cambiar de lista.');
