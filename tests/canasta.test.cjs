@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
-const { equivalente, resumir, leerPromo, costo } = require('../comparador.js');
+const { equivalente, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda } = require('../comparador.js');
 const os = require('node:os');
 const { pathToFileURL } = require('node:url');
 const { tablaLista, xlsx } = require('../exportar.js');
@@ -342,4 +342,35 @@ test('celular: lista compacta con precios por tienda y solo un producto abierto 
   abrir(0);
   ui.run('$("mfav").onclick({ target: { closest: s => s === "[data-a]" ? { dataset: { a: "mas", id: FAV[0].id } } : { dataset: { a: "mas", id: FAV[0].id } } } })');
   assert.equal(ui.saved()[0].cant, 2);
+});
+test('búsqueda en vivo: los resultados deben contener al menos 2 palabras de la búsqueda', () => {
+  const q = 'Gaseosa Cocacola';
+  for (const n of ['Gaseosa Coca Cola regular - 1.25 L', 'Gaseosa Coca-Cola Sin Azúcar Lata 6pack']) assert.equal(coincideBusqueda(q, n), true, n);
+  for (const n of ['Chorizo Argentino Superior - 454 g', 'Papel Higiénico Scott 4 Rollos', 'Gaseosa Pepsi 3 L', 'Chocolate con leche', 'Coca Cola Zero Lata 354 ml'])
+    assert.equal(coincideBusqueda(q, n), false, n);
+  assert.deepEqual(palabrasBusqueda('Leche entera de 1 litro Salud'), ['leche', 'entera', 'salud']);   // sin artículos, números ni medidas
+  assert.equal(coincideBusqueda('galletas oreo', 'Galleta Oreo Original 12 Pack'), true);   // plural y singular
+  assert.equal(coincideBusqueda('limones', 'Limón persa unidad'), true);   // una sola palabra basta si es la única
+  assert.equal(coincideBusqueda('coca cola', 'Gaseosa Cocacola 3 L'), true);
+  assert.equal(coincideBusqueda('1.25 L', 'Cualquier producto'), true);   // sin palabras que cuenten no se filtra
+});
+test('búsqueda en vivo: oculta los productos de otras categorías y deja verlos con «Mostrar todos»', async () => {
+  const ui = interfaz({ resultados: [producto('Walmart', 1.35, { nombre: 'Gaseosa Coca Cola regular - 1.25 L', marca: 'Coca Cola' }),
+    producto('Selectos', 4.5, { id: 'x2', url: 'https://tienda.test/x2', nombre: 'Chorizo Argentino Superior - 454 g', marca: 'Superior' }),
+    producto('Selectos', 1.2, { id: 'x3', url: 'https://tienda.test/x3', nombre: 'Papel Higiénico Scott 4 Rollos', marca: 'Scott' })] });
+  await ui.run('vivo("Gaseosa Cocacola")');
+  assert.match(ui.el('tv').innerHTML, /Gaseosa Coca Cola/);
+  assert.doesNotMatch(ui.el('tv').innerHTML, /Chorizo|Papel/);
+  assert.equal(ui.el('ocultos').hidden, false);
+  assert.match(ui.el('ocultostxt').textContent, /Se ocultaron 2 resultado/);
+  assert.match(ui.el('estv').textContent, /Walmart: 1 resultado\(s\) · Selectos: 0 resultado\(s\)/);
+  ui.run('$("vertodos").onclick()');
+  assert.match(ui.el('tv').innerHTML, /Chorizo[^]*Papel|Papel[^]*Chorizo/);
+  assert.equal(ui.el('vertodos').textContent, 'Ocultar los que no coinciden');
+  ui.run('$("vertodos").onclick()');
+  assert.doesNotMatch(ui.el('tv').innerHTML, /Chorizo/);
+  await ui.run('vivo("chorizo argentino")');   // una búsqueda nueva vuelve a filtrar y no oculta nada si todo coincide
+  assert.equal(ui.el('ocultos').hidden, false);
+  assert.match(ui.el('tv').innerHTML, /Chorizo/);
+  assert.doesNotMatch(ui.el('tv').innerHTML, /Gaseosa/);
 });

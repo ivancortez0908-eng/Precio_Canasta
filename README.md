@@ -52,7 +52,7 @@ Cuando eliges o cambias a mano un producto en la tabla de precios de Favoritos, 
 - **Activarlo:** (1) crea un token fine-grained de GitHub solo para este repositorio con permiso *Issues: Read and write*; (2) en Cloudflare agrega el secreto `GITHUB_TOKEN_APORTES` y, si el repositorio no es `ivancortez0908-eng/Precio_Canasta`, la variable `GITHUB_REPO`; (3) crea en GitHub la etiqueta `aprobado`.
 
 ## Búsqueda en vivo (producto específico)
-La pestaña **Buscar en vivo** consulta un solo producto en el momento en cada tienda, sin descargar catálogos. Como el navegador no puede leer otras tiendas directamente, se usa un Worker gratuito de Cloudflare (`worker/worker.js`) que hace una petición por tienda y guarda cada consulta 10 minutos en caché.
+La pestaña **Buscar en vivo** consulta un solo producto en el momento en cada tienda, sin descargar catálogos. Solo se muestran los resultados que contienen **al menos 2 palabras** de la búsqueda (o la única, si se escribe una): «gaseosa cocacola» muestra las Coca Cola y oculta embutidos o papel. No cuentan artículos, números ni medidas; singular y plural son iguales y no importan acentos ni espacios («cocacola» = «Coca-Cola»). El botón **Mostrar todos** enseña también los ocultos. Como el navegador no puede leer otras tiendas directamente, se usa un Worker gratuito de Cloudflare (`worker/worker.js`) que hace una petición por tienda y guarda cada consulta 10 minutos en caché.
 
 **Instalación (una vez):**
 1. Crea una cuenta gratis en cloudflare.com → **Workers & Pages → Create → Create Worker**, ponle nombre `canasta-busqueda` y pulsa **Deploy**.

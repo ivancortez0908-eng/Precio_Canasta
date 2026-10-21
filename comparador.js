@@ -68,7 +68,22 @@
     }
     return { res, mix: centavos / 100, por, sinPrecio };
   }
-  const api = { equivalente, precioValido, resumir, leerPromo, costo };
+  // Búsqueda en vivo: un resultado debe contener al menos 2 palabras de la búsqueda (o la única que haya).
+  // No cuentan artículos, números ni medidas; singular y plural son iguales y «cocacola» encuentra «Coca-Cola».
+  const VACIAS = new Set("de del la las el los y con para por en al a un una".split(" "));
+  const MEDIDAS = /^(?:\d.*|x|ml|l|lt|lts|litros?|g|gr|grs|gramos?|kg|kilos?|lb|lbs|libras?|oz|onzas?|galon(?:es)?|unidad(?:es)?|und|uds?|pack)$/;
+  const igual = (a, b) => a === b || a + "s" === b || b + "s" === a || a + "es" === b || b + "es" === a;
+  function palabrasBusqueda(q) {
+    return [...new Set(palabras(q).split(" ").filter(w => w.length >= 2 && !VACIAS.has(w) && !MEDIDAS.test(w)))];
+  }
+  function coincideBusqueda(q, texto) {
+    const qs = palabrasBusqueda(q);
+    if (!qs.length) return true;
+    const ws = palabras(texto).split(" ").filter(Boolean), junto = ws.join("");
+    const ok = qs.filter(t => ws.some(w => igual(t, w)) || (t.length >= 4 && junto.includes(t)));
+    return ok.length >= Math.min(2, qs.length);
+  }
+  const api = { equivalente, precioValido, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.Canasta = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);
