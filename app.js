@@ -61,6 +61,13 @@ const favDeItem = it => ({ id: it.fid, n: it.n, m: it.m, q: it.q, u: it.u, pl: i
 // El producto marcado en la búsqueda en vivo lo eligió la persona: queda como elección manual
 const favDeVivo = x => ({ id: x.id, n: x.nombre, m: x.marca, q: x.q, u: x.u, pl: x.pl, busqueda: busquedaRV,
   t: { [x.tienda]: { p: x.precio, url: x.url, nom: x.nombre, ref: idVivo(x), id: pidDe(x), f: fechaRV || hoy(), manual: true, ...oferta(x) } } });
+// El precio más barato no se indica solo con color: ✓ visible y texto para lectores de pantalla
+const barato = html => `<span class="ok" aria-hidden="true">✓</span>${html}<span class="vh"> (más barato)</span>`;
+// Etiqueta «Tienda $precio» de las listas compactas del celular (enlace a la tienda si hay URL)
+function chip(tienda, precio, mejor, extra = "", url = "") {
+  const dentro = `${mejor ? `<span class="ok" aria-hidden="true">✓</span>` : ""}${esc(tienda)} <b>${fmt(precio)}</b>${extra}${mejor ? `<span class="vh"> (más barato)</span>` : ""}`;
+  return url ? `<a class="chip${mejor ? " best" : ""}" href="${esc(url)}" target="_blank" rel="noopener">${dentro}</a>` : `<span class="chip${mejor ? " best" : ""}">${dentro}</span>`;
+}
 const estrella = (attr, on) => `<button class="star" ${attr} aria-pressed="${on}" aria-label="${on ? "Guardado en una lista; cambiar listas" : "Guardar en una lista"}">${on ? "★" : "☆"}</button>`;
 
 // Agrega o quita un producto de una lista. Cada lista guarda su propia copia (cantidad y elecciones).
@@ -207,7 +214,8 @@ function render() {
   const r = filtrar(), S = D.supers;
   $("count").textContent = r.length ? `${r.length} producto(s)` : "";
   let h = `<thead><tr><th>Producto</th>${S.map(s => `<th>${esc(s)}</th>`).join("")}<th>Por unidad</th><th>Fav.</th></tr></thead><tbody>`;
-  if (!r.length) h += `<tr><td colspan="${S.length + 3}">No hay resultados en el catálogo guardado.${$("q").value.trim().length > 1 ? ` <button class="envivo">Buscar “${esc($("q").value.trim())}” en vivo</button>` : ""}</td></tr>`;
+  const vacio = `No hay resultados en el catálogo guardado.${$("q").value.trim().length > 1 ? ` <button class="envivo">Buscar “${esc($("q").value.trim())}” en vivo</button>` : ""}`;
+  if (!r.length) h += `<tr><td colspan="${S.length + 3}">${vacio}</td></tr>`;
   for (const it of r.slice(0, limite)) {
     const min = Math.min(...it.t.map(x => x[1]));
     h += `<tr><td>${esc(it.n)}<small>${it.m ? `<span class="marca">${esc(it.m)}</span>` : "Marca no indicada"}${tam(it) ? " · " + tam(it) : ""}${it.k ? `<span class="tag">${TAG[it.k]}</span>` : ""}</small>${desc(it)}</td>` +
@@ -215,12 +223,20 @@ function render() {
         const e = it.t.find(x => x[0] === si);
         if (!e) return `<td class="na">—</td>`;
         const p = fmt(e[1]), v = e[2] ? `<a href="${esc(e[2])}" target="_blank" rel="noopener">${p}</a>` : p;
-        return `<td class="${e[1] === min && it.t.length > 1 ? "best" : ""}">${v}</td>`;
+        return e[1] === min && it.t.length > 1 ? `<td class="best">${barato(v)}</td>` : `<td>${v}</td>`;
       }).join("") +
       `<td>${it.pu != null ? `${fpu(it.pu)}<small>por ${it.pl}</small>` : "—"}</td>` +
       `<td>${estrella(`data-i="${it.i}"`, !!favoritoItem(it))}</td></tr>`;
   }
   $("tabla").innerHTML = h + "</tbody>";
+  // Celular: nombre, precios con su tienda (el más barato primero), precio por unidad y ☆
+  $("mcat").innerHTML = !r.length ? `<p class="msg">${vacio}</p>` : r.slice(0, limite).map(it => {
+    const min = Math.min(...it.t.map(x => x[1]));
+    return `<article class="mitem"><div class="mfila"><span class="mnom">${esc(it.n)}<small>${it.m ? `<span class="marca">${esc(it.m)}</span>` : "Marca no indicada"}${tam(it) ? " · " + tam(it) : ""}</small></span>` +
+      estrella(`data-i="${it.i}"`, !!favoritoItem(it)) +
+      `<span class="mprecios">${[...it.t].sort((a, b) => a[1] - b[1]).map(e => chip(S[e[0]], e[1], e[1] === min && it.t.length > 1, "", e[2])).join("")}</span>` +
+      (it.pu != null ? `<small class="mpu">${fpu(it.pu)} por ${it.pl}</small>` : "") + "</div></article>";
+  }).join("");
   $("mas").hidden = r.length <= limite;
 }
 
@@ -248,10 +264,15 @@ function pintarVivo() {
     ? `<thead><tr><th>Producto</th><th>Tienda</th><th>Precio</th><th>Por unidad</th><th>Fav.</th></tr></thead><tbody>` + r.map(x => `<tr>
         <td>${esc(x.nombre)}<small>${x.marca ? `<span class="marca">${esc(x.marca)}</span>` : "Marca no indicada"}${tam(x) ? " · " + tam(x) : ""}</small></td>
         <td><span class="store">${esc(x.tienda)}</span></td>
-        <td class="${x.precio === min && r.length > 1 ? "best" : ""}"><a href="${esc(x.url)}" target="_blank" rel="noopener">${fmt(x.precio)}</a>${notaOferta({ p: x.precio, ...oferta(x) })}</td>
+        <td class="${x.precio === min && r.length > 1 ? "best" : ""}">${(x.precio === min && r.length > 1 ? barato : h => h)(`<a href="${esc(x.url)}" target="_blank" rel="noopener">${fmt(x.precio)}</a>`)}${notaOferta({ p: x.precio, ...oferta(x) })}</td>
         <td>${x.pu != null ? `${fpu(x.pu)}<small>por ${x.pl}</small>` : "—"}</td>
         <td>${estrella(`data-id="${esc(x.id)}"`, !!favoritoVivo(x))}</td></tr>`).join("") + "</tbody>"
     : "";
+  // Celular: un renglón por resultado con su tienda, precio, oferta y ☆
+  $("mvivo").innerHTML = r.map(x => `<article class="mitem"><div class="mfila"><span class="mnom">${esc(x.nombre)}<small>${x.marca ? `<span class="marca">${esc(x.marca)}</span>` : "Marca no indicada"}${tam(x) ? " · " + tam(x) : ""}</small></span>` +
+    estrella(`data-id="${esc(x.id)}"`, !!favoritoVivo(x)) +
+    `<span class="mprecios">${chip(x.tienda, x.precio, x.precio === min && r.length > 1, leerPromo(x.promo) ? "<i>oferta</i>" : "", x.url)}</span>` +
+    `<span class="mpu">${x.pu != null ? `<small>${fpu(x.pu)} por ${x.pl}</small>` : ""}${notaOferta({ p: x.precio, ...oferta(x) })}</span></div></article>`).join("");
 }
 async function vivo(q) {
   if (!window.API_VIVO) { $("estv").textContent = "La búsqueda en vivo aún no está configurada. Mira el README, sección “Búsqueda en vivo”."; return; }
@@ -329,7 +350,7 @@ function pintarFav() {
       const selector = opciones.length || v ? `<details class="opciones"><summary>${v ? "Cambiar producto" : `Elegir coincidencia (${opciones.length})`}</summary><label>Producto en ${esc(s)}<select data-fav="${id}" data-store="${esc(s)}" aria-label="Producto equivalente en ${esc(s)}"><option value="">Selecciona marca y presentación</option>${opciones.map((x, i) => `<option value="${i}">${esc(x.nombre)} · ${fmt(x.precio)}</option>`).join("")}${v ? `<option value="ninguno">No está en esta tienda</option>` : ""}</select></label><small>Se usará esta presentación para calcular tu compra.</small></details>` : "";
       if (!v) return { s, cls: "na", html: `<span>${consultando ? "Consultando…" : f.fallos?.includes(s) ? "Tienda sin respuesta" : f.sin?.[s] ? "Descartado por ti" : "Sin coincidencia"}</span>${selector}` };
       const p = v.url ? `<a href="${esc(v.url)}" target="_blank" rel="noopener">${fmt(v.p)}</a>` : fmt(v.p), mejor = costo(v, f.cant) === min && ps.length > 1;
-      return { s, v, mejor, cls: mejor ? "best" : "", html: `${p}${notaOferta(v, f.cant)}<small class="product-source">${esc(v.nom || f.n)}</small>${v.f ? `<small class="f">al ${fecha(v.f)}${v.manual ? " · Elegido por ti" : ""}</small>` : ""}${selector}` };
+      return { s, v, mejor, cls: mejor ? "best" : "", html: `${mejor ? barato(p) : p}${notaOferta(v, f.cant)}<small class="product-source">${esc(v.nom || f.n)}</small>${v.f ? `<small class="f">al ${fecha(v.f)}${v.manual ? " · Elegido por ti" : ""}</small>` : ""}${selector}` };
     });
     return { f, id, nombre, info, acciones, celdas };
   });
@@ -341,7 +362,7 @@ function pintarFav() {
     const con = r.celdas.filter(c => c.v).sort((a, b) => costo(a.v, r.f.cant) - costo(b.v, r.f.cant)), sin = r.celdas.length - con.length, open = r.f.id === abierto;
     return `<article class="mitem${open ? " abierto" : ""}"><button class="mcab" data-a="abrir" data-id="${r.id}" aria-expanded="${open}">` +
       `<span class="mnom">${esc(r.f.n)}</span><span class="mcant">× ${r.f.cant}</span><span class="mprecios">` +
-      con.map(c => `<span class="chip${c.mejor ? " best" : ""}">${esc(c.s)} <b>${fmt(c.v.p)}</b>${leerPromo(c.v.promo) ? "<i>oferta</i>" : ""}</span>`).join("") +
+      con.map(c => chip(c.s, c.v.p, c.mejor, leerPromo(c.v.promo) ? "<i>oferta</i>" : "")).join("") +
       (sin ? `<span class="chip na">${sin} sin precio</span>` : "") + `</span></button>` +
       (open ? `<div class="mdet"><div class="mprod">${r.info}${r.acciones}</div>${r.celdas.map(c => `<div class="mtienda ${c.cls}"><b class="mts">${esc(c.s)}</b><div>${c.html}</div></div>`).join("")}</div>` : "") + "</article>";
   }).join("");
@@ -452,8 +473,10 @@ $("tabla").onclick = e => {
   const b = e.target.closest(".star");
   if (b) abrirListas({ tipo: "item", x: D.items[+b.dataset.i] });
 };
+$("mcat").onclick = e => $("tabla").onclick(e);
 $("fvivo").onsubmit = e => { e.preventDefault(); const q = $("qv").value.trim(); if (q.length >= 2) vivo(q); };
 $("ordv").onchange = pintarVivo;
+$("mvivo").onclick = e => $("tv").onclick(e);
 $("vertodos").onclick = () => { verTodos = !verTodos; pintarVivo(); };
 $("tv").onclick = e => {
   const b = e.target.closest(".star"), x = b && RV.find(r => r.id === b.dataset.id);

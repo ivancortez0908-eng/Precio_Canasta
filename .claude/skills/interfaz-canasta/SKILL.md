@@ -20,14 +20,16 @@ Usa siempre las variables de `:root`; nunca colores sueltos (salvo el amarillo d
 | `--bg` | fondo de la página y de campos de búsqueda |
 | `--surf` | tarjetas, tablas, barra superior, cuadros |
 | `--ink` / `--mute` | texto principal / secundario |
-| `--line` | bordes y separadores |
-| `--blue` | marca, pestaña activa, foco, marcas de producto |
+| `--line` | separadores de tabla y tarjetas |
+| `--borde` | borde de campos (búsqueda, selectores, cantidad): contraste ≥ 3:1 |
+| `--blue` | marca, pestaña activa, foco, marcas de producto (`#1460cc`, ≥ 4.5:1 sobre todos los fondos) |
 | `--btn` / `--hov` | botón normal / al pasar el mouse |
 | `--best` / `--bestInk` | celda más barata |
-| `--warn` | acciones que borran y avisos |
-| `--v` `--a` `--r` | semáforo: verde, amarillo, rojo |
+| `--warn` | acciones que borran y avisos (`#b01433`, ≥ 4.5:1 también sobre botones grises) |
+| `--v` `--a` `--r` | semáforo: verde, amarillo, rojo (decorativos: siempre acompañados de texto) |
 | `--sh` | sombra de tarjetas |
 
+- Todo texto nuevo debe tener contraste ≥ 4.5:1 con su fondo; compruébalo antes de elegir un color.
 - Letra: `system-ui`, 15 px. Títulos de tarjeta `h2` 1.25rem; textos de apoyo `.msg` en `--mute`.
 - Esquinas: tarjetas y tablas 8 px, botones 6 px, búsqueda y etiquetas redondas (999px).
 
@@ -72,11 +74,13 @@ Siempre de arriba abajo: **controles → estado → tabla → resumen**.
 | tarjeta con título | `section.cart` + `h2` |
 | tabla | `div.wrap > table`: encabezado y primera columna fijos, desplazamiento horizontal dentro del recuadro |
 | botón normal / que borra / pequeño de fila | `button` / `button.rm` / `button.retry` |
+| texto solo para lectores de pantalla | `span.vh` |
+| etiqueta tienda + precio (celular) | `chip(tienda, precio, mejor, extra, url)` en `app.js` |
 | renglón compacto (celular) | `article.mitem > button.mcab[data-a=abrir][aria-expanded]` con `.mnom`, `.mcant`, `.mprecios > .chip` y, abierto, `.mdet` |
 | cantidad | `span.stp` con `button[data-a=menos]`, `input.qty`, `button[data-a=mas]` (1 a 99) |
 | favorito | `button.star` con `aria-pressed` y ☆/★; abre `dialog#dlista` |
 | etiqueta pequeña | `.tag` (criterio de unión), `.store` (nombre de tienda), `.marca` (marca, azul) |
-| precio más barato | `td.best` |
+| precio más barato | `td.best` con `barato(html)` (✓ visible + «(más barato)» en `.vh`); nunca solo el color verde |
 | sin dato | `td.na` con texto («Sin coincidencia», «Tienda sin respuesta», «Descartado por ti»); nunca cero dólares |
 | oferta | `small.promo` («Oferta 2 x … · lleva 2 para aplicarla»), `small.promo.si` cuando ya se aplica, `small.antes` tachado |
 | fecha y origen | `small.f` («al 20/10 · Elegido por ti») y `small.product-source` |
@@ -99,7 +103,8 @@ Siempre de arriba abajo: **controles → estado → tabla → resumen**.
 **Celular (hasta 700 px) = versión compacta:**
 - Cada barra de controles va **en una sola fila**: «Lista [selector] · Nueva · Renombrar · Eliminar» y «Actualizar · PDF · Excel · Vaciar». El mensaje de la barra va en su propia línea, encima de los botones.
 - En celular los botones muestran una versión corta: la parte larga del texto va en `<span class="larga">` (se oculta) y el botón lleva `aria-label` con el nombre completo («Descargar PDF»). Si el texto lo cambia `app.js`, actualiza también el `aria-label`.
-- Favoritos no muestra la tabla (`.solo-escritorio`) sino `#mfav`: cada producto es un renglón (`.mitem`) con nombre, cantidad y precios como etiquetas `.chip` **con el nombre de la tienda** y el más barato primero y en verde; las tiendas sin precio se resumen («4 sin precio»).
+- **Ninguna pestaña muestra tablas en el celular** (`.solo-escritorio`): Catálogo usa `#mcat` y En vivo `#mvivo` (`.mlista`, renglones `.mitem > .mfila` con nombre, marca y tamaño, ☆, etiquetas «Tienda $precio» con el más barato primero y precio por unidad).
+- Favoritos usa `#mfav`: cada producto es un renglón (`.mitem`) con nombre, cantidad y precios como etiquetas `.chip` **con el nombre de la tienda** y el más barato primero y en verde; las tiendas sin precio se resumen («4 sin precio»).
 - Al tocar un renglón se abre su detalle (`.mdet`): marca y presentación, cantidad, Quitar, Consultar tiendas y una fila por tienda (`.mtienda`) con el mismo contenido de la celda de la tabla. **Solo un producto abierto a la vez** (`abierto` en `app.js`); tocar el abierto lo cierra. La tabla y la lista compacta salen de los mismos datos (`filas` en `pintarFav`): no dupliques reglas.
 - Se oculta la frase de introducción y los totales van en 2 columnas.
 

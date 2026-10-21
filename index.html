@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="light">
 <title>Canasta SV · Compara precios de supermercados</title>
 <style>
-:root{color-scheme:light;--bg:#f0f2f5;--surf:#fff;--ink:#050505;--mute:#65676b;--line:#ced0d4;--blue:#1877f2;--btn:#e4e6eb;--hov:#d8dadf;--best:#e3f6e8;--bestInk:#14632b;--warn:#e02849;--v:#31a24c;--a:#f7b928;--r:#e02849;--sh:0 1px 2px rgba(0,0,0,.2)}
+:root{color-scheme:light;--bg:#f0f2f5;--surf:#fff;--ink:#050505;--mute:#65676b;--line:#ced0d4;--blue:#1460cc;--borde:#84878c;--btn:#e4e6eb;--hov:#d8dadf;--best:#e3f6e8;--bestInk:#14632b;--warn:#b01433;--v:#31a24c;--a:#f7b928;--r:#e02849;--sh:0 1px 2px rgba(0,0,0,.2)}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,"Segoe UI",Helvetica,Arial,sans-serif}
@@ -25,7 +25,7 @@ main>*,#p1>*,#p2>*,#p3>*{min-width:0}/* las tablas anchas se desplazan dentro de
 .controls,section.cart{background:var(--surf);border-radius:8px;box-shadow:var(--sh);padding:12px 16px}
 .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 section.cart h2{margin:0 0 4px;font-size:1.25rem}
-input[type=search],select{font:inherit;padding:9px 14px;border:0;border-radius:999px;background:var(--bg);color:var(--ink)}
+input[type=search],select{font:inherit;padding:8px 13px;border:1px solid var(--borde);border-radius:999px;background:var(--bg);color:var(--ink)}
 input[type=search]{flex:1;min-width:200px}
 select{border-radius:8px}
 label.chk{display:flex;gap:6px;align-items:center;font-size:.95rem}
@@ -55,7 +55,7 @@ td .marca{font-weight:600;color:var(--blue)}
 .star{background:none;font-size:1.4rem;line-height:1;padding:2px 8px;color:var(--mute)}.star:hover{background:var(--btn)}.star[aria-pressed=true]{color:#e0a100}
 .stp{display:inline-flex;align-items:center;gap:4px}.stp button{padding:2px 10px;font-size:1.1rem;line-height:1.2}
 .rm{color:var(--warn);padding:4px 10px}
-.qty{width:56px;padding:6px;text-align:center;font:inherit;border:1px solid var(--line);border-radius:6px;background:var(--surf);color:var(--ink)}
+.qty{width:56px;padding:6px;text-align:center;font:inherit;border:1px solid var(--borde);border-radius:6px;background:var(--surf);color:var(--ink)}
 .opciones label{display:grid;gap:2px;white-space:normal}.opciones select{max-width:230px;font-size:.8rem;padding:4px 8px;margin-top:4px}
 td small.consulta{white-space:normal;font-size:.8rem}
 td small.promo{display:inline-block;margin-top:3px;padding:1px 8px;border-radius:999px;background:var(--btn);color:var(--ink);font-weight:600;white-space:normal}td small.promo.si{background:#f7b928;color:#000}td small.antes{text-decoration:line-through}.filafav{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}.retry{margin-top:6px;font-size:.8rem;padding:4px 10px}
@@ -80,7 +80,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}dialog h2{margin:0 0 4px;font-size:1
 .dlopts{display:grid;gap:6px;margin:12px 0;max-height:40vh;overflow:auto}
 .dlopts label{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:6px;background:var(--bg);cursor:pointer}
 .dlopts input{width:18px;height:18px}.dlopts small{color:var(--mute)}
-.dlnueva{display:flex;gap:8px;flex-wrap:wrap}.dlnueva input{flex:1;min-width:150px;font:inherit;padding:8px 12px;border:1px solid var(--line);border-radius:6px;background:var(--surf);color:var(--ink)}
+.dlnueva{display:flex;gap:8px;flex-wrap:wrap}.dlnueva input{flex:1;min-width:150px;font:inherit;padding:8px 12px;border:1px solid var(--borde);border-radius:6px;background:var(--surf);color:var(--ink)}
 /* hoja para imprimir o guardar como PDF */
 #imprimir{display:none}
 @media print{
@@ -99,15 +99,24 @@ dialog::backdrop{background:rgba(0,0,0,.45)}dialog h2{margin:0 0 4px;font-size:1
 footer{padding:0 16px 40px;color:var(--mute);font-size:.85rem}
 /* barra de acciones de Favoritos: mensaje y botones */
 .acciones #favmsg{flex:1;min-width:220px}.botones{display:flex;flex-wrap:wrap;gap:10px}
-/* lista compacta de favoritos: solo en celular */
-.mfav{display:none}
+/* listas compactas: solo en celular (Favoritos, Catálogo y En vivo) */
+.mfav,.mlista{display:none}
+.mfila{display:grid;grid-template-columns:1fr auto;align-items:start;gap:4px 8px;padding:10px 12px}
+.mfila .mnom small,.mfila .mpu small{display:block;color:var(--mute);font-weight:400;font-size:.8rem}
+.mfila .mprecios,.mfila .mpu{grid-column:1/-1}.mfila .star{padding:4px 10px}
+.mfila small.promo{display:inline-block;margin-top:3px;padding:1px 8px;border-radius:999px;background:var(--btn);font-size:.75rem;font-weight:600}
+.mfila small.antes{display:inline-block;margin-right:6px;font-size:.75rem;color:var(--mute);text-decoration:line-through}
+a.chip{text-decoration:none}
+/* «más barato»: ✓ visible y texto solo para lectores de pantalla */
+.ok{margin-right:3px;font-weight:700}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .mitem{background:var(--surf);border-radius:8px;box-shadow:var(--sh);overflow:hidden}
 .mcab{display:grid;grid-template-columns:1fr auto;gap:4px 8px;width:100%;padding:10px 12px;border-radius:0;background:none;text-align:left;font-weight:400}
 .mcab:hover{background:none}.mitem.abierto .mcab{background:var(--bg)}
 .mnom{font-weight:600}.mcant{color:var(--mute);font-size:.85rem}
 .mprecios{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px}
 .chip{display:inline-flex;gap:4px;align-items:baseline;padding:2px 8px;border-radius:999px;background:var(--bg);font-size:.78rem;color:var(--mute)}
-.chip b{color:var(--ink)}.chip.best{background:var(--best);color:var(--bestInk)}.chip.best b{color:var(--bestInk)}.chip i{font-style:normal;font-weight:600;color:#9a6a00}
+.chip b{color:var(--ink)}.chip.best{background:var(--best);color:var(--bestInk)}.chip.best b{color:var(--bestInk)}.chip i{font-style:normal;font-weight:600;color:#7a5400}
 .chip.na{background:none;padding-left:2px}
 .mdet{display:grid;border-top:1px solid var(--line)}
 .mprod,.mtienda{padding:8px 12px;border-bottom:1px solid var(--line)}.mtienda:last-child{border-bottom:0}
@@ -126,7 +135,7 @@ footer{padding:0 16px 40px;color:var(--mute);font-size:.85rem}
   .listas select{flex:1;min-width:0;padding:6px 8px;font-size:.85rem}.listas button{flex:none}
   .acciones{display:grid;gap:6px}.acciones #favmsg{min-width:0;font-size:.82rem}
   .botones{flex-wrap:nowrap;gap:6px}.botones button{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .solo-escritorio{display:none}.mfav{display:grid;gap:8px}
+  .solo-escritorio{display:none}.mfav,.mlista{display:grid;gap:8px}
   section.cart{padding:10px}section.cart h2{font-size:1.05rem}
   .totals{grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
   .tot{padding:8px 24px 8px 10px;border-left-width:5px}.tot .dot{width:10px;height:10px;top:10px;right:10px}
@@ -157,7 +166,8 @@ footer{padding:0 16px 40px;color:var(--mute);font-size:.85rem}
     </select>
   </div>
   <p class="msg" id="count"></p>
-  <div class="wrap"><table id="tabla"></table></div>
+  <div class="wrap solo-escritorio"><table id="tabla"></table></div>
+  <div class="mlista" id="mcat"></div>
   <button id="mas" hidden>Mostrar más</button>
   </div>
 
@@ -172,7 +182,8 @@ footer{padding:0 16px 40px;color:var(--mute);font-size:.85rem}
     </form>
     <p class="msg" id="estv">Consulta el producto en el momento en cada tienda, sin descargar sus catálogos. Escribe al menos dos palabras (por ejemplo, «gaseosa coca cola»).</p>
     <p class="msg" id="ocultos" hidden><span id="ocultostxt"></span><button id="vertodos" class="retry">Mostrar todos</button></p>
-    <div class="wrap"><table id="tv"></table></div>
+    <div class="wrap solo-escritorio"><table id="tv"></table></div>
+    <div class="mlista" id="mvivo"></div>
     <p class="msg">Los resultados salen directamente de cada tienda y pueden incluir presentaciones distintas. Verifica marca, concentración y presentación antes de comparar, sobre todo en medicamentos.</p>
   </div>
   <div id="p3" hidden>

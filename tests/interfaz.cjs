@@ -13,7 +13,8 @@ const respuesta = { generado: '2026-10-17T12:00:00Z', tiendas: { Walmart: { ok: 
 const server = http.createServer((req, res) => {
   const archivos = { '/': 'index.html', '/app.js': 'app.js', '/comparador.js': 'comparador.js', '/exportar.js': 'exportar.js' };
   if (req.url === '/config.js') { res.setHeader('Content-Type', 'text/javascript'); res.end('window.API_VIVO="https://worker.test";'); return; }
-  if (req.url === '/data/productos.json') { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ supers: ['Walmart', 'Super Selectos'], actualizado: '2026-10-17', items: [] })); return; }
+  if (req.url === '/data/productos.json') { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ supers: ['Walmart', 'Super Selectos'], actualizado: '2026-10-17', items: [{ n: 'Arroz Blanco Precisa 1 lb', m: 'Precisa', q: 454, u: 'g', pl: 'lb', pu: .85, k: 'ean',
+    t: [[0, .89, 'https://t.test/a1', .89, 'Arroz Blanco Precisa 1 lb', 'Precisa', '', 'a1'], [1, .85, 'https://t.test/a2', .85, 'Arroz Precisa 1 lb', 'Precisa', '', 'a2']] }] })); return; }
   const archivo = archivos[req.url];
   if (!archivo) { res.writeHead(404); res.end(); return; }
   res.setHeader('Content-Type', archivo.endsWith('.js') ? 'text/javascript' : 'text/html');
@@ -39,6 +40,8 @@ const server = http.createServer((req, res) => {
     await page.getByRole('tab', { name: /En vivo/ }).click();
     await page.getByRole('searchbox', { name: 'Producto a buscar en vivo' }).fill('leche salud');
     await page.getByRole('button', { name: 'Buscar en las tiendas' }).click();
+    // El más barato no se indica solo con color
+    assert.match(await page.locator('#tv td.best').innerText(), /✓[^]*\$1\.75[^]*\(más barato\)/);
     await page.locator('#tv .star').first().click();
     // La ☆ abre el cuadro para elegir o crear listas
     const cuadro = page.getByRole('dialog', { name: 'Guardar en una lista' });
@@ -96,7 +99,9 @@ const server = http.createServer((req, res) => {
     await page.setViewportSize({ width: 390, height: 844 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     // Celular: cada barra en una sola fila
-    const filas = async ids => new Set(await Promise.all(ids.map(id => page.locator(id).evaluate(b => Math.round(b.getBoundingClientRect().top))))).size;
+    // misma fila = centros verticales a menos de 6 px entre sí
+    const filas = async ids => { const c = await Promise.all(ids.map(id => page.locator(id).evaluate(b => { const r = b.getBoundingClientRect(); return r.top + r.height / 2; })));
+      return Math.max(...c) - Math.min(...c) < 6 ? 1 : 2; };
     assert.equal(await filas(['#lsel', '#lnueva', '#lrenombrar', '#lborrar']), 1);
     assert.equal(await filas(['#favrefresh', '#favpdf', '#favxlsx', '#favclear']), 1);
     // Lista compacta: nombre y precios con su supermercado (el más barato primero); el detalle se abre al tocar
@@ -118,6 +123,24 @@ const server = http.createServer((req, res) => {
     await page.getByRole('combobox', { name: 'Lista' }).selectOption({ label: 'Mensual (1)' });
     if (!(await page.getByRole('spinbutton').count())) await page.locator('#mfav .mcab').first().click();
     assert.equal(await page.getByRole('spinbutton').inputValue(), '1');
+    // Celular: Catálogo y En vivo también en lista compacta, con la tienda junto a cada precio y sin desplazar la página
+    await page.getByRole('tab', { name: /Catálogo/ }).click();
+    assert.equal(await page.locator('#tabla').isVisible(), false);
+    assert.match(await page.locator('#mcat .mitem').first().innerText(), /Arroz Blanco Precisa 1 lb[^]*✓\s*Super Selectos\s*\$0\.85[^]*Walmart\s*\$0\.89[^]*\$0\.85 por lb/);
+    if (process.env.CANASTA_CAPTURAS) await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'catalogo-movil.png') });
+    await page.getByRole('tab', { name: /En vivo/ }).click();
+    await page.getByRole('searchbox', { name: 'Producto a buscar en vivo' }).fill('leche salud');
+    await page.getByRole('button', { name: 'Buscar en las tiendas' }).click();
+    await page.locator('#mvivo .mitem').first().waitFor();
+    assert.equal(await page.locator('#tv').isVisible(), false);
+    const vivoMovil = await page.locator('#mvivo').innerText();
+    assert.match(vivoMovil, /✓\s*Super Selectos\s*\$1\.75/);
+    assert.match(vivoMovil, /Walmart\s*\$2\.00\s*oferta[^]*Oferta 2 x \$3\.80/);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    if (process.env.CANASTA_CAPTURAS) await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'envivo-movil.png') });
+    // Colores con contraste suficiente (azul de marca y rojo de acciones que borran) y bordes visibles en los campos
+    assert.deepEqual(await page.evaluate(() => [getComputedStyle(document.querySelector('.brand')).color, getComputedStyle(document.querySelector('#favclear')).color,
+      getComputedStyle(document.querySelector('#qv')).borderTopColor]), ['rgb(20, 96, 204)', 'rgb(176, 20, 51)', 'rgb(132, 135, 140)']);
     assert.deepEqual(errores, []);
     console.log('Interfaz verificada: búsqueda → guardar en dos listas → cantidades → Excel y PDF → móvil → persistencia → quitar → cambiar de lista.');
   } finally {

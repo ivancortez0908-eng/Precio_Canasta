@@ -374,3 +374,25 @@ test('búsqueda en vivo: oculta los productos de otras categorías y deja verlos
   assert.match(ui.el('tv').innerHTML, /Chorizo/);
   assert.doesNotMatch(ui.el('tv').innerHTML, /Gaseosa/);
 });
+test('el más barato se marca con ✓ y texto, y Catálogo y En vivo tienen lista compacta con tienda y precio', async () => {
+  const arroz = { n: 'Arroz Blanco Precisa 1 lb', m: 'Precisa', q: 454, u: 'g', pl: 'lb', pu: .85, k: 'ean',
+    t: [[0, .89, 'https://t.test/a1', .89, 'Arroz Blanco Precisa 1 lb', 'Precisa', '', 'a1'], [1, .85, 'https://t.test/a2', .85, 'Arroz Precisa 1 lb', 'Precisa', '', 'a2']] };
+  const ui = interfaz({ datos: { supers: ['Walmart', 'Selectos'], actualizado: '2026-10-21', items: [arroz] },
+    resultados: [producto('Walmart', 2), producto('Selectos', 1.75, { promo: '2x1' })] });
+  await terminar();
+  // tabla: la celda verde también dice que es la más barata
+  assert.match(ui.el('tabla').innerHTML, /<td class="best"><span class="ok" aria-hidden="true">✓<\/span><a [^>]*>\$0\.85<\/a><span class="vh"> \(más barato\)<\/span><\/td>/);
+  // lista compacta: precios con su tienda, el más barato primero, con enlace, y la ☆
+  const cat = ui.el('mcat').innerHTML;
+  assert.match(cat, /<a class="chip best" href="https:\/\/t\.test\/a2"[^>]*><span class="ok" aria-hidden="true">✓<\/span>Selectos <b>\$0\.85<\/b>[^]*Walmart <b>\$0\.89<\/b>/);
+  assert.match(cat, /\$0\.85 por lb/);
+  assert.match(cat, /class="star" data-i="0"/);
+  await ui.run('vivo("leche salud")');
+  const viv = ui.el('mvivo').innerHTML;
+  assert.match(viv, /Selectos <b>\$1\.75<\/b><i>oferta<\/i>[^]*Oferta 2x1/);
+  assert.match(viv, /class="star" data-id="v:Walmart:Walmart-1"/);
+  assert.match(ui.el('tv').innerHTML, /\(más barato\)/);
+  // la ☆ de la lista compacta abre el mismo cuadro de listas
+  ui.run('$("mvivo").onclick({ target: { classList: { contains: () => false }, closest: s => s === ".star" ? { dataset: { id: RV[1].id } } : null } })');
+  assert.equal(ui.run('porGuardar && porGuardar.x.tienda'), 'Selectos');
+});
