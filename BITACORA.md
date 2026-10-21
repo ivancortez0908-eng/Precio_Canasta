@@ -1,3 +1,21 @@
+# Bitácora — 21 de octubre de 2026 (revisión de diseño: prioridades 1 y 2)
+
+## Origen
+Revisiones `design:design-critique` y `design:accessibility-review` (WCAG 2.1 AA) sobre capturas reales a 1440 y 390 px.
+
+## Cambios
+- **Celular, Catálogo y En vivo:** ya no muestran tablas con los precios cortados a la derecha. Lista compacta (`#mcat`, `#mvivo`) con nombre, marca y tamaño, ☆, etiquetas «Tienda $precio» (el más barato primero, en verde y con ✓; enlace a la tienda), precio por unidad y oferta. La ☆ y «Buscar en vivo» usan los mismos eventos de las tablas.
+- **«Más barato» sin depender del color (WCAG 1.4.1):** ✓ visible y «(más barato)» para lectores de pantalla en las tablas de Catálogo, En vivo y Favoritos y en las etiquetas del celular.
+- **Contraste (1.4.3 y 1.4.11):** azul `#1877f2` → `#1460cc` (4.23 → 5.2–5.9:1); rojo de acciones que borran y avisos `#e02849` → `#b01433` (3.68 → 5.0–7.0:1); «oferta» `#9a6a00` → `#7a5400` (4.22 → 6:1); nuevo `--borde` `#84878c` en búsqueda, selectores, cantidad y nombre de lista (1.12 → 3.2–3.6:1). El semáforo conserva su rojo: es decorativo y va con texto.
+- Skill `interfaz-canasta` actualizado (colores, `--borde`, `barato()`, `chip()`, listas compactas en las tres pestañas).
+
+## Validación
+- `node --test tests/canasta.test.cjs`: 28 pruebas (nueva: marca de más barato en tabla y etiquetas, listas compactas de Catálogo y En vivo, ☆ desde la lista).
+- `node tests/interfaz.cjs`: «✓ … (más barato)» en la tabla; a 390 px Catálogo y En vivo sin tabla, con tienda y precio y sin desplazamiento horizontal; colores calculados del azul, rojo y borde. Capturas revisadas.
+
+## Pendiente de la revisión (prioridades 3 a 5)
+Botones táctiles de 44 px, `aria-live` en mensajes de estado, precio por unidad «$0.000» (redondeo a 2 decimales en `emparejar.mjs`), orden inicial del catálogo, resumen de la compra arriba, `role="tabpanel"`/`h1` y mensaje de «no respondieron» repetido.
+
 # Bitácora — 21 de octubre de 2026 (búsqueda en vivo más estricta)
 
 ## Solicitud
