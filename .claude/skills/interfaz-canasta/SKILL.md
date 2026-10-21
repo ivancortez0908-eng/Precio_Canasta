@@ -1,15 +1,19 @@
 ---
 name: interfaz-canasta
-description: Guía de diseño de la interfaz de Canasta SV (index.html, app.js). Úsala antes de agregar o cambiar menús, pestañas, botones, tablas, cuadros, mensajes o estilos del sitio, para que todo siga la misma estructura, posiciones y textos.
+description: Guía de diseño de la interfaz de Canasta SV (solo modo claro) (index.html, app.js). Úsala antes de agregar o cambiar menús, pestañas, botones, tablas, cuadros, mensajes o estilos del sitio, para que todo siga la misma estructura, posiciones y textos.
 ---
 
 # Interfaz de Canasta SV
+
+<!-- No escribir el signo de dólar seguido de un número en este archivo: al usar /interfaz-canasta se reemplaza por el pedido. -->
 
 Sitio estático, sin compilación ni librerías: los estilos viven en el `<style>` de `index.html` y el comportamiento en `app.js`. Antes de crear algo nuevo, **reutiliza un componente de esta guía**. Si de verdad falta uno, agrégalo aquí también.
 
 ## 1. Colores y apariencia
 
-Usa siempre las variables de `:root`; nunca colores sueltos (salvo el amarillo de oferta aplicada). Cada variable tiene su versión oscura en `@media (prefers-color-scheme:dark)`: si agregas una, define ambas.
+Usa siempre las variables de `:root`; nunca colores sueltos (salvo el amarillo de oferta aplicada).
+
+**El sitio es solo de modo claro**, aunque el dispositivo esté en modo oscuro: `:root` y `<meta name="color-scheme">` declaran `light`. No agregues `@media (prefers-color-scheme:dark)` ni colores oscuros.
 
 | Variable | Uso |
 |---|---|
@@ -71,8 +75,8 @@ Siempre de arriba abajo: **controles → estado → tabla → resumen**.
 | favorito | `button.star` con `aria-pressed` y ☆/★; abre `dialog#dlista` |
 | etiqueta pequeña | `.tag` (criterio de unión), `.store` (nombre de tienda), `.marca` (marca, azul) |
 | precio más barato | `td.best` |
-| sin dato | `td.na` con texto («Sin coincidencia», «Tienda sin respuesta», «Descartado por ti»); nunca $0 |
-| oferta | `small.promo` («Oferta 2 x $2.20 · lleva 2…»), `small.promo.si` cuando ya se aplica, `small.antes` tachado |
+| sin dato | `td.na` con texto («Sin coincidencia», «Tienda sin respuesta», «Descartado por ti»); nunca cero dólares |
+| oferta | `small.promo` («Oferta 2 x … · lleva 2 para aplicarla»), `small.promo.si` cuando ya se aplica, `small.antes` tachado |
 | fecha y origen | `small.f` («al 20/10 · Elegido por ti») y `small.product-source` |
 | elegir otra opción | `details.opciones > summary + select` dentro de la celda |
 | semáforo | `.totals > .tot.v|.a|.r` con `.dot`, `.tn`, `b`, `.tl` y la `.leyenda` |
@@ -84,7 +88,7 @@ Siempre de arriba abajo: **controles → estado → tabla → resumen**.
 
 - Español de El Salvador, tuteo («Marca la ☆…», «Puedes reintentar»). Frases cortas, sin tecnicismos ni inglés.
 - Botones con verbo + objeto: «Actualizar precios», «Descargar Excel», «Crear y agregar». Nada de «OK» o «Enviar» a secas.
-- Precios con `fmt()` ($1.25); por unidad con `fpu()`; fechas cortas `dd/mm` con `fecha()`.
+- Precios con `fmt()` (signo de dólar y 2 decimales); por unidad con `fpu()`; fechas cortas `dd/mm` con `fecha()`.
 - Todo texto que venga de una tienda o del usuario pasa por `esc()` antes de ir a `innerHTML`.
 - Explica los estados vacíos y los errores con qué hacer después («Aún no tienes favoritos. Marca la ☆…»).
 
@@ -101,5 +105,5 @@ Siempre de arriba abajo: **controles → estado → tabla → resumen**.
 1. `node --test tests/canasta.test.cjs`, `node --check app.js`, `node --check comparador.js`, `node --check exportar.js`.
 2. `CANASTA_CAPTURAS=<carpeta> node tests/interfaz.cjs` y mira las capturas: escritorio (1440 px), ventana mediana (1000 px) y móvil (390 px).
 3. Si cambiaste algo visible, agrega o ajusta una comprobación en `tests/interfaz.cjs`.
-4. Revisa el modo oscuro y la hoja de impresión (Descargar PDF) si tocaste colores o tablas.
+4. Revisa que todo siga en modo claro con el dispositivo en modo oscuro, y la hoja de impresión (Descargar PDF) si tocaste colores o tablas.
 5. Anota el cambio en `BITACORA.md`.
