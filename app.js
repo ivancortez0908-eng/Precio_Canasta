@@ -4,11 +4,11 @@ const esc = s => (s || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;",
 const fmt = n => "$" + n.toFixed(2);
 const fpu = n => "$" + n.toFixed(n < 0.1 ? 3 : 2);
 const TAG = { ean: "Mismo código de barras", nombre: "Coincide por nombre y tamaño", manual: "Equivalencia verificada" };
-let D, limite = 60, RV = [], fechaRV = "", busquedaRV = "", ctl, actualizando = false, porGuardar = null, abierto = null;
+let D, limite = 60, RV = [], fechaRV = "", busquedaRV = "", ctl, actualizando = false, porGuardar = null, abierto = null, verTodos = false;
 const tiendasConocidas = new Set();
 // Consultas y opciones por favorito (el objeto, porque un producto puede estar en varias listas)
 const pendientes = new Map(), candidatos = new Map();
-const { equivalente, precioValido, resumir, leerPromo, costo } = Canasta;
+const { equivalente, precioValido, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda } = Canasta;
 // Oferta y precio anterior que reporta cada tienda; solo valen para esa tienda
 const oferta = x => ({ promo: x.promo || null, antes: x.antes > x.precio ? x.antes : null });
 
@@ -236,7 +236,12 @@ function notaOferta(v, cant) {
 
 // ---------- Búsqueda en vivo ----------
 function pintarVivo() {
-  const o = $("ordv").value, r = [...RV];
+  // Solo los resultados que contienen al menos 2 palabras de la búsqueda, salvo que la persona pida ver todos
+  const o = $("ordv").value, r = RV.filter(x => verTodos || x.coincide), ocultos = RV.length - RV.filter(x => x.coincide).length;
+  $("ocultos").hidden = !ocultos;
+  $("ocultostxt").textContent = verTodos ? `Se muestran también ${ocultos} resultado(s) que no coinciden con 2 palabras de tu búsqueda. `
+    : `Se ocultaron ${ocultos} resultado(s) de otros productos (no coinciden con 2 palabras de tu búsqueda). `;
+  $("vertodos").textContent = verTodos ? "Ocultar los que no coinciden" : "Mostrar todos";
   r.sort((a, b) => o === "pu" ? (a.pu ?? 1e9) - (b.pu ?? 1e9) : a.precio - b.precio);
   const min = r.length ? Math.min(...r.map(x => x.precio)) : 0;
   $("tv").innerHTML = r.length
@@ -257,12 +262,15 @@ async function vivo(q) {
     const r = await fetch(`${window.API_VIVO}?q=${encodeURIComponent(q)}`, { signal: ctl.signal });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || "Error " + r.status);
-    RV = d.resultados.map(x => ({ ...x, pid: String(x.id ?? ""), id: idVivo(x) }));
+    RV = d.resultados.map(x => ({ ...x, pid: String(x.id ?? ""), id: idVivo(x), coincide: coincideBusqueda(q, `${x.nombre} ${x.marca || ""}`) }));
+    verTodos = false;
     fechaRV = d.generado;
     busquedaRV = q;
     Object.keys(d.tiendas).forEach(s => tiendasConocidas.add(s));
-    const est = Object.entries(d.tiendas).map(([t, v]) => v.ok ? `${t}: ${v.n} resultado(s)` : `${t}: no respondió`).join(" · ");
-    $("estv").textContent = RV.length ? `${est}. Consultado ${new Date(d.generado).toLocaleTimeString("es-SV", { hour: "2-digit", minute: "2-digit" })}.` : `Sin resultados para “${q}”. ${est}. Prueba con otra palabra.`;
+    const est = Object.entries(d.tiendas).map(([t, v]) => v.ok ? `${t}: ${RV.filter(x => x.tienda === t && x.coincide).length} resultado(s)` : `${t}: no respondió`).join(" · ");
+    const n = RV.filter(x => x.coincide).length;
+    $("estv").textContent = n ? `${est}. Consultado ${new Date(d.generado).toLocaleTimeString("es-SV", { hour: "2-digit", minute: "2-digit" })}`.replace(/\.?$/, ".")
+      : `Sin resultados que coincidan con “${q}”. ${est}. Prueba con otras palabras${RV.length ? " o usa «Mostrar todos»" : ""}.`;
     pintarVivo();
   } catch (e) { if (e.name !== "AbortError") $("estv").textContent = "No se pudo consultar: " + e.message; }
 }
@@ -446,6 +454,7 @@ $("tabla").onclick = e => {
 };
 $("fvivo").onsubmit = e => { e.preventDefault(); const q = $("qv").value.trim(); if (q.length >= 2) vivo(q); };
 $("ordv").onchange = pintarVivo;
+$("vertodos").onclick = () => { verTodos = !verTodos; pintarVivo(); };
 $("tv").onclick = e => {
   const b = e.target.closest(".star"), x = b && RV.find(r => r.id === b.dataset.id);
   if (x) abrirListas({ tipo: "vivo", x });

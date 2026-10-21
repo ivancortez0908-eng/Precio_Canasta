@@ -1,3 +1,20 @@
+# Bitácora — 21 de octubre de 2026 (búsqueda en vivo más estricta)
+
+## Solicitud
+Que la búsqueda en vivo muestre solo resultados que cumplan al menos dos palabras: «Gaseosa Cocacola» traía embutidos, papel, etc.
+
+## Cambios
+- `comparador.js`: `palabrasBusqueda` y `coincideBusqueda`. Un resultado debe contener al menos 2 palabras de la búsqueda en su nombre o marca (o la única si solo hay una). No cuentan artículos, números ni medidas; singular/plural iguales; sin acentos; «cocacola» encuentra «Coca-Cola» (comparación sin espacios para palabras de 4 letras o más).
+- `app.js`: la tabla de En vivo y el conteo por tienda usan solo los resultados que coinciden; un aviso dice cuántos se ocultaron y «Mostrar todos» / «Ocultar los que no coinciden» alterna. Cada búsqueda nueva vuelve a filtrar. La consulta de favoritos no cambia (ya exige equivalencia de marca, variante y tamaño).
+- Se corrigió el doble punto después de la hora («12:00 p. m..»).
+- No requiere actualizar el Worker.
+
+## Validación
+- Pruebas nuevas: el ejemplo «Gaseosa Cocacola» (muestra Coca Cola; oculta chorizo, papel, Pepsi, chocolate), plural/singular, palabras que no cuentan, y el flujo con «Mostrar todos». 27 pruebas aprobadas; `node tests/interfaz.cjs` aprobado; captura de celular revisada.
+
+## Límites
+- Un producto escrito de forma muy distinta (p. ej. «Coca Cola Zero Lata» al buscar «gaseosa coca cola», sin la palabra «gaseosa») queda oculto; se ve con «Mostrar todos».
+
 # Bitácora — 21 de octubre de 2026 (celular compacto)
 
 ## Solicitud
