@@ -18,6 +18,7 @@ No crear copias de estos archivos en la raíz: los workflows y el sitio solo usa
 - `tests/canasta.test.cjs`: pruebas de reglas y flujo con DOM/respuestas simulados.
 - `tests/interfaz.cjs`: flujo real en Chromium con respuestas simuladas.
 - `BITACORA.md`: cambios, validación y límites de esta entrega.
+- `.claude/skills/interfaz-canasta/SKILL.md`: guía de diseño (colores, estructura, posiciones, componentes y textos). Seguirla en todo cambio de interfaz.
 
 ## Integración existente
 El usuario informa que GitHub y el Worker de Cloudflare ya están conectados y funcionan. Mantener esa integración. La URL se lee de `window.API_VIVO`, definida en `config.js`; no inventar una URL ni sobrescribir la configuración existente. El Worker se publica pegando `worker/worker.js` en Cloudflare; su campo `version` indica qué código está desplegado.

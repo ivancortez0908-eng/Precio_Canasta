@@ -32,6 +32,10 @@ const server = http.createServer((req, res) => {
     // La impresión real abriría un cuadro del sistema; se registra la llamada
     await page.addInitScript(() => { window.print = () => { window.impreso = (window.impreso || 0) + 1; }; });
     await page.goto(url);
+    // Solo modo claro: aunque el dispositivo esté en modo oscuro, el fondo y las tarjetas siguen claros
+    await page.emulateMedia({ colorScheme: 'dark' });
+    assert.deepEqual(await page.evaluate(() => [getComputedStyle(document.body).backgroundColor, getComputedStyle(document.querySelector('.controls')).backgroundColor]),
+      ['rgb(240, 242, 245)', 'rgb(255, 255, 255)']);
     await page.getByRole('tab', { name: /En vivo/ }).click();
     await page.getByRole('searchbox', { name: 'Producto a buscar en vivo' }).fill('leche salud');
     await page.getByRole('button', { name: 'Buscar en las tiendas' }).click();

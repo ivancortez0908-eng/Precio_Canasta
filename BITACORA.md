@@ -1,3 +1,13 @@
+# Bitácora — 21 de octubre de 2026 (solo modo claro)
+
+## Cambio
+- El sitio se ve siempre en modo claro, aunque el dispositivo use modo oscuro: se quitó el bloque `@media (prefers-color-scheme:dark)` y `:root` y `<meta name="color-scheme">` declaran `light` (también para selectores, casillas y barras de desplazamiento).
+- Skill `interfaz-canasta`: la regla de solo modo claro queda escrita. Se corrigieron textos con el signo de dólar seguido de un número, que el comando `/interfaz-canasta` reemplazaba por el pedido escrito.
+
+## Validación
+- `node tests/interfaz.cjs` simula un dispositivo en modo oscuro y comprueba fondo `#f0f2f5` y tarjetas blancas; capturas revisadas.
+- `node --test tests/canasta.test.cjs` (24) y `node --check` aprobados.
+
 # Bitácora — 21 de octubre de 2026 (ofertas de Súper Selectos)
 
 ## Problema
