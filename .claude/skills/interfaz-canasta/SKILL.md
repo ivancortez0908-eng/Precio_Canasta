@@ -42,7 +42,8 @@ main (todo el ancho, 16 px de margen lateral)
  ├─ p.msg.intro   una línea que explica el sitio
  ├─ #p1 Catálogo:   .controls (buscar · filtro · ordenar) → #count → .wrap>table#tabla → «Mostrar más»
  ├─ #p2 En vivo:    form.controls (buscar · «Buscar en las tiendas» · ordenar) → #estv → .wrap>table#tv → aviso
- └─ #p3 Favoritos:  .controls.listas → .controls (mensaje + acciones) → #favest → .wrap>table#tfav → section.cart#favres
+ └─ #p3 Favoritos:  .controls.listas → .controls.acciones (#favmsg + .botones) → #favest → .wrap.solo-escritorio>table#tfav
+                    → #mfav (lista compacta, solo celular) → section.cart#favres
 section#ayuda.ayuda   pregunta de aportes, al pie, solo cuando aplica
 footer#foot           fecha y origen de los datos
 dialog#dlista         «Guardar en una lista»
@@ -71,6 +72,7 @@ Siempre de arriba abajo: **controles → estado → tabla → resumen**.
 | tarjeta con título | `section.cart` + `h2` |
 | tabla | `div.wrap > table`: encabezado y primera columna fijos, desplazamiento horizontal dentro del recuadro |
 | botón normal / que borra / pequeño de fila | `button` / `button.rm` / `button.retry` |
+| renglón compacto (celular) | `article.mitem > button.mcab[data-a=abrir][aria-expanded]` con `.mnom`, `.mcant`, `.mprecios > .chip` y, abierto, `.mdet` |
 | cantidad | `span.stp` con `button[data-a=menos]`, `input.qty`, `button[data-a=mas]` (1 a 99) |
 | favorito | `button.star` con `aria-pressed` y ☆/★; abre `dialog#dlista` |
 | etiqueta pequeña | `.tag` (criterio de unión), `.store` (nombre de tienda), `.marca` (marca, azul) |
@@ -94,8 +96,16 @@ Siempre de arriba abajo: **controles → estado → tabla → resumen**.
 
 ## 6. Móvil y accesibilidad
 
+**Celular (hasta 700 px) = versión compacta:**
+- Cada barra de controles va **en una sola fila**: «Lista [selector] · Nueva · Renombrar · Eliminar» y «Actualizar · PDF · Excel · Vaciar». El mensaje de la barra va en su propia línea, encima de los botones.
+- En celular los botones muestran una versión corta: la parte larga del texto va en `<span class="larga">` (se oculta) y el botón lleva `aria-label` con el nombre completo («Descargar PDF»). Si el texto lo cambia `app.js`, actualiza también el `aria-label`.
+- Favoritos no muestra la tabla (`.solo-escritorio`) sino `#mfav`: cada producto es un renglón (`.mitem`) con nombre, cantidad y precios como etiquetas `.chip` **con el nombre de la tienda** y el más barato primero y en verde; las tiendas sin precio se resumen («4 sin precio»).
+- Al tocar un renglón se abre su detalle (`.mdet`): marca y presentación, cantidad, Quitar, Consultar tiendas y una fila por tienda (`.mtienda`) con el mismo contenido de la celda de la tabla. **Solo un producto abierto a la vez** (`abierto` en `app.js`); tocar el abierto lo cierra. La tabla y la lista compacta salen de los mismos datos (`filas` en `pintarFav`): no dupliques reglas.
+- Se oculta la frase de introducción y los totales van en 2 columnas.
+
+
 - Sin desplazamiento horizontal de la página: las tablas se desplazan dentro de `.wrap`; mantén `min-width:0` en los hijos de `main` y de los paneles.
-- En menos de 700 px se ocultan el nombre de la marca y `.sp`, y las pestañas se compactan.
+- En menos de 700 px también se ocultan el nombre de la marca y `.sp`, y las pestañas se compactan.
 - Botones de al menos ~32 px de alto; nada que dependa solo del color (el semáforo también dice el texto).
 - Todo campo o botón de solo ícono lleva `aria-label`; las pestañas, `role="tab"` y `aria-selected`; mensajes que cambian solos, `aria-live="polite"`.
 - Respeta `:focus-visible` (contorno azul); no lo quites.
