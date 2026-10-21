@@ -33,6 +33,12 @@ const server = http.createServer((req, res) => {
     // La impresión real abriría un cuadro del sistema; se registra la llamada
     await page.addInitScript(() => { window.print = () => { window.impreso = (window.impreso || 0) + 1; }; });
     await page.goto(url);
+    // Accesibilidad: título principal, pestañas ligadas a sus paneles y solo la activa en el orden de Tab; catálogo por «Mayor diferencia»
+    assert.equal(await page.getByRole('heading', { level: 1, name: 'Canasta SV', exact: true }).count(), 1);
+    assert.deepEqual(await page.evaluate(() => [1, 2, 3].map(i => [document.querySelector('#tab' + i).getAttribute('aria-controls'), document.querySelector('#tab' + i).tabIndex,
+      document.querySelector('#p' + i).getAttribute('role')])), [['p1', 0, 'tabpanel'], ['p2', -1, 'tabpanel'], ['p3', -1, 'tabpanel']]);
+    assert.equal(await page.locator('#ord').inputValue(), 'dif');
+    assert.equal(await page.getAttribute('#estv', 'aria-live'), 'polite');
     // Solo modo claro: aunque el dispositivo esté en modo oscuro, el fondo y las tarjetas siguen claros
     await page.emulateMedia({ colorScheme: 'dark' });
     assert.deepEqual(await page.evaluate(() => [getComputedStyle(document.body).backgroundColor, getComputedStyle(document.querySelector('.controls')).backgroundColor]),
@@ -67,6 +73,10 @@ const server = http.createServer((req, res) => {
     assert.match(await page.locator('#favtot').innerText(), /\$3.80/);
     assert.match(await page.locator('#tfav').innerText(), /aplicada: \$3\.80 por 2/);
     assert.equal(await page.locator('#entrena').count(), 0);
+    // Resumen arriba de la tabla
+    assert.match(await page.locator('#favresumen').innerText(), /Compra completa más barata: Super Selectos \$3\.50 · Combinando tiendas: \$3\.50/);
+    // Zonas táctiles de al menos 24 px en computadora
+    assert.ok(Math.min(...await page.locator('#tfav summary').evaluateAll(es => es.map(e => e.getBoundingClientRect().height))) >= 24);
     // Con seis tiendas en una ventana angosta, cantidad y Quitar siguen a la vista y la tabla se desplaza hasta la última tienda
     await page.setViewportSize({ width: 1000, height: 900 });
     const enPantalla = async l => { const b = await l.boundingBox(); return !!b && b.x >= 0 && b.x + b.width <= 1000; };
@@ -98,6 +108,10 @@ const server = http.createServer((req, res) => {
     await page.emulateMedia({ media: 'screen' });
     await page.setViewportSize({ width: 390, height: 844 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    // Celular: botones, campos y opciones de al menos 44 px de alto
+    const bajos = await page.evaluate(() => [...document.querySelectorAll('#p3 button, #p3 select, #p3 input, #p3 summary')].filter(e => e.getBoundingClientRect().height)
+      .map(e => [e.id || e.className || e.tagName, Math.round(e.getBoundingClientRect().height)]).filter(([, h]) => h < 44));
+    assert.deepEqual(bajos, []);
     // Celular: cada barra en una sola fila
     // misma fila = centros verticales a menos de 6 px entre sí
     const filas = async ids => { const c = await Promise.all(ids.map(id => page.locator(id).evaluate(b => { const r = b.getBoundingClientRect(); return r.top + r.height / 2; })));

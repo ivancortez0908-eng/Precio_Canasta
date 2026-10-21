@@ -37,15 +37,16 @@ Usa siempre las variables de `:root`; nunca colores sueltos (salvo el amarillo d
 
 ```
 header.top (fija, 56 px)
- ├─ .brand  logo «C» + «Canasta SV» (el texto se oculta en móvil)
+ ├─ h1.brand  logo «C» + «Canasta SV» (único h1; en móvil el texto queda solo para lectores de pantalla)
  ├─ nav.tabs  🏪 Catálogo | ⚡ En vivo | ⭐ Favoritos (n)   ← centradas
  └─ .sp  espacio que equilibra el logo (se oculta en móvil)
 main (todo el ancho, 16 px de margen lateral)
  ├─ p.msg.intro   una línea que explica el sitio
- ├─ #p1 Catálogo:   .controls (buscar · filtro · ordenar) → #count → .wrap>table#tabla → «Mostrar más»
+ ├─ #p1 Catálogo:   .controls (buscar · filtro · ordenar, por defecto «Mayor diferencia entre tiendas») → #count → .wrap>table#tabla → «Mostrar más»
  ├─ #p2 En vivo:    form.controls (buscar · «Buscar en las tiendas» · ordenar) → #estv → .wrap>table#tv → aviso
  └─ #p3 Favoritos:  .controls.listas → .controls.acciones (#favmsg + .botones) → #favest → .wrap.solo-escritorio>table#tfav
                     → #mfav (lista compacta, solo celular) → section.cart#favres
+                    (#favresumen va entre las barras y la tabla: tienda más barata y total combinado)
 section#ayuda.ayuda   pregunta de aportes, al pie, solo cuando aplica
 footer#foot           fecha y origen de los datos
 dialog#dlista         «Guardar en una lista»
@@ -112,8 +113,11 @@ Siempre de arriba abajo: **controles → estado → tabla → resumen**.
 - Sin desplazamiento horizontal de la página: las tablas se desplazan dentro de `.wrap`; mantén `min-width:0` en los hijos de `main` y de los paneles.
 - En menos de 700 px también se ocultan el nombre de la marca y `.sp`, y las pestañas se compactan.
 - Botones de al menos ~32 px de alto; nada que dependa solo del color (el semáforo también dice el texto).
-- Todo campo o botón de solo ícono lleva `aria-label`; las pestañas, `role="tab"` y `aria-selected`; mensajes que cambian solos, `aria-live="polite"`.
+- Todo campo o botón de solo ícono lleva `aria-label`; las pestañas, `role="tab"` y `aria-selected`; mensajes que cambian solos (`#count`, `#estv`, `#favest`, `#favresumen`), `aria-live="polite"`.
 - Respeta `:focus-visible` (contorno azul); no lo quites.
+- Zonas táctiles: al menos 44 px de alto en celular (botones, campos, selectores, `summary`, ☆) y 24 px en computadora.
+- Pestañas: `aria-controls` hacia su panel, paneles con `role="tabpanel"` y `aria-labelledby`; solo la pestaña activa tiene `tabindex="0"`.
+- Avisos que no se repiten por fila: lo que vale para toda la lista (p. ej. «No respondieron: …») va una vez en el mensaje de la barra.
 
 ## 7. Antes de terminar un cambio de interfaz
 

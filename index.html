@@ -12,7 +12,8 @@
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,"Segoe UI",Helvetica,Arial,sans-serif}
 /* barra superior fija, estilo red social */
 header.top{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:12px;height:56px;padding:0 16px;background:var(--surf);box-shadow:var(--sh)}
-.brand{display:flex;align-items:center;gap:8px;font-size:1.3rem;color:var(--blue)}
+.brand{display:flex;align-items:center;gap:8px;margin:0;font-size:1.3rem;font-weight:400;color:var(--blue)}
+.msg.resumen{padding:10px 14px;border-radius:8px;background:var(--best);color:var(--bestInk);font-size:.95rem}.resumen a{color:inherit}
 .logo{width:40px;height:40px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;font-weight:800;font-size:1.4rem}
 .sp{width:120px}
 .tabs{flex:1;display:flex;justify-content:center;gap:4px;height:100%}
@@ -61,7 +62,7 @@ td small.consulta{white-space:normal;font-size:.8rem}
 td small.promo{display:inline-block;margin-top:3px;padding:1px 8px;border-radius:999px;background:var(--btn);color:var(--ink);font-weight:600;white-space:normal}td small.promo.si{background:#f7b928;color:#000}td small.antes{text-decoration:line-through}.filafav{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}.retry{margin-top:6px;font-size:.8rem;padding:4px 10px}
 td small.product-source{font-size:.72rem;white-space:normal;max-width:220px;margin-left:auto}
 button:disabled{opacity:.6;cursor:default}
-details{margin-top:4px;font-size:.85rem;color:var(--mute)}details summary{cursor:pointer}details p{margin:4px 0;white-space:normal}
+details{margin-top:4px;font-size:.85rem;color:var(--mute)}details summary{cursor:pointer;padding:3px 0}/* zona táctil ≥ 24 px */details p{margin:4px 0;white-space:normal}
 /* semáforo de la compra */
 .totals{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:12px}
 .tot{position:relative;display:grid;gap:2px;padding:12px 38px 12px 16px;border-radius:8px;background:var(--bg);border-left:8px solid var(--line)}
@@ -126,7 +127,11 @@ a.chip{text-decoration:none}
 .mtienda.best{background:var(--best);color:var(--bestInk)}.mtienda.best small{color:var(--bestInk)}.mtienda.na{color:var(--mute);font-size:.85rem}
 .mtienda a{color:inherit;font-weight:700}.mtienda small.promo{display:inline-block}.mtienda small.f,.mtienda small.product-source{font-size:.72rem}
 @media (max-width:700px){
-  .brand b,.sp{display:none}.tabs button{padding:0 10px;font-size:.8rem}header.top{padding:0 6px}
+  .sp{display:none}.brand b{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}/* el nombre sigue para lectores de pantalla */
+  /* zonas táctiles de 44 px en celular */
+  main button,main select,main input[type=search],.qty,dialog button,.ayuda button{min-height:44px}
+  .mfila .star{min-width:44px;min-height:44px}details summary{padding:12px 0;line-height:20px}
+  .chip{padding:5px 10px}.tabs button{padding:0 10px;font-size:.8rem}header.top{padding:0 6px}
   /* celular compacto */
   main{margin-top:10px;gap:8px}.intro{display:none}#p1,#p2,#p3{gap:8px}
   .controls{padding:8px 10px;gap:6px}.controls button{padding:6px 9px;font-size:.8rem}
@@ -145,33 +150,33 @@ a.chip{text-decoration:none}
 </head>
 <body>
 <header class="top">
-  <div class="brand"><span class="logo">C</span><b>Canasta SV</b></div>
+  <h1 class="brand"><span class="logo" aria-hidden="true">C</span><b>Canasta SV</b></h1>
   <nav class="tabs" role="tablist">
-    <button id="tab1" role="tab" aria-selected="true">🏪 Catálogo</button>
-    <button id="tab2" role="tab" aria-selected="false">⚡ En vivo</button>
-    <button id="tab3" role="tab" aria-selected="false">⭐ Favoritos (<span id="nf">0</span>)</button>
+    <button id="tab1" role="tab" aria-selected="true" aria-controls="p1">🏪 Catálogo</button>
+    <button id="tab2" role="tab" aria-selected="false" aria-controls="p2" tabindex="-1">⚡ En vivo</button>
+    <button id="tab3" role="tab" aria-selected="false" aria-controls="p3" tabindex="-1">⭐ Favoritos (<span id="nf">0</span>)</button>
   </nav>
   <span class="sp"></span>
 </header>
 <main>
   <p class="msg intro">Busca cualquier producto y compáralo entre supermercados. Los precios se muestran también por libra, litro o unidad.</p>
-  <div id="p1">
+  <div id="p1" role="tabpanel" aria-labelledby="tab1">
   <div class="controls">
     <input type="search" id="q" placeholder="Buscar por producto o marca (frijol, Omoa, leche…)" aria-label="Buscar producto">
     <label class="chk"><input type="checkbox" id="comp" checked> Solo productos en 2 o más tiendas</label>
     <select id="ord" aria-label="Ordenar">
+      <option value="dif" selected>Mayor diferencia entre tiendas</option>
       <option value="pu">Más barato por unidad</option>
       <option value="n">Nombre</option>
-      <option value="dif">Mayor diferencia entre tiendas</option>
     </select>
   </div>
-  <p class="msg" id="count"></p>
+  <p class="msg" id="count" aria-live="polite"></p>
   <div class="wrap solo-escritorio"><table id="tabla"></table></div>
   <div class="mlista" id="mcat"></div>
   <button id="mas" hidden>Mostrar más</button>
   </div>
 
-  <div id="p2" hidden>
+  <div id="p2" role="tabpanel" aria-labelledby="tab2" hidden>
     <form class="controls" id="fvivo">
       <input type="search" id="qv" placeholder="Producto específico (ej. acetaminofén 500 mg, leche deslactosada)" aria-label="Producto a buscar en vivo" maxlength="60">
       <button type="submit">Buscar en las tiendas</button>
@@ -180,13 +185,13 @@ a.chip{text-decoration:none}
         <option value="precio">Precio más bajo</option>
       </select>
     </form>
-    <p class="msg" id="estv">Consulta el producto en el momento en cada tienda, sin descargar sus catálogos. Escribe al menos dos palabras (por ejemplo, «gaseosa coca cola»).</p>
+    <p class="msg" id="estv" aria-live="polite">Consulta el producto en el momento en cada tienda, sin descargar sus catálogos. Escribe al menos dos palabras (por ejemplo, «gaseosa coca cola»).</p>
     <p class="msg" id="ocultos" hidden><span id="ocultostxt"></span><button id="vertodos" class="retry">Mostrar todos</button></p>
     <div class="wrap solo-escritorio"><table id="tv"></table></div>
     <div class="mlista" id="mvivo"></div>
     <p class="msg">Los resultados salen directamente de cada tienda y pueden incluir presentaciones distintas. Verifica marca, concentración y presentación antes de comparar, sobre todo en medicamentos.</p>
   </div>
-  <div id="p3" hidden>
+  <div id="p3" role="tabpanel" aria-labelledby="tab3" hidden>
     <div class="controls listas">
       <label for="lsel">Lista</label>
       <select id="lsel"></select>
@@ -197,7 +202,8 @@ a.chip{text-decoration:none}
     <div class="controls acciones"><p class="msg" id="favmsg"></p>
       <div class="botones"><button id="favrefresh" hidden>Actualizar precios</button><button id="favpdf" hidden aria-label="Descargar PDF"><span class="larga">Descargar </span>PDF</button><button id="favxlsx" hidden aria-label="Descargar Excel"><span class="larga">Descargar </span>Excel</button><button id="favclear" class="rm" hidden aria-label="Vaciar lista">Vaciar<span class="larga"> lista</span></button></div>
     </div>
-    <p class="msg" id="favest"></p>
+    <p class="msg resumen" id="favresumen" aria-live="polite" hidden></p>
+    <p class="msg" id="favest" aria-live="polite"></p>
     <div class="wrap solo-escritorio"><table id="tfav"></table></div>
     <div class="mfav" id="mfav"></div>
     <section class="cart" id="favres" aria-live="polite" hidden>

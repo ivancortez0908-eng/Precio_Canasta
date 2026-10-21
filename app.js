@@ -2,7 +2,8 @@ const $ = id => document.getElementById(id);
 const norm = s => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 const esc = s => (s || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const fmt = n => "$" + n.toFixed(2);
-const fpu = n => "$" + n.toFixed(n < 0.1 ? 3 : 2);
+const fpu = n => "$" + n.toFixed(n < 0.01 ? 4 : n < 0.1 ? 3 : 2);
+const puDe = x => (x.pu > 0 ? x.pu : 1e9);   // para ordenar: sin precio por unidad conocido, al final
 const TAG = { ean: "Mismo código de barras", nombre: "Coincide por nombre y tamaño", manual: "Equivalencia verificada" };
 let D, limite = 60, RV = [], fechaRV = "", busquedaRV = "", ctl, actualizando = false, porGuardar = null, abierto = null, verTodos = false;
 const tiendasConocidas = new Set();
@@ -164,7 +165,7 @@ async function completarFavorito(f) {
     f.consultado = generado;
     f.fallos = Object.entries(tiendas).filter(([, v]) => !v.ok).map(([s]) => s);
     aplicarResultados(f, resultados, generado);
-    f.estado = f.fallos.length ? `No respondieron: ${f.fallos.join(", ")}. Puedes reintentar.` : "Consulta terminada. Revisa las opciones donde falte una coincidencia.";
+    f.estado = "Consulta terminada. Revisa las opciones donde falte una coincidencia.";
   } catch (e) {
     if (guardado(f)) f.estado = e.name === "AbortError" ? "La consulta tardó demasiado. Puedes reintentar." : "No se pudo actualizar: " + e.message;
   } finally {
@@ -203,7 +204,7 @@ const dif = it => { const v = it.t.map(x => x[1]); return it.t.length > 1 ? (Mat
 function filtrar() {
   const ts = norm($("q").value).split(/\s+/).filter(Boolean), c = $("comp").checked, o = $("ord").value;
   const r = D.items.filter(it => ts.every(t => it.s.includes(t)) && (!c || it.t.length > 1));
-  if (o === "pu") r.sort((a, b) => (a.pu ?? 1e9) - (b.pu ?? 1e9));
+  if (o === "pu") r.sort((a, b) => puDe(a) - puDe(b));
   if (o === "dif") r.sort((a, b) => dif(b) - dif(a));
   if (o === "n") r.sort((a, b) => a.n.localeCompare(b.n, "es"));
   return r;
@@ -225,7 +226,7 @@ function render() {
         const p = fmt(e[1]), v = e[2] ? `<a href="${esc(e[2])}" target="_blank" rel="noopener">${p}</a>` : p;
         return e[1] === min && it.t.length > 1 ? `<td class="best">${barato(v)}</td>` : `<td>${v}</td>`;
       }).join("") +
-      `<td>${it.pu != null ? `${fpu(it.pu)}<small>por ${it.pl}</small>` : "—"}</td>` +
+      `<td>${it.pu > 0 ? `${fpu(it.pu)}<small>por ${it.pl}</small>` : "—"}</td>` +
       `<td>${estrella(`data-i="${it.i}"`, !!favoritoItem(it))}</td></tr>`;
   }
   $("tabla").innerHTML = h + "</tbody>";
@@ -235,7 +236,7 @@ function render() {
     return `<article class="mitem"><div class="mfila"><span class="mnom">${esc(it.n)}<small>${it.m ? `<span class="marca">${esc(it.m)}</span>` : "Marca no indicada"}${tam(it) ? " · " + tam(it) : ""}</small></span>` +
       estrella(`data-i="${it.i}"`, !!favoritoItem(it)) +
       `<span class="mprecios">${[...it.t].sort((a, b) => a[1] - b[1]).map(e => chip(S[e[0]], e[1], e[1] === min && it.t.length > 1, "", e[2])).join("")}</span>` +
-      (it.pu != null ? `<small class="mpu">${fpu(it.pu)} por ${it.pl}</small>` : "") + "</div></article>";
+      (it.pu > 0 ? `<small class="mpu">${fpu(it.pu)} por ${it.pl}</small>` : "") + "</div></article>";
   }).join("");
   $("mas").hidden = r.length <= limite;
 }
@@ -258,21 +259,21 @@ function pintarVivo() {
   $("ocultostxt").textContent = verTodos ? `Se muestran también ${ocultos} resultado(s) que no coinciden con 2 palabras de tu búsqueda. `
     : `Se ocultaron ${ocultos} resultado(s) de otros productos (no coinciden con 2 palabras de tu búsqueda). `;
   $("vertodos").textContent = verTodos ? "Ocultar los que no coinciden" : "Mostrar todos";
-  r.sort((a, b) => o === "pu" ? (a.pu ?? 1e9) - (b.pu ?? 1e9) : a.precio - b.precio);
+  r.sort((a, b) => o === "pu" ? puDe(a) - puDe(b) : a.precio - b.precio);
   const min = r.length ? Math.min(...r.map(x => x.precio)) : 0;
   $("tv").innerHTML = r.length
     ? `<thead><tr><th>Producto</th><th>Tienda</th><th>Precio</th><th>Por unidad</th><th>Fav.</th></tr></thead><tbody>` + r.map(x => `<tr>
         <td>${esc(x.nombre)}<small>${x.marca ? `<span class="marca">${esc(x.marca)}</span>` : "Marca no indicada"}${tam(x) ? " · " + tam(x) : ""}</small></td>
         <td><span class="store">${esc(x.tienda)}</span></td>
         <td class="${x.precio === min && r.length > 1 ? "best" : ""}">${(x.precio === min && r.length > 1 ? barato : h => h)(`<a href="${esc(x.url)}" target="_blank" rel="noopener">${fmt(x.precio)}</a>`)}${notaOferta({ p: x.precio, ...oferta(x) })}</td>
-        <td>${x.pu != null ? `${fpu(x.pu)}<small>por ${x.pl}</small>` : "—"}</td>
+        <td>${x.pu > 0 ? `${fpu(x.pu)}<small>por ${x.pl}</small>` : "—"}</td>
         <td>${estrella(`data-id="${esc(x.id)}"`, !!favoritoVivo(x))}</td></tr>`).join("") + "</tbody>"
     : "";
   // Celular: un renglón por resultado con su tienda, precio, oferta y ☆
   $("mvivo").innerHTML = r.map(x => `<article class="mitem"><div class="mfila"><span class="mnom">${esc(x.nombre)}<small>${x.marca ? `<span class="marca">${esc(x.marca)}</span>` : "Marca no indicada"}${tam(x) ? " · " + tam(x) : ""}</small></span>` +
     estrella(`data-id="${esc(x.id)}"`, !!favoritoVivo(x)) +
     `<span class="mprecios">${chip(x.tienda, x.precio, x.precio === min && r.length > 1, leerPromo(x.promo) ? "<i>oferta</i>" : "", x.url)}</span>` +
-    `<span class="mpu">${x.pu != null ? `<small>${fpu(x.pu)} por ${x.pl}</small>` : ""}${notaOferta({ p: x.precio, ...oferta(x) })}</span></div></article>`).join("");
+    `<span class="mpu">${x.pu > 0 ? `<small>${fpu(x.pu)} por ${x.pl}</small>` : ""}${notaOferta({ p: x.precio, ...oferta(x) })}</span></div></article>`).join("");
 }
 async function vivo(q) {
   if (!window.API_VIVO) { $("estv").textContent = "La búsqueda en vivo aún no está configurada. Mira el README, sección “Búsqueda en vivo”."; return; }
@@ -332,7 +333,10 @@ const tiendasFav = () => [...new Set([...(D ? D.supers : []), ...tiendasConocida
 function pintarFav() {
   const S = tiendasFav();
   $("lsel").innerHTML = LISTAS.map(l => `<option value="${esc(l.id)}"${l === ACTIVA ? " selected" : ""}>${esc(l.nombre)} (${l.items.length})</option>`).join("");
-  $("favmsg").textContent = FAV.length ? `${FAV.length} producto(s) en «${ACTIVA.nombre}». Cada uno se busca en todas las tiendas y solo estos se comparan para tu compra.` : `«${ACTIVA.nombre}» está vacía. Marca la ☆ en el catálogo o en la búsqueda en vivo y elige esta lista.`;
+  const fallan = [...new Set(FAV.flatMap(f => f.fallos || []))];
+  $("favmsg").textContent = FAV.length ? `${FAV.length} producto(s) en «${ACTIVA.nombre}». Cada uno se busca en todas las tiendas y solo estos se comparan para tu compra.` +
+    (fallan.length ? ` No respondieron: ${fallan.join(", ")}. Usa «Actualizar precios» para reintentar.` : "") : `«${ACTIVA.nombre}» está vacía. Marca la ☆ en el catálogo o en la búsqueda en vivo y elige esta lista.`;
+  $("favresumen").hidden = !FAV.length;
   for (const id of ["favclear", "favres", "favrefresh", "favpdf", "favxlsx"]) $(id).hidden = !FAV.length;
   $("favrefresh").disabled = actualizando || pendientes.size > 0;
   // En celular se ve la versión corta; el nombre completo queda para lectores de pantalla
@@ -377,6 +381,9 @@ function pintarFav() {
   $("favtot").innerHTML = res.map(r => { const [n, t] = nivel(r); return `<div class="tot ${n}"><span class="dot"></span><span class="tn">${esc(r.s)}</span><b>${r.faltan === FAV.length ? "—" : fmt(r.total)}</b>` +
     `<span class="tl">${FAV.length - r.faltan} de ${FAV.length} productos</span><span class="tl${r.faltan ? " warn" : ""}">${t}</span></div>`; }).join("");
   const gan = ok.find(r => r.total === min);
+  // Resumen arriba de la tabla: lo que la persona viene a saber, sin bajar hasta los totales
+  $("favresumen").innerHTML = (gan ? `Compra completa más barata: <b>${esc(gan.s)} ${fmt(min)}</b>` : "Ninguna tienda tiene todos los productos") +
+    ` · Combinando tiendas: <b>${fmt(mix)}</b>${sinPrecio ? " (parcial)" : ""} · <a href="#favres">Ver detalle</a>`;
   $("favmix").textContent = `Comprando cada producto donde es más barato: ${fmt(mix)} (${Object.entries(por).map(([s, n]) => `${n} unidad(es) en ${s}`).join(", ")})` +
     (sinPrecio ? `. Total parcial: ${sinPrecio} producto(s) sin precio.` : "") +
     (gan && mix < min - 0.004 ? `. Ahorras ${fmt(min - mix)} frente a comprar todo en ${gan.s}.` : ".");

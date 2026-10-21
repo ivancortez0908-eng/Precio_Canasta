@@ -396,3 +396,26 @@ test('el más barato se marca con ✓ y texto, y Catálogo y En vivo tienen list
   ui.run('$("mvivo").onclick({ target: { classList: { contains: () => false }, closest: s => s === ".star" ? { dataset: { id: RV[1].id } } : null } })');
   assert.equal(ui.run('porGuardar && porGuardar.x.tienda'), 'Selectos');
 });
+test('Favoritos: resumen arriba y «no respondieron» una sola vez para toda la lista', async () => {
+  const ui = interfaz({ resultados: [producto('Walmart', 2), producto('Selectos', 1.75)] });
+  await ui.run('vivo("leche salud")');
+  ui.run('alternar(favDeVivo(RV[0])); alternar({ id: "g:arroz", n: "Arroz blanco 1 lb", m: "Precisa", q: 454, u: "g", t: { Walmart: { p: .9, src: "cat" } } });');
+  await terminar(); await terminar();
+  assert.equal(ui.el('favresumen').hidden, false);
+  assert.match(ui.el('favresumen').innerHTML, /Compra completa más barata: <b>Walmart \$2\.90<\/b> · Combinando tiendas: <b>\$2\.65<\/b>/);
+  ui.run('FAV[1].t = { Despensa: { p: .9 } }; pintarFav();');
+  assert.match(ui.el('favresumen').innerHTML, /Ninguna tienda tiene todos los productos · Combinando tiendas: <b>\$2\.65<\/b>/);
+  assert.equal((ui.el('favmsg').textContent.match(/No respondieron: Despensa/g) || []).length, 1);
+  assert.doesNotMatch(ui.el('tfav').innerHTML, /No respondieron/);
+  ui.run('FAV.splice(1, 1); pintarFav();');
+  assert.match(ui.el('favresumen').innerHTML, /Compra completa más barata: <b>Selectos \$1\.75<\/b>/);
+});
+test('precio por unidad: 4 decimales bajo un centavo y «—» si el catálogo lo dejó en cero', async () => {
+  const item = (n, pu) => ({ n, m: 'Gigante', q: 500, u: 'ud', pl: 'ud', pu, k: 'ean', t: [[0, 1.15, 'https://t.test/' + n, pu, n, 'Gigante', '', n], [1, 1.2, 'https://t.test/b' + n, pu, n, 'Gigante', '', 'b' + n]] });
+  const ui = interfaz({ datos: { supers: ['Walmart', 'Selectos'], actualizado: '2026-10-21', items: [item('Sal A 500 sobres', .0023), item('Sal B 500 sobres', 0)] } });
+  await terminar();
+  assert.equal(ui.run('fpu(0.0023)'), '$0.0023');
+  assert.match(ui.el('tabla').innerHTML, /\$0\.0023<small>por ud/);
+  assert.doesNotMatch(ui.el('tabla').innerHTML, /\$0\.000</);
+  assert.match(ui.el('mcat').innerHTML, /\$0\.0023 por ud/);
+});

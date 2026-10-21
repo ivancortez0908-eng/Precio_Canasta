@@ -67,7 +67,7 @@ for (const [r, idxs] of grupos) {
   const base = lista[0], conQ = lista.find(x => x.q) || base;
   const t = lista.map(x => {
     const p = precioUnitario(x.precio, x.q, x.u);
-    return [x.ti, +x.precio.toFixed(2), x.url, p ? +p.pu.toFixed(2) : null, bonito(x.nombre), x.marca || "", x.desc || "", x.id];
+    return [x.ti, +x.precio.toFixed(2), x.url, p ? +p.pu.toFixed(4) : null, bonito(x.nombre), x.marca || "", x.desc || "", x.id];
   });
   const pus = t.map(x => x[3]).filter(v => v != null);
   const ts = tipos.get(raiz(r));
