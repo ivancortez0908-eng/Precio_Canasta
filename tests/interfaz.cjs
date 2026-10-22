@@ -42,7 +42,7 @@ const server = http.createServer((req, res) => {
     // Solo modo claro: aunque el dispositivo esté en modo oscuro, el fondo y las tarjetas siguen claros
     await page.emulateMedia({ colorScheme: 'dark' });
     assert.deepEqual(await page.evaluate(() => [getComputedStyle(document.body).backgroundColor, getComputedStyle(document.querySelector('.controls')).backgroundColor]),
-      ['rgb(240, 242, 245)', 'rgb(255, 255, 255)']);
+      ['rgb(244, 246, 245)', 'rgb(255, 255, 255)']);
     await page.getByRole('tab', { name: /En vivo/ }).click();
     await page.getByRole('searchbox', { name: 'Producto a buscar en vivo' }).fill('leche salud');
     await page.getByRole('button', { name: 'Buscar en las tiendas' }).click();
@@ -152,9 +152,14 @@ const server = http.createServer((req, res) => {
     assert.match(vivoMovil, /Walmart\s*\$2\.00\s*oferta[^]*Oferta 2 x \$3\.80/);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     if (process.env.CANASTA_CAPTURAS) await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'envivo-movil.png') });
-    // Colores con contraste suficiente (azul de marca y rojo de acciones que borran) y bordes visibles en los campos
+    await page.mouse.move(0, 0);
+    // Colores con contraste suficiente (verde de marca, botón principal relleno y rojo de acciones que borran) y bordes visibles en los campos
     assert.deepEqual(await page.evaluate(() => [getComputedStyle(document.querySelector('.brand')).color, getComputedStyle(document.querySelector('#favclear')).color,
-      getComputedStyle(document.querySelector('#qv')).borderTopColor]), ['rgb(20, 96, 204)', 'rgb(176, 20, 51)', 'rgb(132, 135, 140)']);
+      getComputedStyle(document.querySelector('#qv')).borderTopColor, getComputedStyle(document.querySelector('#fvivo button.pri')).backgroundColor]),
+      ['rgb(10, 110, 55)', 'rgb(176, 20, 51)', 'rgb(124, 132, 128)', 'rgb(10, 110, 55)']);
+    // Celular: campos de 16 px para que Safari no haga zoom al tocarlos
+    assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('main input, main select')].filter(e => e.getBoundingClientRect().height)
+      .filter(e => getComputedStyle(e).fontSize !== '16px').map(e => e.id || e.className || e.type)), []);
     assert.deepEqual(errores, []);
     console.log('Interfaz verificada: búsqueda → guardar en dos listas → cantidades → Excel y PDF → móvil → persistencia → quitar → cambiar de lista.');
   } finally {

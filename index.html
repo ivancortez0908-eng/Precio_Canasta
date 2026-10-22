@@ -6,15 +6,15 @@
 <meta name="color-scheme" content="light">
 <title>Canasta SV · Compara precios de supermercados</title>
 <style>
-:root{color-scheme:light;--bg:#f0f2f5;--surf:#fff;--ink:#050505;--mute:#65676b;--line:#ced0d4;--blue:#1460cc;--borde:#84878c;--btn:#e4e6eb;--hov:#d8dadf;--best:#e3f6e8;--bestInk:#14632b;--warn:#b01433;--v:#31a24c;--a:#f7b928;--r:#e02849;--sh:0 1px 2px rgba(0,0,0,.2)}
+:root{color-scheme:light;--bg:#f4f6f5;--surf:#fff;--ink:#1a1f1c;--mute:#5c6660;--line:#d3d8d5;--marca:#0a6e37;--marcaHov:#085a2d;--borde:#7c8480;--btn:#e2e6e4;--hov:#d6dbd8;--best:#e3f6e8;--bestInk:#14632b;--warn:#b01433;--v:#31a24c;--a:#f7b928;--r:#e02849;--sh:0 1px 2px rgba(0,0,0,.2)}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,"Segoe UI",Helvetica,Arial,sans-serif}
-/* barra superior fija, estilo red social */
+/* barra superior fija */
 header.top{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:12px;height:56px;padding:0 16px;background:var(--surf);box-shadow:var(--sh)}
-.brand{display:flex;align-items:center;gap:8px;margin:0;font-size:1.3rem;font-weight:400;color:var(--blue)}
+.brand{display:flex;align-items:center;gap:8px;margin:0;font-size:1.3rem;font-weight:700;color:var(--marca)}
 .msg.resumen{padding:10px 14px;border-radius:8px;background:var(--best);color:var(--bestInk);font-size:.95rem}.resumen a{color:inherit}
-.logo{width:40px;height:40px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;font-weight:800;font-size:1.4rem}
+.logo{width:40px;height:40px;border-radius:50%;background:var(--marca);color:#fff;display:grid;place-items:center}.logo svg{width:24px;height:24px}
 .sp{width:120px}
 .tabs{flex:1;display:flex;justify-content:center;gap:4px;height:100%}
 main{margin:16px 0;padding:0 16px 60px;display:grid;gap:12px}/* usa todo el ancho: las tablas con muchas tiendas lo aprovechan */
@@ -32,10 +32,12 @@ select{border-radius:8px}
 label.chk{display:flex;gap:6px;align-items:center;font-size:.95rem}
 button{font:inherit;font-weight:600;padding:8px 14px;border-radius:6px;border:0;background:var(--btn);color:var(--ink);cursor:pointer}
 button:hover{background:var(--hov)}
+/* acción principal: una por barra, rellena con el color de marca */
+button.pri{background:var(--marca);color:#fff}button.pri:hover{background:var(--marcaHov)}
 .tabs button{height:100%;padding:0 26px;border-radius:0;background:none;color:var(--mute);border-bottom:3px solid transparent}
 .tabs button:hover{background:var(--bg)}
-.tabs button[aria-selected=true]{color:var(--blue);border-bottom-color:var(--blue)}
-:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.tabs button[aria-selected=true]{color:var(--marca);border-bottom-color:var(--marca)}
+:focus-visible{outline:3px solid var(--marca);outline-offset:2px}
 /* tablas con encabezado y primera columna fijos */
 .wrap{background:var(--surf);border-radius:8px;box-shadow:var(--sh);overflow:auto;max-height:calc(100vh - 120px)}
 table{border-collapse:separate;border-spacing:0;width:100%;min-width:620px}
@@ -50,7 +52,7 @@ td a{color:inherit}
 td small{color:var(--mute);display:block;font-weight:400}
 td small.f{font-size:.72rem;white-space:normal;max-width:220px;margin-left:auto}
 td.best small{color:var(--bestInk)}
-td .marca{font-weight:600;color:var(--blue)}
+td .marca{font-weight:600;color:var(--marca)}
 .tag{display:inline-block;font-size:.75rem;padding:0 8px;border-radius:999px;background:var(--btn);color:var(--mute);margin-left:4px}
 .store{display:inline-block;font-size:.8rem;padding:1px 10px;border-radius:999px;background:var(--btn);font-weight:600}
 .star{background:none;font-size:1.4rem;line-height:1;padding:2px 8px;color:var(--mute)}.star:hover{background:var(--btn)}.star[aria-pressed=true]{color:#e0a100}
@@ -95,7 +97,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}dialog h2{margin:0 0 4px;font-size:1
   #imprimir thead th{background:#eee}#imprimir tfoot td{font-weight:700}
   #imprimir th:nth-child(-n+3),#imprimir td:nth-child(-n+3){text-align:left}
 }
-.ayuda{width:calc(100% - 32px);margin:0 auto 16px;padding:14px 16px;background:var(--surf);border-radius:8px;box-shadow:var(--sh);border-left:8px solid var(--blue)}
+.ayuda{width:calc(100% - 32px);margin:0 auto 16px;padding:14px 16px;background:var(--surf);border-radius:8px;box-shadow:var(--sh);border-left:8px solid var(--marca)}
 .ayuda h3{margin:0 0 4px;font-size:1.05rem}.ayuda ul{margin:6px 0;padding-left:20px}
 footer{padding:0 16px 40px;color:var(--mute);font-size:.85rem}
 /* barra de acciones de Favoritos: mensaje y botones */
@@ -145,12 +147,14 @@ a.chip{text-decoration:none}
   .totals{grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
   .tot{padding:8px 24px 8px 10px;border-left-width:5px}.tot .dot{width:10px;height:10px;top:10px;right:10px}
   .tot b{font-size:1.15rem}.tn{font-size:.85rem}.tl{font-size:.72rem}
+  /* 16 px en campos: Safari del iPhone no hace zoom al tocarlos */
+  main input,main input[type=search],main select,dialog input,.listas select,.opciones select{font-size:16px}
 }
 </style>
 </head>
 <body>
 <header class="top">
-  <h1 class="brand"><span class="logo" aria-hidden="true">C</span><b>Canasta SV</b></h1>
+  <h1 class="brand"><span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h18l-2 10H5z"/><path d="M8 10l4-6 4 6"/><path d="M9 14v3M12 14v3M15 14v3"/></svg></span><b>Canasta SV</b></h1>
   <nav class="tabs" role="tablist">
     <button id="tab1" role="tab" aria-selected="true" aria-controls="p1">🏪 Catálogo</button>
     <button id="tab2" role="tab" aria-selected="false" aria-controls="p2" tabindex="-1">⚡ En vivo</button>
@@ -179,7 +183,7 @@ a.chip{text-decoration:none}
   <div id="p2" role="tabpanel" aria-labelledby="tab2" hidden>
     <form class="controls" id="fvivo">
       <input type="search" id="qv" placeholder="Producto específico (ej. acetaminofén 500 mg, leche deslactosada)" aria-label="Producto a buscar en vivo" maxlength="60">
-      <button type="submit">Buscar en las tiendas</button>
+      <button type="submit" class="pri">Buscar en las tiendas</button>
       <select id="ordv" aria-label="Ordenar resultados">
         <option value="pu">Más barato por unidad</option>
         <option value="precio">Precio más bajo</option>
@@ -200,7 +204,7 @@ a.chip{text-decoration:none}
       <button id="lborrar" class="rm" aria-label="Eliminar lista">Eliminar<span class="larga"> lista</span></button>
     </div>
     <div class="controls acciones"><p class="msg" id="favmsg"></p>
-      <div class="botones"><button id="favrefresh" hidden>Actualizar precios</button><button id="favpdf" hidden aria-label="Descargar PDF"><span class="larga">Descargar </span>PDF</button><button id="favxlsx" hidden aria-label="Descargar Excel"><span class="larga">Descargar </span>Excel</button><button id="favclear" class="rm" hidden aria-label="Vaciar lista">Vaciar<span class="larga"> lista</span></button></div>
+      <div class="botones"><button id="favrefresh" class="pri" hidden>Actualizar precios</button><button id="favpdf" hidden aria-label="Descargar PDF"><span class="larga">Descargar </span>PDF</button><button id="favxlsx" hidden aria-label="Descargar Excel"><span class="larga">Descargar </span>Excel</button><button id="favclear" class="rm" hidden aria-label="Vaciar lista">Vaciar<span class="larga"> lista</span></button></div>
     </div>
     <p class="msg resumen" id="favresumen" aria-live="polite" hidden></p>
     <p class="msg" id="favest" aria-live="polite"></p>
@@ -217,12 +221,12 @@ a.chip{text-decoration:none}
 <section id="ayuda" class="ayuda" hidden aria-live="polite">
   <h3>¿Nos ayudas con las comparaciones que cambiaste?</h3>
   <p class="msg" id="ayudamsg"></p>
-  <div class="acc" id="ayudasn"><button id="ayudasi">Sí</button><button id="ayudano">No</button></div>
+  <div class="acc" id="ayudasn"><button id="ayudasi" class="pri">Sí</button><button id="ayudano">No</button></div>
   <div id="ayudadet" hidden>
     <ul id="ayudalista"></ul>
     <p class="msg">Solo se envían la tienda, el identificador, el enlace y el nombre de los productos que comparaste. No se envía ningún dato personal.</p>
     <div class="acc">
-      <button id="aenviar">Enviar al proyecto</button>
+      <button id="aenviar" class="pri">Enviar al proyecto</button>
       <button id="acancel">Cancelar</button>
     </div>
     <p class="msg" id="aest"></p>
@@ -235,7 +239,7 @@ a.chip{text-decoration:none}
   <div class="dlopts" id="dlopts"></div>
   <form class="dlnueva" id="dlnueva">
     <input id="dlnombre" maxlength="40" placeholder="Nombre de la nueva lista" aria-label="Nombre de la nueva lista">
-    <button type="submit">Crear y agregar</button>
+    <button type="submit" class="pri">Crear y agregar</button>
   </form>
   <div class="acc"><button id="dlcerrar">Listo</button></div>
 </dialog>
