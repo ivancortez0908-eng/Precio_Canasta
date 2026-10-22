@@ -54,12 +54,13 @@ Cuando eliges o cambias a mano un producto en la tabla de precios de Favoritos, 
 ## Búsqueda en vivo (producto específico)
 La pestaña **Buscar en vivo** consulta un solo producto en el momento en cada tienda, sin descargar catálogos. Solo se muestran los resultados que contienen **al menos 2 palabras** de la búsqueda (o la única, si se escribe una): «gaseosa cocacola» muestra las Coca Cola y oculta embutidos o papel. No cuentan artículos, números ni medidas; singular y plural son iguales y no importan acentos ni espacios («cocacola» = «Coca-Cola»). El botón **Mostrar todos** enseña también los ocultos. Como el navegador no puede leer otras tiendas directamente, se usa un Worker gratuito de Cloudflare (`worker/worker.js`) que hace una petición por tienda y guarda cada consulta 10 minutos en caché.
 
-**Instalación (una vez):**
-1. Crea una cuenta gratis en cloudflare.com → **Workers & Pages → Create → Create Worker**, ponle nombre `canasta-busqueda` y pulsa **Deploy**.
-2. Pulsa **Edit code**, borra lo que haya, pega todo `worker/worker.js` y **Deploy**.
-3. Copia la dirección del Worker (`https://canasta-busqueda.TU-SUBDOMINIO.workers.dev`).
-4. **Settings → Variables and Secrets → Add**: nombre `ORIGEN_PERMITIDO`, valor `https://TU_USUARIO.github.io` (sin barra final). Así solo tu sitio puede usarlo.
-5. En este repositorio edita `config.js` y pega la dirección: `window.API_VIVO = "https://canasta-busqueda.TU-SUBDOMINIO.workers.dev";`
+**Publicación automática:** al unir a `main` un cambio en `worker/worker.js` (o `worker/wrangler.toml`), la acción **Publicar Worker** corre las pruebas, publica el Worker `canasta-busqueda` en Cloudflare y comprueba que responda con la nueva `version`. También se puede lanzar a mano en **Actions → Publicar Worker → Run workflow**. Necesita dos secretos del repositorio (Settings → Secrets and variables → Actions):
+- `CLOUDFLARE_API_TOKEN`: token de Cloudflare (My Profile → API Tokens) con permisos *Account · Workers Scripts · Edit* y *Account · Account Settings · Read*.
+- `CLOUDFLARE_ACCOUNT_ID`: el Account ID que aparece en Workers & Pages.
+
+`worker/wrangler.toml` conserva las variables y secretos definidos en el panel (`ORIGEN_PERMITIDO`, `PRICESMART_KEY`, `GITHUB_TOKEN_APORTES`).
+
+**Instalación desde cero (solo si se crea otra cuenta):** crea en Cloudflare un Worker llamado `canasta-busqueda`, agrega la variable `ORIGEN_PERMITIDO` con la dirección de tu sitio (`https://TU_USUARIO.github.io`, sin barra final), guarda los dos secretos de arriba en GitHub, corre **Publicar Worker** y pega la dirección del Worker en `config.js`: `window.API_VIVO = "https://canasta-busqueda.TU-SUBDOMINIO.workers.dev";`
 
 **PriceSmart (opcional):** en Cloudflare, **Settings → Variables and Secrets → Add**, tipo **Secret**, nombre `PRICESMART_KEY`, valor = el `auth_key` público de su buscador. Sin esa variable, el Worker no consulta PriceSmart. Solo se usa en la búsqueda en vivo, nunca en la descarga programada.
 

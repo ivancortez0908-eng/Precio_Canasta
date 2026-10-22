@@ -11,6 +11,7 @@ Comparar listas de productos entre supermercados de El Salvador. Al agregar un f
 - `worker/worker.js`: API de búsqueda en Cloudflare; devuelve `version`, `resultados`, `tiendas`, `omitidas` y `generado`. Por POST recibe aportes y crea una issue.
 - `scraper/`: descarga y emparejamiento del catálogo; `equivalencias.json` guarda las equivalencias aprobadas.
 - `.github/workflows/actualizar-precios.yml`: actualización programada del catálogo.
+- `.github/workflows/publicar-worker.yml`: publica el Worker en Cloudflare cuando cambia en `main`.
 - `.github/workflows/aplicar-aporte.yml`: une a `scraper/equivalencias.json` las issues con la etiqueta `aprobado`.
 - `config.js` y `data/`: configuración del sitio y datos generados; no editarlos a mano.
 
@@ -21,7 +22,7 @@ No crear copias de estos archivos en la raíz: los workflows y el sitio solo usa
 - `.claude/skills/interfaz-canasta/SKILL.md`: guía de diseño (colores, estructura, posiciones, componentes y textos). Seguirla en todo cambio de interfaz.
 
 ## Integración existente
-El usuario informa que GitHub y el Worker de Cloudflare ya están conectados y funcionan. Mantener esa integración. La URL se lee de `window.API_VIVO`, definida en `config.js`; no inventar una URL ni sobrescribir la configuración existente. El Worker se publica pegando `worker/worker.js` en Cloudflare; su campo `version` indica qué código está desplegado.
+El usuario informa que GitHub y el Worker de Cloudflare ya están conectados y funcionan. Mantener esa integración. La URL se lee de `window.API_VIVO`, definida en `config.js`; no inventar una URL ni sobrescribir la configuración existente. El Worker se publica solo: al unir a `main` un cambio en `worker/worker.js` o `worker/wrangler.toml`, `.github/workflows/publicar-worker.yml` corre las pruebas, lo publica con wrangler (secretos `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID`) y comprueba que el campo `version` publicado coincida. Sube `VERSION` en cada cambio del Worker. `worker/wrangler.toml` usa `keep_vars = true` para no borrar las variables del panel.
 
 ## Reglas del producto
 - Hay varias listas de favoritos; la ☆ abre un cuadro para elegir o crear listas. Cada lista guarda su propia copia del producto (cantidad y elecciones).
