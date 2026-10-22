@@ -1,3 +1,15 @@
+# Bitácora — 22 de octubre de 2026 (paleta propia y botón principal)
+
+## Cambios
+- `index.html`: paleta propia en lugar de la de Facebook. Verde de marca `--marca` `#0a6e37` (reemplaza `--blue`) y grises con un toque verde (`--bg` `#f4f6f5`, `--ink` `#1a1f1c`, `--mute` `#5c6660`, `--borde` `#7c8480`). Contrastes: marca 5.05:1 sobre `--btn`, 5.87:1 sobre `--bg`; blanco sobre marca 6.37:1; `--mute` 4.73:1 sobre `--btn`; borde de campos 3.54:1.
+- Botón principal `.pri` relleno de verde, uno por barra: «Buscar en las tiendas», «Actualizar precios», «Crear y agregar», «Enviar al proyecto», «Sí» y «Buscar … en vivo» del catálogo vacío.
+- Logo: canasta en SVG en lugar de la «C»; nombre en negrita.
+- Celular: campos y selectores a 16 px (Safari del iPhone ya no hace zoom al tocarlos).
+- Guía `interfaz-canasta` actualizada (tokens, `.pri`, regla de paleta).
+
+## Validación
+- 31 pruebas aprobadas; `node --check` de los tres archivos; `node tests/interfaz.cjs` aprobado con comprobaciones nuevas (color de marca, botón principal y campos de 16 px en celular). Capturas revisadas en escritorio y móvil.
+
 # Bitácora — 22 de octubre de 2026 (publicación automática del Worker)
 
 ## Cambios

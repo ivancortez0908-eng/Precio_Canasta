@@ -215,7 +215,7 @@ function render() {
   const r = filtrar(), S = D.supers;
   $("count").textContent = r.length ? `${r.length} producto(s)` : "";
   let h = `<thead><tr><th>Producto</th>${S.map(s => `<th>${esc(s)}</th>`).join("")}<th>Por unidad</th><th>Fav.</th></tr></thead><tbody>`;
-  const vacio = `No hay resultados en el catálogo guardado.${$("q").value.trim().length > 1 ? ` <button class="envivo">Buscar “${esc($("q").value.trim())}” en vivo</button>` : ""}`;
+  const vacio = `No hay resultados en el catálogo guardado.${$("q").value.trim().length > 1 ? ` <button class="envivo pri">Buscar “${esc($("q").value.trim())}” en vivo</button>` : ""}`;
   if (!r.length) h += `<tr><td colspan="${S.length + 3}">${vacio}</td></tr>`;
   for (const it of r.slice(0, limite)) {
     const min = Math.min(...it.t.map(x => x[1]));

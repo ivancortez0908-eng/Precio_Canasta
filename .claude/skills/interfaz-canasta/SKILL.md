@@ -22,7 +22,7 @@ Usa siempre las variables de `:root`; nunca colores sueltos (salvo el amarillo d
 | `--ink` / `--mute` | texto principal / secundario |
 | `--line` | separadores de tabla y tarjetas |
 | `--borde` | borde de campos (búsqueda, selectores, cantidad): contraste ≥ 3:1 |
-| `--blue` | marca, pestaña activa, foco, marcas de producto (`#1460cc`, ≥ 4.5:1 sobre todos los fondos) |
+| `--marca` / `--marcaHov` | verde de marca (`#0a6e37`, ≥ 4.5:1 sobre todos los fondos): logo, pestaña activa, foco, marcas de producto y fondo del botón principal `.pri` (texto blanco) / al pasar el mouse |
 | `--btn` / `--hov` | botón normal / al pasar el mouse |
 | `--best` / `--bestInk` | celda más barata |
 | `--warn` | acciones que borran y avisos (`#b01433`, ≥ 4.5:1 también sobre botones grises) |
@@ -30,14 +30,15 @@ Usa siempre las variables de `:root`; nunca colores sueltos (salvo el amarillo d
 | `--sh` | sombra de tarjetas |
 
 - Todo texto nuevo debe tener contraste ≥ 4.5:1 con su fondo; compruébalo antes de elegir un color.
-- Letra: `system-ui`, 15 px. Títulos de tarjeta `h2` 1.25rem; textos de apoyo `.msg` en `--mute`.
+- Paleta propia de comparador (verde = ahorro), neutral frente a las tiendas: no uses el rojo de Selectos ni el azul y amarillo de Walmart como color de marca. El verde de marca va en navegación y botones; el verde claro `--best` con ✓ queda solo para el precio más barato.
+- Letra: `system-ui`, 15 px (en celular, campos y selectores a 16 px para que Safari no haga zoom). Títulos de tarjeta `h2` 1.25rem; textos de apoyo `.msg` en `--mute`.
 - Esquinas: tarjetas y tablas 8 px, botones 6 px, búsqueda y etiquetas redondas (999px).
 
 ## 2. Estructura de la página (no cambiar el orden)
 
 ```
 header.top (fija, 56 px)
- ├─ h1.brand  logo «C» + «Canasta SV» (único h1; en móvil el texto queda solo para lectores de pantalla)
+ ├─ h1.brand  logo (canasta en SVG) + «Canasta SV» (único h1; en móvil el texto queda solo para lectores de pantalla)
  ├─ nav.tabs  🏪 Catálogo | ⚡ En vivo | ⭐ Favoritos (n)   ← centradas
  └─ .sp  espacio que equilibra el logo (se oculta en móvil)
 main (todo el ancho, 16 px de margen lateral)
@@ -62,7 +63,7 @@ section#imprimir      hoja para PDF; solo visible al imprimir
 Siempre de arriba abajo: **controles → estado → tabla → resumen**.
 
 - **Barra de controles** (`.controls`, tarjeta en fila que se acomoda en móvil): primero lo que se escribe o elige (búsqueda, selector), después los botones.
-- **Orden de botones** en una barra: mensaje a la izquierda (`flex:1`), luego acción principal → acciones secundarias → acción que borra al final (clase `.rm`, roja). Ejemplo real: «Actualizar precios · Descargar PDF · Descargar Excel · Vaciar lista».
+- **Orden de botones** en una barra: mensaje a la izquierda (`flex:1`), luego acción principal (`.pri`, la única rellena de verde) → acciones secundarias → acción que borra al final (clase `.rm`, roja). Ejemplo real: «Actualizar precios · Descargar PDF · Descargar Excel · Vaciar lista».
 - **Estado** (`p.msg` con `id`): justo debajo de la barra; dice qué pasó, en una frase («Buscando “leche” en las tiendas…», «No respondieron: …. Puedes reintentar.»).
 - **Resumen** (`section.cart` con `h2`): debajo de la tabla, como la «Comparación de tu compra».
 - Acciones de una fila van **en la primera columna** (fija), bajo el nombre: cantidad `.stp` (− número +), «Quitar» (`.rm`) y «Consultar tiendas» (`.retry`). Así se ven aunque haya muchas tiendas.
@@ -74,13 +75,13 @@ Siempre de arriba abajo: **controles → estado → tabla → resumen**.
 | tarjeta con controles | `div.controls` (o `form.controls` si hay búsqueda con Enter) |
 | tarjeta con título | `section.cart` + `h2` |
 | tabla | `div.wrap > table`: encabezado y primera columna fijos, desplazamiento horizontal dentro del recuadro |
-| botón normal / que borra / pequeño de fila | `button` / `button.rm` / `button.retry` |
+| botón principal (uno por barra) / normal / que borra / pequeño de fila | `button.pri` / `button` / `button.rm` / `button.retry` |
 | texto solo para lectores de pantalla | `span.vh` |
 | etiqueta tienda + precio (celular) | `chip(tienda, precio, mejor, extra, url)` en `app.js` |
 | renglón compacto (celular) | `article.mitem > button.mcab[data-a=abrir][aria-expanded]` con `.mnom`, `.mcant`, `.mprecios > .chip` y, abierto, `.mdet` |
 | cantidad | `span.stp` con `button[data-a=menos]`, `input.qty`, `button[data-a=mas]` (1 a 99) |
 | favorito | `button.star` con `aria-pressed` y ☆/★; abre `dialog#dlista` |
-| etiqueta pequeña | `.tag` (criterio de unión), `.store` (nombre de tienda), `.marca` (marca, azul) |
+| etiqueta pequeña | `.tag` (criterio de unión), `.store` (nombre de tienda), `.marca` (marca, verde) |
 | precio más barato | `td.best` con `barato(html)` (✓ visible + «(más barato)» en `.vh`); nunca solo el color verde |
 | sin dato | `td.na` con texto («Sin coincidencia», «Tienda sin respuesta», «Descartado por ti»); nunca cero dólares |
 | oferta | `small.promo` («Oferta 2 x … · lleva 2 para aplicarla»), `small.promo.si` cuando ya se aplica, `small.antes` tachado |
@@ -89,7 +90,7 @@ Siempre de arriba abajo: **controles → estado → tabla → resumen**.
 | semáforo | `.totals > .tot.v|.a|.r` con `.dot`, `.tn`, `b`, `.tl` y la `.leyenda` |
 | cuadro emergente | `<dialog>` con `h2`, contenido y botón «Listo» al final; `showModal()` |
 | texto plegable | `details > summary` |
-| aviso al pie | `section.ayuda` (borde izquierdo azul) con botones «Sí / No» |
+| aviso al pie | `section.ayuda` (borde izquierdo verde) con botones «Sí / No» |
 
 ## 5. Textos
 
@@ -114,7 +115,7 @@ Siempre de arriba abajo: **controles → estado → tabla → resumen**.
 - En menos de 700 px también se ocultan el nombre de la marca y `.sp`, y las pestañas se compactan.
 - Botones de al menos ~32 px de alto; nada que dependa solo del color (el semáforo también dice el texto).
 - Todo campo o botón de solo ícono lleva `aria-label`; las pestañas, `role="tab"` y `aria-selected`; mensajes que cambian solos (`#count`, `#estv`, `#favest`, `#favresumen`), `aria-live="polite"`.
-- Respeta `:focus-visible` (contorno azul); no lo quites.
+- Respeta `:focus-visible` (contorno verde de marca); no lo quites.
 - Zonas táctiles: al menos 44 px de alto en celular (botones, campos, selectores, `summary`, ☆) y 24 px en computadora.
 - Pestañas: `aria-controls` hacia su panel, paneles con `role="tabpanel"` y `aria-labelledby`; solo la pestaña activa tiene `tabindex="0"`.
 - Avisos que no se repiten por fila: lo que vale para toda la lista (p. ej. «No respondieron: …») va una vez en el mensaje de la barra.
