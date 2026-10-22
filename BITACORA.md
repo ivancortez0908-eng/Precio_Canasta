@@ -1,3 +1,11 @@
+# Bitácora — 22 de octubre de 2026 (producto abierto en Mi lista)
+
+## Cambios
+- `index.html`: en celular, el producto abierto de Mi lista (`.mitem.abierto`) lleva franja verde a la izquierda, más sombra y más espacio, para distinguir dónde terminan sus tiendas y empieza el siguiente producto. Se eligió entre cuatro opciones (franja y sombra, pie «Cerrar detalle», tiendas en un recuadro, fondo gris).
+
+## Validación
+- 31 pruebas aprobadas; `node tests/interfaz.cjs` aprobado con una comprobación nueva (franja verde del producto abierto).
+
 # Bitácora — 22 de octubre de 2026 (página «Buscar» y barra inferior)
 
 ## Cambios

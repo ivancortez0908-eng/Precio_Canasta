@@ -136,6 +136,8 @@ const server = http.createServer((req, res) => {
     assert.equal(await page.getByRole('spinbutton').count(), 0);
     await producto.click();
     assert.equal(await producto.getAttribute('aria-expanded'), 'true');
+    // El producto abierto se distingue de los demás: franja verde a la izquierda
+    assert.equal(await page.locator('#mfav .mitem.abierto').evaluate(n => getComputedStyle(n).borderLeftColor), 'rgb(10, 110, 55)');
     assert.match(await page.locator('#mfav .mdet').innerText(), /Walmart[^]*Oferta 2 x \$3\.80[^]*Cambiar producto/);
     if (process.env.CANASTA_CAPTURAS) await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'favoritos-movil.png'), fullPage: true });
     await page.reload();

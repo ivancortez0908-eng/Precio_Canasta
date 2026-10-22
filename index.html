@@ -121,6 +121,8 @@ a.chip{text-decoration:none}
 .mitem{background:var(--surf);border-radius:8px;box-shadow:var(--sh);overflow:hidden}
 .mcab{display:grid;grid-template-columns:1fr auto;gap:4px 8px;width:100%;padding:10px 12px;border-radius:0;background:none;text-align:left;font-weight:400}
 .mcab:hover{background:none}.mitem.abierto .mcab{background:var(--bg)}
+/* producto abierto: franja verde y sombra para ver dónde terminan sus tiendas */
+.mitem.abierto{border-left:5px solid var(--marca);box-shadow:0 4px 14px rgba(0,0,0,.22);margin:4px 0 10px}
 .mnom{font-weight:600}.mcant{color:var(--mute);font-size:.85rem}
 .mprecios{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px}
 .chip{display:inline-flex;gap:4px;align-items:baseline;padding:2px 8px;border-radius:999px;background:var(--bg);font-size:.78rem;color:var(--mute)}
