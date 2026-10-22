@@ -396,3 +396,44 @@ test('el más barato se marca con ✓ y texto, y Catálogo y En vivo tienen list
   ui.run('$("mvivo").onclick({ target: { classList: { contains: () => false }, closest: s => s === ".star" ? { dataset: { id: RV[1].id } } : null } })');
   assert.equal(ui.run('porGuardar && porGuardar.x.tienda'), 'Selectos');
 });
+test('Favoritos: resumen arriba y «no respondieron» una sola vez para toda la lista', async () => {
+  const ui = interfaz({ resultados: [producto('Walmart', 2), producto('Selectos', 1.75)] });
+  await ui.run('vivo("leche salud")');
+  ui.run('alternar(favDeVivo(RV[0])); alternar({ id: "g:arroz", n: "Arroz blanco 1 lb", m: "Precisa", q: 454, u: "g", t: { Walmart: { p: .9, src: "cat" } } });');
+  await terminar(); await terminar();
+  assert.equal(ui.el('favresumen').hidden, false);
+  assert.match(ui.el('favresumen').innerHTML, /Compra completa más barata: <b>Walmart \$2\.90<\/b> · Combinando tiendas: <b>\$2\.65<\/b>/);
+  ui.run('FAV[1].t = { Despensa: { p: .9 } }; pintarFav();');
+  assert.match(ui.el('favresumen').innerHTML, /Ninguna tienda tiene todos los productos · Combinando tiendas: <b>\$2\.65<\/b>/);
+  assert.equal((ui.el('favmsg').textContent.match(/No respondieron: Despensa/g) || []).length, 1);
+  assert.doesNotMatch(ui.el('tfav').innerHTML, /No respondieron/);
+  ui.run('FAV.splice(1, 1); pintarFav();');
+  assert.match(ui.el('favresumen').innerHTML, /Compra completa más barata: <b>Selectos \$1\.75<\/b>/);
+});
+test('precio por unidad: 4 decimales bajo un centavo y «—» si el catálogo lo dejó en cero', async () => {
+  const item = (n, pu) => ({ n, m: 'Gigante', q: 500, u: 'ud', pl: 'ud', pu, k: 'ean', t: [[0, 1.15, 'https://t.test/' + n, pu, n, 'Gigante', '', n], [1, 1.2, 'https://t.test/b' + n, pu, n, 'Gigante', '', 'b' + n]] });
+  const ui = interfaz({ datos: { supers: ['Walmart', 'Selectos'], actualizado: '2026-10-21', items: [item('Sal A 500 sobres', .0023), item('Sal B 500 sobres', 0)] } });
+  await terminar();
+  assert.equal(ui.run('fpu(0.0023)'), '$0.0023');
+  assert.match(ui.el('tabla').innerHTML, /\$0\.0023<small>por ud/);
+  assert.doesNotMatch(ui.el('tabla').innerHTML, /\$0\.000</);
+  assert.match(ui.el('mcat').innerHTML, /\$0\.0023 por ud/);
+});
+test('onzas: «fl oz» y «onzas líquidas» son ml; «oz» y «onzas» solas son peso; igual en scraper y Worker', async () => {
+  const { parseTamano } = await import(pathToFileURL(path.join(__dirname, '..', 'scraper', 'normalizar.mjs')).href);
+  const casos = { 'Gaseosa Coca Cola Lata 12 fl oz': '355 ml', 'Jugo Del Valle 16 onzas líquidas': '473 ml', 'Locion Nivea 13.5 fl. oz': '399 ml',
+    'Cerveza 6 x 12 fl oz': '2129 ml', 'Activee Tr Argan 3.38 Fl oz 100 ml': '100 ml', 'Hongo Champinon 12 Onzas': '340 g',
+    'Liempiador Armor All - 10onzas': '283 g', 'Salchichas Butterball de pavo - 16 oz': '454 g', 'Salsa Prego tradicional - 14 oz': '397 g' };
+  for (const [n, esperado] of Object.entries(casos)) { const t = parseTamano(n); assert.equal(`${t?.q} ${t?.u}`, esperado, n); }
+  // El Worker usa la misma lógica
+  const vtex = (id, nombre) => ({ productId: id, productName: nombre, brand: '', link: 'https://t.test/' + id, items: [{ sellers: [{ commertialOffer: { Price: 1, AvailableQuantity: 1 } }] }] });
+  const w = await worker({ 'walmart.com.sv/api': Object.keys(casos).map((n, i) => vtex(String(i), n)) });
+  const d = await w.consultar('prueba onzas');
+  for (const x of d.resultados.filter(r => r.tienda === 'Walmart')) assert.equal(`${x.q} ${x.u}`, casos[x.nombre], x.nombre);
+  // Una lata de 12 fl oz equivale a una de 355 ml; a una de 350 ml, no
+  const lata = (nombre, q) => ({ nombre, marca: 'Coca Cola', q, u: 'ml' });
+  assert.equal(equivalente(lata('Gaseosa Coca Cola Lata 12 fl oz', 355), lata('Gaseosa Coca Cola Lata 355 ml', 355)), true);
+  assert.equal(equivalente(lata('Gaseosa Coca Cola Lata 12 fl oz', 355), lata('Gaseosa Coca Cola Lata 350 ml', 350)), false);
+  assert.equal(equivalente({ nombre: 'Activee Tr Argan 3.38 Fl oz 100 ml', marca: 'Activee', q: 100, u: 'ml' }, { nombre: 'Activee Tr Argan 100 ml', marca: 'Activee', q: 100, u: 'ml' }), true);
+  assert.deepEqual(palabrasBusqueda('Shampoo Activee 13.5 fl oz'), ['shampoo', 'activee']);
+});

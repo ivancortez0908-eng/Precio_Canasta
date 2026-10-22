@@ -1,7 +1,7 @@
 // Utilidades para entender tamaños y comparar nombres entre tiendas
 export const norm = s => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-const RE = /(?<![\d.,])(?:(\d+)\s*[x×]\s*)?(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|lbs?|libras?|oz|ml|lts?|litros?|l|gal(?:on(?:es)?)?)(?![a-z])/i;
+const RE = /(?<![\d.,])(?:(\d+)\s*[x×]\s*)?(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|lbs?|libras?|floz|onzas?|oz|ml|lts?|litros?|l|gal(?:on(?:es)?)?)(?![a-z])/i;
 const RE_UD = /(\d+)\s*(unidades|und|uds?|pzas?|piezas)(?![a-z])/i;
 
 function conv(v, u) {
@@ -9,7 +9,8 @@ function conv(v, u) {
   if (/^(kg|kilos?)$/.test(u)) return v > 60 ? { q: v, u: "g" } : { q: v * 1000, u: "g" };   // "802 kg" en un quitamanchas es 802 g
   if (/^(g|grs?|gramos?)$/.test(u)) return { q: v, u: "g" };
   if (/^(lbs?|libras?)$/.test(u)) return { q: v * 453.592, u: "g" };
-  if (u === "oz") return { q: v * 28.3495, u: "g" };
+  if (/^(oz|onzas?)$/.test(u)) return { q: v * 28.3495, u: "g" };           // onza de peso
+  if (u === "floz") return { q: v * 29.5735, u: "ml" };                    // onza líquida
   if (/^(l|lts?|litros?)$/.test(u)) return v > 50 ? { q: v, u: "ml" } : { q: v * 1000, u: "ml" };
   if (u === "ml") return { q: v, u: "ml" };
   if (/^gal/.test(u)) return { q: v * 3785.41, u: "ml" };
@@ -18,6 +19,8 @@ function conv(v, u) {
 
 // Superselectos escribe 1 816 g (miles con espacio): lo convertimos a 1816 g
 export const limpiaTam = t => (t || "")
+  // Onza líquida («fl oz», «fl. oz», «onzas líquidas», «oz líq») → «floz», que se convierte a ml; «oz» u «onzas» solas son de peso
+  .replace(/(\d+(?:[.,]\d+)?)\s*(?:fl\.?\s*oz\.?|onzas?\s+l[ií]quidas?|oz\.?\s*l[ií]q(?:uidas?)?\.?)(?![a-z])/gi, "$1 floz")
   .replace(/(?<![\w.,])(\d{1,3})\s(\d{3})(?=\s*(?:g|gr|grs|gramos|ml)(?![a-z]))/gi, "$1$2")        // 1 816 g  -> 1816 g
   .replace(/(?<![\w.,])(\d{1,3})\s(\d{3})(?=\s*(?:kg|kilos?|lts?|litros?|l)(?![a-z]))/gi, "$1.$2") // 2 500 kg -> 2.500 kg
   .replace(/\s+/g, " ");
@@ -25,7 +28,7 @@ export const limpiaTam = t => (t || "")
 // "Frijol rojo 2 lb" -> { q: 907, u: "g" }; "Cerveza 6 x 355 ml" -> { q: 2130, u: "ml" }
 export function parseTamano(nombre) {
   const t = limpiaTam(nombre).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  const mp = t.match(/(\d+)\s*(?:unidades|unidad|uds?|und)\s*\/\s*(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|lbs?|libras?|oz|ml|lts?|litros?|l)(?![a-z])/i);
+  const mp = t.match(/(\d+)\s*(?:unidades|unidad|uds?|und)\s*\/\s*(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|lbs?|libras?|floz|onzas?|oz|ml|lts?|litros?|l)(?![a-z])/i);
   if (mp) { const c = conv(parseFloat(mp[2].replace(",", ".")), mp[3]); if (c) return { q: Math.round(c.q * +mp[1]), u: c.u }; }
   const m = t.match(RE);
   if (m) {

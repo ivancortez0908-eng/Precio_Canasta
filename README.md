@@ -9,7 +9,7 @@ Comparador de precios de supermercados de El Salvador. Descarga el catálogo com
 
 ## Cómo se decide que dos productos son iguales
 1. **Código de barras (EAN):** la señal más confiable. Solo se usa si su dígito de control es correcto y tiene al menos 8 cifras significativas (los códigos internos cortos de productos a granel no se usan).
-2. **Marca + nombre + tamaño:** el tamaño se normaliza (1 lb = 454 g, 1 gal = 3785 ml…). Si el tamaño o la marca difieren, no se agrupan.
+2. **Marca + nombre + tamaño:** el tamaño se normaliza (1 lb = 454 g, 1 gal = 3785 ml…). La onza de peso («oz», «onzas») vale 28.35 g y la onza líquida («fl oz», «onzas líquidas») 29.57 ml: una lata de «12 fl oz» equivale a una de «355 ml». Si el tamaño o la marca difieren, no se agrupan.
 3. **Manual:** `scraper/equivalencias.json` fuerza equivalencias que el algoritmo no detecta:
    ```json
    [[ {"tienda":"Walmart","id":"12345"}, {"tienda":"Super Selectos","id":"678"} ]]

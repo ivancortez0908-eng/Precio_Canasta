@@ -1,3 +1,37 @@
+# Bitácora — 22 de octubre de 2026 (onzas y mililitros)
+
+## Evaluación
+- Toda «oz» se convertía a 28.35 g (onza de peso). No existía la onza líquida ni la palabra «onzas»: «12 fl oz», «16 onzas líquidas», «13.5 fl. oz», «12 Onzas» y «10onzas» quedaban sin tamaño (sin precio por unidad ni equivalencias).
+- «Activee 3.38 Fl oz 100 ml» y «Activee 100 ml» no se reconocían como el mismo producto: «fl oz» quedaba en el nombre.
+- En el catálogo (26 productos con onzas) casi todas son de peso (snacks, salsas, embutidos) y estaban bien. En las tiendas en vivo aparecen «Fl oz» (cuidado personal) y «Onzas» (vasos, hongos, limpiadores).
+
+## Cambios
+- `scraper/normalizar.mjs` y `worker/worker.js` (versión `2026-10-22-a`): «fl oz», «fl. oz», «onzas líquidas» y «oz líq» → ml (× 29.5735); «onza(s)», también pegada al número, → g (× 28.3495). «oz» sola sigue siendo peso.
+- `comparador.js`: «3.38 fl oz» se quita del nombre al comparar, como «100 ml»; «fl», «floz» y «líquidas» no cuentan como palabras de búsqueda.
+
+## Validación
+- Prueba nueva con nombres reales: tamaños en scraper y Worker idénticos; lata «12 fl oz» = «355 ml» (dentro de 0.5 %) y ≠ «350 ml»; Activee con y sin «fl oz» equivalentes. 31 pruebas aprobadas; `node tests/interfaz.cjs` aprobado.
+- Catálogo actual reprocesado sin red: 0 diferencias de tamaño frente al código anterior (los casos nuevos aparecen en la búsqueda en vivo).
+
+## Límite
+- Una «oz» sin «fl» en un líquido (p. ej. «Shampoo 13.5 oz») se toma como peso; no se une sola con un tamaño en ml y se elige a mano.
+
+# Bitácora — 21 de octubre de 2026 (revisión de diseño: prioridades 3 a 5)
+
+## Cambios
+- **Accesibilidad:** zonas táctiles de 44 px en celular (botones, campos, selectores, «Cambiar producto», ☆) y ≥ 24 px en computadora; `aria-live="polite"` en `#count`, `#estv`, `#favest` y el resumen; pestañas con `aria-controls`, paneles `role="tabpanel"` y solo la pestaña activa en el orden de Tab; «Canasta SV» es el `h1` (en celular el texto queda para lectores de pantalla).
+- **Catálogo:** `scraper/emparejar.mjs` guarda el precio por unidad con 4 decimales (la sal de 500 sobres pasa de $0.00 a $0.0023); la página muestra 4 decimales bajo un centavo y «—» si un catálogo anterior lo dejó en cero, y ordena esos al final. El catálogo abre ordenado por «Mayor diferencia entre tiendas».
+- **Favoritos:** resumen arriba de la tabla («Compra completa más barata: Tienda $X · Combinando tiendas: $Y · Ver detalle»); «No respondieron: …» aparece una vez en el mensaje de la lista y no en cada producto.
+- Skill `interfaz-canasta` actualizado.
+
+## Validación
+- `node --test tests/canasta.test.cjs`: 30 pruebas (nuevas: resumen y aviso único; precio por unidad con 4 decimales y «—»).
+- `node tests/interfaz.cjs`: `h1`, pestañas y paneles, orden inicial, `aria-live`, resumen, `summary` ≥ 24 px en computadora y ningún control de Favoritos por debajo de 44 px en celular. Capturas revisadas.
+- `scraper/emparejar.mjs` en una copia: 0 productos con precio por unidad en cero (antes 1).
+
+## Límite
+- El catálogo publicado mostrará los 4 decimales tras la próxima actualización programada (lunes o jueves) o al correr «Actualizar precios» en Actions.
+
 # Bitácora — 21 de octubre de 2026 (revisión de diseño: prioridades 1 y 2)
 
 ## Origen
