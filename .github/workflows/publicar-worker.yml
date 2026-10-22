@@ -1,0 +1,45 @@
+name: Publicar Worker
+# Publica worker/worker.js en Cloudflare cuando cambia en main (o a mano con «Run workflow»).
+# Requiere los secretos CLOUDFLARE_API_TOKEN (permisos: Workers Scripts Edit + Account Settings Read) y CLOUDFLARE_ACCOUNT_ID.
+on:
+  push:
+    branches: [main]
+    paths: [worker/worker.js, worker/wrangler.toml]
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: publicar-worker
+  cancel-in-progress: false
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22 }
+      - name: Pruebas (si fallan, no se publica)
+        run: |
+          node --check worker/worker.js
+          node --test tests/canasta.test.cjs
+      - name: Publicar en Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          wranglerVersion: "4.152.0"
+          command: deploy
+      - name: Comprobar la versión publicada
+        run: |
+          esperada=$(grep -oP 'const VERSION = "\K[^"]+' worker/worker.js)
+          url=$(grep -oP 'API_VIVO\s*=\s*"\K[^"]+' config.js)
+          for i in 1 2 3 4 5 6; do
+            publicada=$(curl -s "$url?q=leche&fresh=1" | grep -oP '"version":"\K[^"]+' || true)
+            echo "Intento $i: publicada=${publicada:-ninguna}, esperada=$esperada"
+            [ "$publicada" = "$esperada" ] && exit 0
+            sleep 10
+          done
+          echo "::error::El Worker responde con la versión '${publicada:-ninguna}' y se esperaba '$esperada'."
+          exit 1

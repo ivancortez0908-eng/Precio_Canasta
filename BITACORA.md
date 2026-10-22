@@ -1,3 +1,15 @@
+# Bitácora — 22 de octubre de 2026 (publicación automática del Worker)
+
+## Cambios
+- `.github/workflows/publicar-worker.yml`: al unir a `main` un cambio en `worker/worker.js` o `worker/wrangler.toml` (o con «Run workflow»), corre `node --check` y las pruebas; si pasan, publica con `cloudflare/wrangler-action@v3` (wrangler 4.152.0) y comprueba que el Worker responda con la `VERSION` del archivo.
+- `worker/wrangler.toml`: Worker `canasta-busqueda`, `workers_dev = true`, `compatibility_date = 2026-10-17` (creación del Worker) y `keep_vars = true` para conservar `ORIGEN_PERMITIDO`; los secretos no se tocan.
+- Secretos del repositorio: `CLOUDFLARE_API_TOKEN` (Workers Scripts Edit + Account Settings Read) y `CLOUDFLARE_ACCOUNT_ID`.
+- README y AGENTS: el Worker ya no se pega a mano.
+
+## Validación
+- `wrangler deploy --dry-run` con wrangler 3 y 4.152.0: empaqueta 16.5 KB, sin bindings.
+- YAML y TOML validados. Antes de esta entrega el Worker publicado era `2026-10-21-c`; la primera ejecución debe publicar `2026-10-22-a` (onzas).
+
 # Bitácora — 22 de octubre de 2026 (onzas y mililitros)
 
 ## Evaluación

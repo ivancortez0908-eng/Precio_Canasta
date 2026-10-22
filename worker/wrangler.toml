@@ -1,0 +1,10 @@
+# Configuración para publicar el Worker desde GitHub Actions (.github/workflows/publicar-worker.yml).
+# El nombre debe ser el del Worker existente en Cloudflare para reemplazarlo, no crear otro.
+name = "canasta-busqueda"
+main = "worker.js"
+compatibility_date = "2026-10-17"   # la de creación del Worker en el panel
+workers_dev = true                   # sigue respondiendo en canasta-busqueda.<cuenta>.workers.dev
+
+# Conserva las variables definidas en el panel de Cloudflare (ORIGEN_PERMITIDO).
+# Los secretos (PRICESMART_KEY, GITHUB_TOKEN_APORTES) nunca se tocan al publicar.
+keep_vars = true
