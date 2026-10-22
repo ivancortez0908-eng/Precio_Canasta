@@ -67,7 +67,7 @@ const terminar = () => new Promise(resolve => setImmediate(resolve));
 test('al marcar un resultado consulta otras tiendas, guarda una fila y muestra totales', async () => {
   const ui = interfaz({ resultados: [producto('Walmart', 2), producto('Selectos', 1.75)] });
   await ui.run('vivo("leche salud")');
-  ui.run('$("qv").value = "leche salud"; alternar(favDeVivo(RV[0]));');
+  ui.run('$("q").value = "leche salud"; alternar(favDeVivo(RV[0]));');
   await terminar();
   const f = ui.saved();
   assert.equal(f.length, 1);

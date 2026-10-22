@@ -37,25 +37,30 @@ Usa siempre las variables de `:root`; nunca colores sueltos (salvo el amarillo d
 ## 2. Estructura de la página (no cambiar el orden)
 
 ```
-header.top (fija, 56 px)
- ├─ h1.brand  logo (canasta en SVG) + «Canasta SV» (único h1; en móvil el texto queda solo para lectores de pantalla)
- ├─ nav.tabs  🏪 Catálogo | ⚡ En vivo | ⭐ Favoritos (n)   ← centradas
+header.top (fija, 56 px; 52 px en celular)
+ ├─ h1.brand  logo (canasta en SVG) + «Canasta SV» (único h1)
+ ├─ nav.tabs  [ícono] Buscar | [ícono] Mi lista [.badge n]   ← centradas; en celular, barra fija abajo
  └─ .sp  espacio que equilibra el logo (se oculta en móvil)
 main (todo el ancho, 16 px de margen lateral)
  ├─ p.msg.intro   una línea que explica el sitio
- ├─ #p1 Catálogo:   .controls (buscar · filtro · ordenar, por defecto «Mayor diferencia entre tiendas») → #count → .wrap>table#tabla → «Mostrar más»
- ├─ #p2 En vivo:    form.controls (buscar · «Buscar en las tiendas» · ordenar) → #estv → .wrap>table#tv → aviso
- └─ #p3 Favoritos:  .controls.listas → .controls.acciones (#favmsg + .botones) → #favest → .wrap.solo-escritorio>table#tfav
+ ├─ #p1 Buscar (página principal):
+ │    form#fbuscar.controls (#q · «Buscar en las tiendas» .pri) → #fecha (fecha del catálogo)
+ │    → #inicio, solo con la búsqueda vacía: section.cart#ilista (lista activa + «Ver mi lista») · .sug (sugerencias)
+ │    → section#secvivo, tras buscar en las tiendas: .subbarra (h2 «En las tiendas ahora» · #ordv) → #estv → #ocultos → .wrap>table#tv / #mvivo → aviso
+ │    → section#seccat: .subbarra (h2#cattit · #comp · #ord, por defecto «Mayor diferencia entre tiendas») → #count → .wrap>table#tabla / #mcat → «Mostrar más»
+ └─ #p2 Mi lista:  .controls.listas → .controls.acciones (#favmsg + .botones) → #favresumen → #favest → .wrap.solo-escritorio>table#tfav
                     → #mfav (lista compacta, solo celular) → section.cart#favres
-                    (#favresumen va entre las barras y la tabla: tienda más barata y total combinado)
 section#ayuda.ayuda   pregunta de aportes, al pie, solo cuando aplica
 footer#foot           fecha y origen de los datos
 dialog#dlista         «Guardar en una lista»
 section#imprimir      hoja para PDF; solo visible al imprimir
 ```
 
-- Una pestaña nueva va **al final** de `nav.tabs`, con emoji + una o dos palabras, y su panel `#pN` con `hidden`. Actualiza `pestana()`, las flechas del teclado (`onkeydown` de `.tabs`) y deja `role="tab"`/`aria-selected`.
-- No agregues menús desplegables a la barra superior: tres o cuatro pestañas como máximo; lo demás va dentro del panel.
+- Un solo buscador: al escribir filtra el catálogo; Enter o «Buscar en las tiendas» consulta cada tienda (`vivo`). No vuelvas a separar Catálogo y En vivo en pestañas.
+- Pestañas: ícono SVG en línea (`stroke: currentColor`, `aria-hidden`) + una o dos palabras; nada de emojis. Una pestaña nueva va **al final** de `nav.tabs`, con su panel `#pN` y `hidden`. Actualiza `pestana()`, las flechas del teclado (`onkeydown` de `.tabs`) y deja `role="tab"`/`aria-selected`.
+- No agregues menús desplegables a la barra superior: tres pestañas como máximo; lo demás va dentro del panel.
+- Títulos de sección dentro de un panel: `.subbarra` con `h2` a la izquierda y sus filtros a la derecha.
+
 - Los `id` que usa `app.js` no se renombran sin cambiar también `app.js` y las pruebas.
 
 ## 3. Posiciones dentro de cada panel
@@ -81,6 +86,8 @@ Siempre de arriba abajo: **controles → estado → tabla → resumen**.
 | renglón compacto (celular) | `article.mitem > button.mcab[data-a=abrir][aria-expanded]` con `.mnom`, `.mcant`, `.mprecios > .chip` y, abierto, `.mdet` |
 | cantidad | `span.stp` con `button[data-a=menos]`, `input.qty`, `button[data-a=mas]` (1 a 99) |
 | favorito | `button.star` con `aria-pressed` y ☆/★; abre `dialog#dlista` |
+| sugerencia de búsqueda | `.sug > button[data-q]` (redonda, fondo blanco) |
+| contador en pestaña | `span.badge` (verde, texto blanco) |
 | etiqueta pequeña | `.tag` (criterio de unión), `.store` (nombre de tienda), `.marca` (marca, verde) |
 | precio más barato | `td.best` con `barato(html)` (✓ visible + «(más barato)» en `.vh`); nunca solo el color verde |
 | sin dato | `td.na` con texto («Sin coincidencia», «Tienda sin respuesta», «Descartado por ti»); nunca cero dólares |
@@ -105,14 +112,15 @@ Siempre de arriba abajo: **controles → estado → tabla → resumen**.
 **Celular (hasta 700 px) = versión compacta:**
 - Cada barra de controles va **en una sola fila**: «Lista [selector] · Nueva · Renombrar · Eliminar» y «Actualizar · PDF · Excel · Vaciar». El mensaje de la barra va en su propia línea, encima de los botones.
 - En celular los botones muestran una versión corta: la parte larga del texto va en `<span class="larga">` (se oculta) y el botón lleva `aria-label` con el nombre completo («Descargar PDF»). Si el texto lo cambia `app.js`, actualiza también el `aria-label`.
-- **Ninguna pestaña muestra tablas en el celular** (`.solo-escritorio`): Catálogo usa `#mcat` y En vivo `#mvivo` (`.mlista`, renglones `.mitem > .mfila` con nombre, marca y tamaño, ☆, etiquetas «Tienda $precio» con el más barato primero y precio por unidad).
+- **Las pestañas van en una barra fija abajo** (60 px + zona segura), con ícono arriba y texto abajo; la activa lleva borde superior verde. El `body` reserva ese espacio con `padding-bottom`. La barra superior queda solo con el logo y el nombre.
+- **Ninguna pestaña muestra tablas en el celular** (`.solo-escritorio`): el catálogo usa `#mcat` y los resultados de las tiendas `#mvivo` (`.mlista`, renglones `.mitem > .mfila` con nombre, marca y tamaño, ☆, etiquetas «Tienda $precio» con el más barato primero y precio por unidad).
 - Favoritos usa `#mfav`: cada producto es un renglón (`.mitem`) con nombre, cantidad y precios como etiquetas `.chip` **con el nombre de la tienda** y el más barato primero y en verde; las tiendas sin precio se resumen («4 sin precio»).
 - Al tocar un renglón se abre su detalle (`.mdet`): marca y presentación, cantidad, Quitar, Consultar tiendas y una fila por tienda (`.mtienda`) con el mismo contenido de la celda de la tabla. **Solo un producto abierto a la vez** (`abierto` en `app.js`); tocar el abierto lo cierra. La tabla y la lista compacta salen de los mismos datos (`filas` en `pintarFav`): no dupliques reglas.
 - Se oculta la frase de introducción y los totales van en 2 columnas.
 
 
 - Sin desplazamiento horizontal de la página: las tablas se desplazan dentro de `.wrap`; mantén `min-width:0` en los hijos de `main` y de los paneles.
-- En menos de 700 px también se ocultan el nombre de la marca y `.sp`, y las pestañas se compactan.
+- En menos de 700 px también se oculta `.sp`, y el botón de búsqueda se acorta a «Buscar».
 - Botones de al menos ~32 px de alto; nada que dependa solo del color (el semáforo también dice el texto).
 - Todo campo o botón de solo ícono lleva `aria-label`; las pestañas, `role="tab"` y `aria-selected`; mensajes que cambian solos (`#count`, `#estv`, `#favest`, `#favresumen`), `aria-live="polite"`.
 - Respeta `:focus-visible` (contorno verde de marca); no lo quites.

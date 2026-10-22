@@ -1,3 +1,14 @@
+# Bitácora — 22 de octubre de 2026 (página «Buscar» y barra inferior)
+
+## Cambios
+- Fase 3: Catálogo y En vivo se unen en la pestaña **Buscar** (página principal). Un solo buscador `#q`: al escribir filtra el catálogo; Enter o «Buscar en las tiendas» consulta las tiendas (`#secvivo` aparece arriba del catálogo). Con la búsqueda vacía se ven la tarjeta de la lista activa (`#ilista`, con la tienda más barata y «Ver mi lista»), sugerencias (`.sug`) y «Mayores diferencias entre tiendas». La fecha del catálogo pasa junto al buscador (`#fecha`). Se quita el botón «Buscar … en vivo» del catálogo vacío: el botón principal ya está arriba.
+- Fase 4: pestañas con íconos SVG en lugar de emojis; «Favoritos» pasa a **Mi lista** con contador `.badge`. En celular las pestañas van en una barra fija abajo y el nombre del sitio vuelve a verse arriba.
+- Paneles: `#p1` Buscar y `#p2` Mi lista (antes `#p3`); `#qv` y `#fvivo` se reemplazan por `#q` y `#fbuscar`.
+- Guía `interfaz-canasta` actualizada (estructura, pestañas, celular).
+
+## Validación
+- 31 pruebas aprobadas; `node --check` de los tres archivos; `node tests/interfaz.cjs` aprobado con comprobaciones nuevas (dos pestañas, sugerencias, tarjeta de la lista, fecha del catálogo, barra inferior en celular). Capturas revisadas a 1440, 1000 y 390 px.
+
 # Bitácora — 22 de octubre de 2026 (paleta propia y botón principal)
 
 ## Cambios
