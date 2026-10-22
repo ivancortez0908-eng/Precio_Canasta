@@ -213,9 +213,13 @@ function filtrar() {
 function render() {
   if (!D) return;
   const r = filtrar(), S = D.supers;
+  const q = $("q").value.trim();
+  // Con la búsqueda vacía se ven la lista activa, sugerencias y las mayores diferencias del catálogo
+  $("inicio").hidden = !!q;
+  $("cattit").textContent = q ? "En el catálogo guardado" : $("ord").value === "dif" ? "Mayores diferencias entre tiendas" : "Todo el catálogo";
   $("count").textContent = r.length ? `${r.length} producto(s)` : "";
   let h = `<thead><tr><th>Producto</th>${S.map(s => `<th>${esc(s)}</th>`).join("")}<th>Por unidad</th><th>Fav.</th></tr></thead><tbody>`;
-  const vacio = `No hay resultados en el catálogo guardado.${$("q").value.trim().length > 1 ? ` <button class="envivo pri">Buscar “${esc($("q").value.trim())}” en vivo</button>` : ""}`;
+  const vacio = `No hay resultados en el catálogo guardado.${q.length > 1 ? " Usa «Buscar en las tiendas» para consultarlo en el momento." : ""}`;
   if (!r.length) h += `<tr><td colspan="${S.length + 3}">${vacio}</td></tr>`;
   for (const it of r.slice(0, limite)) {
     const min = Math.min(...it.t.map(x => x[1]));
@@ -276,6 +280,7 @@ function pintarVivo() {
     `<span class="mpu">${x.pu > 0 ? `<small>${fpu(x.pu)} por ${x.pl}</small>` : ""}${notaOferta({ p: x.precio, ...oferta(x) })}</span></div></article>`).join("");
 }
 async function vivo(q) {
+  $("secvivo").hidden = false;
   if (!window.API_VIVO) { $("estv").textContent = "La búsqueda en vivo aún no está configurada. Mira el README, sección “Búsqueda en vivo”."; return; }
   ctl?.abort(); ctl = new AbortController();
   RV = [];
@@ -334,8 +339,11 @@ function pintarFav() {
   const S = tiendasFav();
   $("lsel").innerHTML = LISTAS.map(l => `<option value="${esc(l.id)}"${l === ACTIVA ? " selected" : ""}>${esc(l.nombre)} (${l.items.length})</option>`).join("");
   const fallan = [...new Set(FAV.flatMap(f => f.fallos || []))];
+  // Tarjeta de la lista activa en Buscar
+  $("ilista").hidden = !FAV.length;
+  $("ilistatit").textContent = `Tu lista «${ACTIVA.nombre}»`;
   $("favmsg").textContent = FAV.length ? `${FAV.length} producto(s) en «${ACTIVA.nombre}». Cada uno se busca en todas las tiendas y solo estos se comparan para tu compra.` +
-    (fallan.length ? ` No respondieron: ${fallan.join(", ")}. Usa «Actualizar precios» para reintentar.` : "") : `«${ACTIVA.nombre}» está vacía. Marca la ☆ en el catálogo o en la búsqueda en vivo y elige esta lista.`;
+    (fallan.length ? ` No respondieron: ${fallan.join(", ")}. Usa «Actualizar precios» para reintentar.` : "") : `«${ACTIVA.nombre}» está vacía. Marca la ☆ en Buscar y elige esta lista.`;
   $("favresumen").hidden = !FAV.length;
   for (const id of ["favclear", "favres", "favrefresh", "favpdf", "favxlsx"]) $(id).hidden = !FAV.length;
   $("favrefresh").disabled = actualizando || pendientes.size > 0;
@@ -382,6 +390,8 @@ function pintarFav() {
     `<span class="tl">${FAV.length - r.faltan} de ${FAV.length} productos</span><span class="tl${r.faltan ? " warn" : ""}">${t}</span></div>`; }).join("");
   const gan = ok.find(r => r.total === min);
   // Resumen arriba de la tabla: lo que la persona viene a saber, sin bajar hasta los totales
+  $("ilistamsg").innerHTML = `${FAV.length} producto(s) · ` + (gan ? `Compra completa más barata: <b>${esc(gan.s)} ${fmt(min)}</b>` : "Ninguna tienda tiene todos los productos") +
+    ` · Combinando tiendas: <b>${fmt(mix)}</b>${sinPrecio ? " (parcial)" : ""}`;
   $("favresumen").innerHTML = (gan ? `Compra completa más barata: <b>${esc(gan.s)} ${fmt(min)}</b>` : "Ninguna tienda tiene todos los productos") +
     ` · Combinando tiendas: <b>${fmt(mix)}</b>${sinPrecio ? " (parcial)" : ""} · <a href="#favres">Ver detalle</a>`;
   $("favmix").textContent = `Comprando cada producto donde es más barato: ${fmt(mix)} (${Object.entries(por).map(([s, n]) => `${n} unidad(es) en ${s}`).join(", ")})` +
@@ -458,30 +468,31 @@ $("aenviar").onclick = async () => {
 
 // ---------- Pestañas y eventos ----------
 function pestana(n) {
-  for (const i of [1, 2, 3]) { $("p" + i).hidden = i !== n; $("tab" + i).setAttribute("aria-selected", i === n); $("tab" + i).tabIndex = i === n ? 0 : -1; }
-  if (n === 1) render(); if (n === 2) pintarVivo();
-  // Al abrir Favoritos se consultan los que no se actualizaron hoy
-  if (n === 3) { pintarFav(); actualizarViejos(); }
+  for (const i of [1, 2]) { $("p" + i).hidden = i !== n; $("tab" + i).setAttribute("aria-selected", i === n); $("tab" + i).tabIndex = i === n ? 0 : -1; }
+  if (n === 1) { render(); pintarVivo(); }
+  // Al abrir Mi lista se consultan los productos que no se actualizaron hoy
+  if (n === 2) { pintarFav(); actualizarViejos(); }
 }
 $("tab1").onclick = () => pestana(1);
-$("tab2").onclick = () => { pestana(2); $("qv").focus(); };
-$("tab3").onclick = () => pestana(3);
+$("tab2").onclick = () => pestana(2);
+$("iver").onclick = () => { pestana(2); $("tab2").focus(); };
 document.querySelector(".tabs").onkeydown = e => {
   if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
   e.preventDefault();
-  const actual = [1, 2, 3].find(i => $("tab" + i).getAttribute("aria-selected") === "true");
-  const siguiente = e.key === "Home" ? 1 : e.key === "End" ? 3 : ((actual - 1 + (e.key === "ArrowRight" ? 1 : 2)) % 3) + 1;
+  const actual = [1, 2].find(i => $("tab" + i).getAttribute("aria-selected") === "true");
+  const siguiente = e.key === "Home" ? 1 : e.key === "End" ? 2 : actual === 1 ? 2 : 1;
   pestana(siguiente); $("tab" + siguiente).focus();
 };
 $("q").oninput = $("comp").onchange = $("ord").onchange = () => { limite = 60; render(); };
 $("mas").onclick = () => { limite += 60; render(); };
+$("sug").onclick = e => { const b = e.target.closest("[data-q]"); if (b) { $("q").value = b.dataset.q; limite = 60; render(); $("q").focus(); } };
 $("tabla").onclick = e => {
-  if (e.target.classList.contains("envivo")) { $("qv").value = $("q").value.trim(); pestana(2); vivo($("qv").value); return; }
   const b = e.target.closest(".star");
   if (b) abrirListas({ tipo: "item", x: D.items[+b.dataset.i] });
 };
 $("mcat").onclick = e => $("tabla").onclick(e);
-$("fvivo").onsubmit = e => { e.preventDefault(); const q = $("qv").value.trim(); if (q.length >= 2) vivo(q); };
+// Enter o «Buscar en las tiendas»: consulta cada tienda con lo que se escribió
+$("fbuscar").onsubmit = e => { e.preventDefault(); const q = $("q").value.trim(); if (q.length >= 2) vivo(q); else $("q").focus(); };
 $("ordv").onchange = pintarVivo;
 $("mvivo").onclick = e => $("tv").onclick(e);
 $("vertodos").onclick = () => { verTodos = !verTodos; pintarVivo(); };
@@ -538,6 +549,7 @@ fetch("data/productos.json").then(r => { if (!r.ok) throw 0; return r.json(); })
   D = d;
   D.items.forEach((it, i) => { it.i = i; it.fid = idGrupo(it); it.s = norm(it.n + " " + it.m + " " + it.t.map(e => (e[4] || "") + " " + (e[5] || "")).join(" ")); });
   refrescarFavs();
+  $("fecha").textContent = (D.ejemplo ? "Catálogo de ejemplo (no son precios reales)." : `Catálogo al ${fecha(D.actualizado)}.`) + " Aparece al escribir; el botón consulta cada tienda en el momento.";
   $("foot").textContent = D.ejemplo
     ? "Datos de ejemplo (no son precios reales). Ejecuta la acción “Actualizar precios” en GitHub para cargar los reales."
     : `Precios en USD tomados de las tiendas en línea. Actualizado: ${D.actualizado}. Pueden diferir de los precios en sala.`;

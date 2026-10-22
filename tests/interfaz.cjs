@@ -35,16 +35,27 @@ const server = http.createServer((req, res) => {
     await page.goto(url);
     // Accesibilidad: título principal, pestañas ligadas a sus paneles y solo la activa en el orden de Tab; catálogo por «Mayor diferencia»
     assert.equal(await page.getByRole('heading', { level: 1, name: 'Canasta SV', exact: true }).count(), 1);
-    assert.deepEqual(await page.evaluate(() => [1, 2, 3].map(i => [document.querySelector('#tab' + i).getAttribute('aria-controls'), document.querySelector('#tab' + i).tabIndex,
-      document.querySelector('#p' + i).getAttribute('role')])), [['p1', 0, 'tabpanel'], ['p2', -1, 'tabpanel'], ['p3', -1, 'tabpanel']]);
+    assert.deepEqual(await page.evaluate(() => [1, 2].map(i => [document.querySelector('#tab' + i).getAttribute('aria-controls'), document.querySelector('#tab' + i).tabIndex,
+      document.querySelector('#p' + i).getAttribute('role')])), [['p1', 0, 'tabpanel'], ['p2', -1, 'tabpanel']]);
+    // Página principal: un solo buscador, sugerencias y mayores diferencias; fecha del catálogo junto al buscador
+    assert.deepEqual((await page.getByRole('tab').allInnerTexts()).map(t => t.replace(/\s+/g, ' ')), ['Buscar', 'Mi lista 0']);
+    assert.equal(await page.locator('#sug').isVisible(), true);
+    assert.equal(await page.locator('#ilista').isVisible(), false);
+    assert.equal(await page.locator('#secvivo').isVisible(), false);
+    assert.equal(await page.locator('#cattit').innerText(), 'Mayores diferencias entre tiendas');
+    assert.match(await page.locator('#fecha').innerText(), /Catálogo al 17\/10/);
+    if (process.env.CANASTA_CAPTURAS) { fs.mkdirSync(process.env.CANASTA_CAPTURAS, { recursive: true }); await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'inicio-escritorio.png') }); }
+    await page.getByRole('button', { name: 'arroz', exact: true }).click();
+    assert.equal(await page.getByRole('searchbox', { name: 'Buscar producto' }).inputValue(), 'arroz');
+    assert.equal(await page.locator('#sug').isVisible(), false);
+    assert.match(await page.locator('#tabla').innerText(), /Arroz Blanco Precisa/);
     assert.equal(await page.locator('#ord').inputValue(), 'dif');
     assert.equal(await page.getAttribute('#estv', 'aria-live'), 'polite');
     // Solo modo claro: aunque el dispositivo esté en modo oscuro, el fondo y las tarjetas siguen claros
     await page.emulateMedia({ colorScheme: 'dark' });
     assert.deepEqual(await page.evaluate(() => [getComputedStyle(document.body).backgroundColor, getComputedStyle(document.querySelector('.controls')).backgroundColor]),
       ['rgb(244, 246, 245)', 'rgb(255, 255, 255)']);
-    await page.getByRole('tab', { name: /En vivo/ }).click();
-    await page.getByRole('searchbox', { name: 'Producto a buscar en vivo' }).fill('leche salud');
+    await page.getByRole('searchbox', { name: 'Buscar producto' }).fill('leche salud');
     await page.getByRole('button', { name: 'Buscar en las tiendas' }).click();
     // El más barato no se indica solo con color
     assert.match(await page.locator('#tv td.best').innerText(), /✓[^]*\$1\.75[^]*\(más barato\)/);
@@ -61,7 +72,7 @@ const server = http.createServer((req, res) => {
       await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'guardar-en-lista.png') });
     }
     await cuadro.getByRole('button', { name: 'Listo' }).click();
-    await page.getByRole('tab', { name: /Favoritos/ }).click();
+    await page.getByRole('tab', { name: /Mi lista/ }).click();
     assert.match(await page.getByRole('combobox', { name: 'Lista' }).innerText(), /Mi lista \(1\)[^]*Mensual \(1\)/);
     await page.getByRole('button', { name: 'Actualizar precios', exact: true }).waitFor();
     assert.equal(await page.locator('#tfav tbody tr').count(), 1);
@@ -109,7 +120,7 @@ const server = http.createServer((req, res) => {
     await page.setViewportSize({ width: 390, height: 844 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     // Celular: botones, campos y opciones de al menos 44 px de alto
-    const bajos = await page.evaluate(() => [...document.querySelectorAll('#p3 button, #p3 select, #p3 input, #p3 summary')].filter(e => e.getBoundingClientRect().height)
+    const bajos = await page.evaluate(() => [...document.querySelectorAll('#p2 button, #p2 select, #p2 input, #p2 summary')].filter(e => e.getBoundingClientRect().height)
       .map(e => [e.id || e.className || e.tagName, Math.round(e.getBoundingClientRect().height)]).filter(([, h]) => h < 44));
     assert.deepEqual(bajos, []);
     // Celular: cada barra en una sola fila
@@ -128,7 +139,7 @@ const server = http.createServer((req, res) => {
     assert.match(await page.locator('#mfav .mdet').innerText(), /Walmart[^]*Oferta 2 x \$3\.80[^]*Cambiar producto/);
     if (process.env.CANASTA_CAPTURAS) await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'favoritos-movil.png'), fullPage: true });
     await page.reload();
-    await page.getByRole('tab', { name: /Favoritos/ }).click();
+    await page.getByRole('tab', { name: /Mi lista/ }).click();
     await page.locator('#mfav .mcab').first().click();
     assert.equal(await page.getByRole('spinbutton').inputValue(), '2');
     await page.getByRole('button', { name: 'Quitar', exact: true }).click();
@@ -137,13 +148,15 @@ const server = http.createServer((req, res) => {
     await page.getByRole('combobox', { name: 'Lista' }).selectOption({ label: 'Mensual (1)' });
     if (!(await page.getByRole('spinbutton').count())) await page.locator('#mfav .mcab').first().click();
     assert.equal(await page.getByRole('spinbutton').inputValue(), '1');
-    // Celular: Catálogo y En vivo también en lista compacta, con la tienda junto a cada precio y sin desplazar la página
-    await page.getByRole('tab', { name: /Catálogo/ }).click();
+    // Celular: catálogo y resultados de las tiendas también en lista compacta, con la tienda junto a cada precio y sin desplazar la página
+    await page.getByRole('tab', { name: /Buscar/ }).click();
+    // Celular: pestañas fijas abajo, y la lista activa aparece en Buscar
+    assert.equal(await page.locator('.tabs').evaluate(n => Math.round(n.getBoundingClientRect().bottom) === innerHeight), true);
+    assert.match(await page.locator('#ilista').innerText(), /Tu lista «Mensual»[^]*1 producto\(s\)[^]*Ver mi lista/);
     assert.equal(await page.locator('#tabla').isVisible(), false);
     assert.match(await page.locator('#mcat .mitem').first().innerText(), /Arroz Blanco Precisa 1 lb[^]*✓\s*Super Selectos\s*\$0\.85[^]*Walmart\s*\$0\.89[^]*\$0\.85 por lb/);
     if (process.env.CANASTA_CAPTURAS) await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'catalogo-movil.png') });
-    await page.getByRole('tab', { name: /En vivo/ }).click();
-    await page.getByRole('searchbox', { name: 'Producto a buscar en vivo' }).fill('leche salud');
+    await page.getByRole('searchbox', { name: 'Buscar producto' }).fill('leche salud');
     await page.getByRole('button', { name: 'Buscar en las tiendas' }).click();
     await page.locator('#mvivo .mitem').first().waitFor();
     assert.equal(await page.locator('#tv').isVisible(), false);
@@ -155,7 +168,7 @@ const server = http.createServer((req, res) => {
     await page.mouse.move(0, 0);
     // Colores con contraste suficiente (verde de marca, botón principal relleno y rojo de acciones que borran) y bordes visibles en los campos
     assert.deepEqual(await page.evaluate(() => [getComputedStyle(document.querySelector('.brand')).color, getComputedStyle(document.querySelector('#favclear')).color,
-      getComputedStyle(document.querySelector('#qv')).borderTopColor, getComputedStyle(document.querySelector('#fvivo button.pri')).backgroundColor]),
+      getComputedStyle(document.querySelector('#q')).borderTopColor, getComputedStyle(document.querySelector('#fbuscar button.pri')).backgroundColor]),
       ['rgb(10, 110, 55)', 'rgb(176, 20, 51)', 'rgb(124, 132, 128)', 'rgb(10, 110, 55)']);
     // Celular: campos de 16 px para que Safari no haga zoom al tocarlos
     assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('main input, main select')].filter(e => e.getBoundingClientRect().height)
