@@ -85,7 +85,7 @@ test('una presentación distinta queda como opción manual y persiste al recarga
   ui.run('alternar(favDeVivo(RV[0]));'); await terminar();
   assert.equal(ui.saved()[0].t.Selectos, undefined);
   assert.match(ui.el('tfav').innerHTML, /Elegir coincidencia/);
-  ui.run('$("tfav").onchange({target:{matches:()=>true,dataset:{fav:FAV[0].id,store:"Selectos"},value:"0"}})');
+  ui.run('$("tfav").onchange({target:{matches:()=>true,dataset:{fav:FAV[0].id,store:"Selectos"},value:idVivo(RV[1])}})');
   assert.equal(ui.saved()[0].t.Selectos.p, 3);
   assert.equal(ui.saved()[0].t.Selectos.manual, true);
   const reabierta = interfaz({ guardados: ui.saved() }); await terminar();
@@ -165,7 +165,7 @@ test('solo propone enviar comparaciones cambiadas a mano en la tabla, con el ID 
   // Una coincidencia automática no se envía ni hace aparecer la pregunta
   assert.equal(ui.run('equivalenciasLocal().length'), 0);
   assert.equal(ui.el('ayuda').hidden, true);
-  ui.run('$("tfav").onchange({target:{matches:()=>true,dataset:{fav:FAV[0].id,store:"Selectos"},value:"0"}})');
+  ui.run('$("tfav").onchange({target:{matches:()=>true,dataset:{fav:FAV[0].id,store:"Selectos"},value:idVivo(RV[1])}})');
   const grupos = ui.run('equivalenciasLocal()');
   assert.deepEqual(JSON.parse(JSON.stringify(grupos)).map(g => g.map(x => x.tienda + ':' + x.id)), [['Walmart:Walmart-1', 'Selectos:Selectos-1']]);
   assert.equal(ui.el('ayuda').hidden, false);
@@ -436,4 +436,35 @@ test('onzas: «fl oz» y «onzas líquidas» son ml; «oz» y «onzas» solas so
   assert.equal(equivalente(lata('Gaseosa Coca Cola Lata 12 fl oz', 355), lata('Gaseosa Coca Cola Lata 350 ml', 350)), false);
   assert.equal(equivalente({ nombre: 'Activee Tr Argan 3.38 Fl oz 100 ml', marca: 'Activee', q: 100, u: 'ml' }, { nombre: 'Activee Tr Argan 100 ml', marca: 'Activee', q: 100, u: 'ml' }), true);
   assert.deepEqual(palabrasBusqueda('Shampoo Activee 13.5 fl oz'), ['shampoo', 'activee']);
+});
+test('«Cambiar producto»: opciones guardadas con el favorito, también del catálogo, y «Buscar más opciones» hace todas las búsquedas', async () => {
+  const ui = interfaz({ resultados: [producto('Walmart', 2), producto('Selectos', 1.75), producto('Selectos', 1.9, { id: 'x5', url: 'https://tienda.test/x5', nombre: 'Leche Salud deslactosada 1 L' }),
+    producto('Selectos', 4.5, { id: 'x6', url: 'https://tienda.test/x6', nombre: 'Chorizo Argentino Superior 454 g', marca: 'Superior' })] });
+  await ui.run('vivo("leche salud")');
+  ui.run('alternar(favDeVivo(RV[0]));'); await terminar();
+  // solo las opciones parecidas al producto, guardadas para después de recargar
+  assert.deepEqual(ui.saved()[0].opc.Selectos.map(x => x.nombre), ['Leche entera Salud 1 L', 'Leche Salud deslactosada 1 L']);
+  const lecheCat = { n: 'Leche Salud entera 1 L', m: 'Salud', q: 1000, u: 'ml', t: [[0, 1.6, 'https://t.test/cat-leche', 1.6, 'Leche Salud entera 1 L', 'Salud', '', 'c1']] };
+  const reabierta = interfaz({ guardados: ui.saved(), datos: { supers: ['Despensa'], actualizado: '2026-10-21', items: [lecheCat] } }); await terminar();
+  const html = reabierta.el('tfav').innerHTML;
+  assert.match(html, /Leche Salud deslactosada 1 L · \$1\.90/);
+  assert.match(html, /Leche entera Salud 1 L · \$1\.75 \(actual\)/);
+  // el catálogo llena una tienda sin coincidencia guardada
+  reabierta.run('$("tfav").onchange({target:{matches:()=>true,dataset:{fav:FAV[0].id,store:"Despensa"},value:"v:Despensa:c1"}})');
+  assert.deepEqual([reabierta.saved()[0].t.Despensa.p, reabierta.saved()[0].t.Despensa.manual, reabierta.saved()[0].t.Despensa.src], [1.6, true, 'cat']);
+  // sin «completo» se detiene en la primera búsqueda que da coincidencias; con «Buscar más opciones» hace todas
+  const antes = ui.consultas.length;
+  await ui.run('completarFavorito(FAV[0])');
+  assert.equal(ui.consultas.length - antes, 1);
+  await ui.run('completarFavorito(FAV[0], true)');
+  assert.ok(ui.consultas.length - antes > 2);
+});
+test('no redibuja la lista mientras la persona elige en un selector de «Cambiar producto»', async () => {
+  const ui = interfaz({ resultados: [producto('Walmart', 2), producto('Selectos', 1.75)] });
+  await ui.run('vivo("leche salud")');
+  ui.run('alternar(favDeVivo(RV[0]));'); await terminar();
+  ui.run('document.activeElement = { matches: s => s === "select[data-fav]" }; $("tfav").innerHTML = "sin tocar"; pintarFav();');
+  assert.equal(ui.el('tfav').innerHTML, 'sin tocar');
+  ui.run('pintarFav(true)');
+  assert.match(ui.el('tfav').innerHTML, /Cambiar producto/);
 });
