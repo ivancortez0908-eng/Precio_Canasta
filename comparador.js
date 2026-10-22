@@ -9,7 +9,8 @@
     let s = norm(nombre(x))
       .replace(/(?<![\w.,])(\d{1,3})\s(\d{3})(?=\s*(?:g|gr|gramos|ml)\b)/g, "$1$2");
     // La concentración (mg), sabor, variedad y número de envases se conservan.
-    s = s.replace(/(?<![\d.,])\d+(?:[.,]\d+)?\s*(?:kg|kilos?|grs?|gramos?|g|lbs?|libras?|oz|ml|lts?|litros?|l|galones|galon|gal)\b/g, " ");
+    // «3.38 fl oz» sale del nombre igual que «100 ml»: es la misma medida escrita de otra forma
+    s = s.replace(/(?<![\d.,])\d+(?:[.,]\d+)?\s*(?:fl\.?\s*oz\.?|onzas?\s+liquidas?|oz\.?\s*liq(?:uidas?)?\.?|kg|kilos?|grs?|gramos?|g|lbs?|libras?|onzas?|oz|ml|lts?|litros?|l|galones|galon|gal)(?![a-z])/g, " ");
     const ignorar = new Set(("de la el los las en y del bolsa caja paquete " + marcaComun).split(" "));
     return [...new Set(palabras(s).split(" ").filter(w => w && !ignorar.has(w)))].sort().join(" ");
   }
@@ -71,7 +72,7 @@
   // Búsqueda en vivo: un resultado debe contener al menos 2 palabras de la búsqueda (o la única que haya).
   // No cuentan artículos, números ni medidas; singular y plural son iguales y «cocacola» encuentra «Coca-Cola».
   const VACIAS = new Set("de del la las el los y con para por en al a un una".split(" "));
-  const MEDIDAS = /^(?:\d.*|x|ml|l|lt|lts|litros?|g|gr|grs|gramos?|kg|kilos?|lb|lbs|libras?|oz|onzas?|galon(?:es)?|unidad(?:es)?|und|uds?|pack)$/;
+  const MEDIDAS = /^(?:\d.*|x|ml|l|lt|lts|litros?|g|gr|grs|gramos?|kg|kilos?|lb|lbs|libras?|oz|fl|floz|onzas?|liquidas?|galon(?:es)?|unidad(?:es)?|und|uds?|pack)$/;
   const igual = (a, b) => a === b || a + "s" === b || b + "s" === a || a + "es" === b || b + "es" === a;
   function palabrasBusqueda(q) {
     return [...new Set(palabras(q).split(" ").filter(w => w.length >= 2 && !VACIAS.has(w) && !MEDIDAS.test(w)))];

@@ -3,12 +3,14 @@
 // y devuelve los resultados en JSON. Guarda cada consulta 10 minutos en caché para no repetir peticiones.
 const UA = "CanastaSV/1.0 (comparador de precios sin fines de lucro)";
 const MAX = 12; // resultados por tienda
-const VERSION = "2026-10-21-c"; // aparece en cada respuesta: sirve para saber qué código está desplegado
+const VERSION = "2026-10-22-a"; // aparece en cada respuesta: sirve para saber qué código está desplegado
 
 // ---- tamaños (misma lógica que scraper/normalizar.mjs) ----
-const RE = /(?<![\d.,])(?:(\d+)\s*[x×]\s*)?(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|mg|lbs?|libras?|oz|ml|lts?|litros?|l|gal(?:on(?:es)?)?)(?![a-z])/i;
+const RE = /(?<![\d.,])(?:(\d+)\s*[x×]\s*)?(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|mg|lbs?|libras?|floz|onzas?|oz|ml|lts?|litros?|l|gal(?:on(?:es)?)?)(?![a-z])/i;
 const RE_UD = /(\d+)\s*(unidades|und|uds?|pzas?|piezas|tabletas|capsulas|cápsulas|tabs?|caps?)(?![a-z])/i;
 const limpia = t => (t || "")
+  // Onza líquida («fl oz», «fl. oz», «onzas líquidas», «oz líq») → «floz», que se convierte a ml; «oz» u «onzas» solas son de peso
+  .replace(/(\d+(?:[.,]\d+)?)\s*(?:fl\.?\s*oz\.?|onzas?\s+l[ií]quidas?|oz\.?\s*l[ií]q(?:uidas?)?\.?)(?![a-z])/gi, "$1 floz")
   .replace(/(?<![\w.,])(\d{1,3})\s(\d{3})(?=\s*(?:g|gr|grs|gramos|ml)(?![a-z]))/gi, "$1$2")
   .replace(/(?<![\w.,])(\d{1,3})\s(\d{3})(?=\s*(?:kg|kilos?|lts?|litros?|l)(?![a-z]))/gi, "$1.$2").replace(/\s+/g, " ");
 function conv(v, u) {
@@ -16,7 +18,8 @@ function conv(v, u) {
   if (/^(kg|kilos?)$/.test(u)) return v > 60 ? { q: v, u: "g" } : { q: v * 1000, u: "g" };
   if (/^(g|grs?|gramos?)$/.test(u)) return { q: v, u: "g" };
   if (/^(lbs?|libras?)$/.test(u)) return { q: v * 453.592, u: "g" };
-  if (u === "oz") return { q: v * 28.3495, u: "g" };
+  if (/^(oz|onzas?)$/.test(u)) return { q: v * 28.3495, u: "g" };           // onza de peso
+  if (u === "floz") return { q: v * 29.5735, u: "ml" };                    // onza líquida
   if (/^(l|lts?|litros?)$/.test(u)) return v > 50 ? { q: v, u: "ml" } : { q: v * 1000, u: "ml" };
   if (u === "ml") return { q: v, u: "ml" };
   if (/^gal/.test(u)) return { q: v * 3785.41, u: "ml" };
@@ -24,7 +27,7 @@ function conv(v, u) {
 }
 function tamano(nombre) {
   const t = limpia(nombre).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  const mp = t.match(/(\d+)\s*(?:unidades|unidad|uds?|und)\s*\/\s*(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|lbs?|libras?|oz|ml|lts?|litros?|l)(?![a-z])/i);
+  const mp = t.match(/(\d+)\s*(?:unidades|unidad|uds?|und)\s*\/\s*(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|lbs?|libras?|floz|onzas?|oz|ml|lts?|litros?|l)(?![a-z])/i);
   if (mp) { const c = conv(parseFloat(mp[2].replace(",", ".")), mp[3]); if (c) return { q: Math.round(c.q * +mp[1]), u: c.u }; }
   for (const m of t.matchAll(new RegExp(RE.source, "gi"))) {
     const c = conv(parseFloat(m[2].replace(",", ".")), m[3]);

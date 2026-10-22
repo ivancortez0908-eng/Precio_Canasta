@@ -419,3 +419,21 @@ test('precio por unidad: 4 decimales bajo un centavo y «—» si el catálogo l
   assert.doesNotMatch(ui.el('tabla').innerHTML, /\$0\.000</);
   assert.match(ui.el('mcat').innerHTML, /\$0\.0023 por ud/);
 });
+test('onzas: «fl oz» y «onzas líquidas» son ml; «oz» y «onzas» solas son peso; igual en scraper y Worker', async () => {
+  const { parseTamano } = await import(pathToFileURL(path.join(__dirname, '..', 'scraper', 'normalizar.mjs')).href);
+  const casos = { 'Gaseosa Coca Cola Lata 12 fl oz': '355 ml', 'Jugo Del Valle 16 onzas líquidas': '473 ml', 'Locion Nivea 13.5 fl. oz': '399 ml',
+    'Cerveza 6 x 12 fl oz': '2129 ml', 'Activee Tr Argan 3.38 Fl oz 100 ml': '100 ml', 'Hongo Champinon 12 Onzas': '340 g',
+    'Liempiador Armor All - 10onzas': '283 g', 'Salchichas Butterball de pavo - 16 oz': '454 g', 'Salsa Prego tradicional - 14 oz': '397 g' };
+  for (const [n, esperado] of Object.entries(casos)) { const t = parseTamano(n); assert.equal(`${t?.q} ${t?.u}`, esperado, n); }
+  // El Worker usa la misma lógica
+  const vtex = (id, nombre) => ({ productId: id, productName: nombre, brand: '', link: 'https://t.test/' + id, items: [{ sellers: [{ commertialOffer: { Price: 1, AvailableQuantity: 1 } }] }] });
+  const w = await worker({ 'walmart.com.sv/api': Object.keys(casos).map((n, i) => vtex(String(i), n)) });
+  const d = await w.consultar('prueba onzas');
+  for (const x of d.resultados.filter(r => r.tienda === 'Walmart')) assert.equal(`${x.q} ${x.u}`, casos[x.nombre], x.nombre);
+  // Una lata de 12 fl oz equivale a una de 355 ml; a una de 350 ml, no
+  const lata = (nombre, q) => ({ nombre, marca: 'Coca Cola', q, u: 'ml' });
+  assert.equal(equivalente(lata('Gaseosa Coca Cola Lata 12 fl oz', 355), lata('Gaseosa Coca Cola Lata 355 ml', 355)), true);
+  assert.equal(equivalente(lata('Gaseosa Coca Cola Lata 12 fl oz', 355), lata('Gaseosa Coca Cola Lata 350 ml', 350)), false);
+  assert.equal(equivalente({ nombre: 'Activee Tr Argan 3.38 Fl oz 100 ml', marca: 'Activee', q: 100, u: 'ml' }, { nombre: 'Activee Tr Argan 100 ml', marca: 'Activee', q: 100, u: 'ml' }), true);
+  assert.deepEqual(palabrasBusqueda('Shampoo Activee 13.5 fl oz'), ['shampoo', 'activee']);
+});

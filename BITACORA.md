@@ -1,3 +1,21 @@
+# Bitácora — 22 de octubre de 2026 (onzas y mililitros)
+
+## Evaluación
+- Toda «oz» se convertía a 28.35 g (onza de peso). No existía la onza líquida ni la palabra «onzas»: «12 fl oz», «16 onzas líquidas», «13.5 fl. oz», «12 Onzas» y «10onzas» quedaban sin tamaño (sin precio por unidad ni equivalencias).
+- «Activee 3.38 Fl oz 100 ml» y «Activee 100 ml» no se reconocían como el mismo producto: «fl oz» quedaba en el nombre.
+- En el catálogo (26 productos con onzas) casi todas son de peso (snacks, salsas, embutidos) y estaban bien. En las tiendas en vivo aparecen «Fl oz» (cuidado personal) y «Onzas» (vasos, hongos, limpiadores).
+
+## Cambios
+- `scraper/normalizar.mjs` y `worker/worker.js` (versión `2026-10-22-a`): «fl oz», «fl. oz», «onzas líquidas» y «oz líq» → ml (× 29.5735); «onza(s)», también pegada al número, → g (× 28.3495). «oz» sola sigue siendo peso.
+- `comparador.js`: «3.38 fl oz» se quita del nombre al comparar, como «100 ml»; «fl», «floz» y «líquidas» no cuentan como palabras de búsqueda.
+
+## Validación
+- Prueba nueva con nombres reales: tamaños en scraper y Worker idénticos; lata «12 fl oz» = «355 ml» (dentro de 0.5 %) y ≠ «350 ml»; Activee con y sin «fl oz» equivalentes. 31 pruebas aprobadas; `node tests/interfaz.cjs` aprobado.
+- Catálogo actual reprocesado sin red: 0 diferencias de tamaño frente al código anterior (los casos nuevos aparecen en la búsqueda en vivo).
+
+## Límite
+- Una «oz» sin «fl» en un líquido (p. ej. «Shampoo 13.5 oz») se toma como peso; no se une sola con un tamaño en ml y se elige a mano.
+
 # Bitácora — 21 de octubre de 2026 (revisión de diseño: prioridades 3 a 5)
 
 ## Cambios
