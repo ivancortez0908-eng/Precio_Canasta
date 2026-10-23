@@ -157,12 +157,12 @@ async function completarFavorito(f, completo = false) {
   aplicarResultados(f, RV, fechaRV);
   if (!window.API_VIVO) {
     f.estado = "Sin conexión configurada para consultar las demás tiendas.";
-    guardar(); pintarFav(); return;
+    guardar(); pintarFav(true); return;
   }
   const control = new AbortController();
   pendientes.set(f, control);
   f.estado = "Consultando precios en las demás tiendas…";
-  guardar(); pintarFav();
+  guardar(); pintarFav(true);
   const timeout = setTimeout(() => control.abort(), 25000);
   const sigue = () => !control.signal.aborted && guardado(f);
   try {
@@ -200,7 +200,7 @@ async function completarFavorito(f, completo = false) {
   } finally {
     clearTimeout(timeout);
     if (pendientes.get(f) === control) pendientes.delete(f);
-    guardar(); pintarFav(); pintarVivo(); render();
+    guardar(); pintarFav(true); pintarVivo(); render();
   }
 }
 // Procesar en serie evita disparar todas las tiendas por cada favorito a la vez.
@@ -212,7 +212,7 @@ async function actualizarItems(items) {
       $("favest").textContent = `Consultando las tiendas… (${i + 1} de ${items.length})`;
       await completarFavorito(items[i]);
     }
-  } finally { actualizando = false; $("favest").textContent = ""; pintarFav(); }
+  } finally { actualizando = false; $("favest").textContent = ""; pintarFav(true); }
 }
 const actualizarViejos = () => { if (window.API_VIVO) actualizarItems(FAV.filter(f => (f.consultado || "").slice(0, 10) !== hoy())); };
 // Al cargar datos nuevos, actualiza los precios de los favoritos (por producto o por enlace de tienda)
@@ -365,9 +365,11 @@ $("dlista").onclose = () => { porGuardar = null; };
 // ---------- Vista de favoritos: listas, cantidades, quitar y comparación de la compra ----------
 const tiendasFav = () => [...new Set([...(D ? D.supers : []), ...tiendasConocidas, ...FAV.flatMap(f => [...Object.keys(f.t), ...(f.tiendas || [])])])];
 let repintar = false;
-function pintarFav(forzar = false) {
-  // Redibujar cerraría el selector que la persona está usando: se espera a que lo suelte
-  if (!forzar && document.activeElement?.matches?.("select[data-fav]")) { repintar = true; return; }
+// fondo: lo pide una consulta de precios, no la persona. Redibujar cerraría el selector de «Cambiar producto»
+// que se está usando (visible en pantalla), así que se espera a que lo suelte. Agregar, quitar o cambiar siempre redibuja.
+function pintarFav(fondo = false) {
+  const foco = document.activeElement;
+  if (fondo && foco?.matches?.("select[data-fav]") && foco.isConnected && foco.offsetParent !== null) { repintar = true; return; }
   repintar = false;
   const abiertos = new Set([...(document.querySelectorAll?.("details.opciones[open]") || [])].map(x => x.dataset.fav + "|" + x.dataset.store));
   const S = tiendasFav();
@@ -542,7 +544,7 @@ $("tfav").onclick = e => {
   const b = e.target.closest("button"), f = b && FAV.find(x => x.id === b.dataset.id); if (!f) return;
   if (b.dataset.a === "refresh") { completarFavorito(f); return; }
   if (b.dataset.a === "opciones") { completarFavorito(f, true); return; }
-  if (b.dataset.a === "ninguno") { descartar(f, b.dataset.store); guardar(); pintarFav(true); pintarVivo(); render(); return; }
+  if (b.dataset.a === "ninguno") { descartar(f, b.dataset.store); guardar(); pintarFav(); pintarVivo(); render(); return; }
   if (b.dataset.a === "rm") { cancelar(f); FAV.splice(FAV.indexOf(f), 1); }
   else f.cant = Math.max(1, Math.min(99, f.cant + (b.dataset.a === "mas" ? 1 : -1)));
   guardar(); pintarFav(); pintarVivo(); render();
@@ -557,7 +559,7 @@ $("tfav").onchange = e => {
       f.t[s] = { p: x.precio, url: x.url, nom: x.nombre, ref: x.k, id: pidDe(x), f: x.cat ? D.actualizado : f.consultado || fechaRV || hoy(), manual: true, cambio: true, ...(x.cat ? { src: "cat" } : {}), ...oferta(x) };
       if (f.sin) delete f.sin[s];
     }
-    guardar(); pintarFav(true); pintarVivo(); render();
+    guardar(); pintarFav(); pintarVivo(); render();
     return;
   }
   const f = e.target.classList.contains("qty") && FAV.find(x => x.id === e.target.dataset.id);

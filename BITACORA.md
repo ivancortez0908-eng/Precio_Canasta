@@ -1,3 +1,19 @@
+# Bitácora — 23 de octubre de 2026 (agregar de nuevo un producto quitado)
+
+## Evaluación
+- Caso reportado: «Pan Bimbo Para Sandwich - 560 g» (catálogo: Walmart y Despensa de Don Juan) no aparecía en la lista al volver a agregarlo después de quitarlo; se guardó al cuarto intento.
+- En Chromium (escritorio y celular, catálogo real y tiendas simuladas) agregar → quitar → agregar funciona al primer intento, también quitándolo mientras se consultan las tiendas.
+- Causa probable, introducida con el arreglo de «Cambiar producto»: `pintarFav` no redibujaba mientras un selector de «Cambiar producto» tenía el foco. En Safari del iPhone tocar un botón no mueve el foco, y un selector que queda en la pestaña oculta puede conservarlo; entonces la lista (y los precios que llegaban) no se redibujaba hasta que el foco cambiaba.
+
+## Cambios
+- `app.js`: la espera solo aplica a las consultas en segundo plano (`pintarFav(true)` desde `completarFavorito` y `actualizarItems`) y solo si el selector está visible (`offsetParent`). Agregar, quitar, vaciar, cambiar de lista o de cantidad siempre redibujan.
+
+## Validación
+- 33 pruebas aprobadas; la de «Cambiar producto» ahora cubre: consulta en segundo plano espera, acción de la persona redibuja, selector con foco en pestaña oculta no detiene la lista, y quitar y volver a agregar con el selector en uso. `node tests/interfaz.cjs` aprobado.
+
+## Límite
+- No hay WebKit en este entorno: el comportamiento de foco de Safari no se pudo reproducir; se simuló en las pruebas.
+
 # Bitácora — 22 de octubre de 2026 («Cambiar producto» sin opciones y se cerraba)
 
 ## Evaluación

@@ -459,12 +459,22 @@ test('«Cambiar producto»: opciones guardadas con el favorito, también del cat
   await ui.run('completarFavorito(FAV[0], true)');
   assert.ok(ui.consultas.length - antes > 2);
 });
-test('no redibuja la lista mientras la persona elige en un selector de «Cambiar producto»', async () => {
+test('las consultas no redibujan con un selector de «Cambiar producto» en uso, pero agregar y quitar sí', async () => {
   const ui = interfaz({ resultados: [producto('Walmart', 2), producto('Selectos', 1.75)] });
   await ui.run('vivo("leche salud")');
   ui.run('alternar(favDeVivo(RV[0]));'); await terminar();
-  ui.run('document.activeElement = { matches: s => s === "select[data-fav]" }; $("tfav").innerHTML = "sin tocar"; pintarFav();');
+  // una consulta en segundo plano espera a que se suelte el selector visible
+  ui.run('document.activeElement = { matches: s => s === "select[data-fav]", isConnected: true, offsetParent: {} }; $("tfav").innerHTML = "sin tocar"; pintarFav(true);');
   assert.equal(ui.el('tfav').innerHTML, 'sin tocar');
-  ui.run('pintarFav(true)');
+  // lo que hace la persona (agregar, quitar, cambiar) siempre redibuja
+  ui.run('pintarFav()');
   assert.match(ui.el('tfav').innerHTML, /Cambiar producto/);
+  // un selector que quedó con el foco en una pestaña oculta (Safari del iPhone) no detiene la lista
+  ui.run('document.activeElement.offsetParent = null; $("tfav").innerHTML = "sin tocar"; pintarFav(true);');
+  assert.match(ui.el('tfav').innerHTML, /Cambiar producto/);
+  // quitar y volver a agregar el mismo producto con el selector en uso: la lista se actualiza
+  ui.run('document.activeElement.offsetParent = {}; const p = JSON.parse(JSON.stringify(FAV[0])); alternar(FAV[0]);');
+  assert.doesNotMatch(ui.el('tfav').innerHTML, /Cambiar producto/);
+  ui.run('alternar(p);');
+  assert.match(ui.el('tfav').innerHTML, /Leche entera Salud/);
 });
