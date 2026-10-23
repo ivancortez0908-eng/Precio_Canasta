@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="light">
 <title>Canasta SV · Compara precios de supermercados</title>
 <style>
-:root{color-scheme:light;--bg:#f4f6f5;--surf:#fff;--ink:#1a1f1c;--mute:#5c6660;--line:#d3d8d5;--marca:#0a6e37;--marcaHov:#085a2d;--borde:#7c8480;--btn:#e2e6e4;--hov:#d6dbd8;--best:#e3f6e8;--bestInk:#14632b;--warn:#b01433;--v:#31a24c;--a:#f7b928;--r:#e02849;--sh:0 1px 2px rgba(0,0,0,.2)}
+:root{color-scheme:light;--bg:#f4f6f5;--surf:#fff;--ink:#1a1f1c;--mute:#5c6660;--line:#d3d8d5;--marca:#0a6e37;--marcaHov:#085a2d;--borde:#7c8480;--btn:#e2e6e4;--hov:#d6dbd8;--best:#e3f6e8;--bestInk:#14632b;--warn:#b01433;--v:#31a24c;--a:#f7b928;--r:#e02849;--sh:0 1px 2px rgba(0,0,0,.2);--velo:rgba(0,0,0,.6)}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,"Segoe UI",Helvetica,Arial,sans-serif}
@@ -15,7 +15,10 @@ header.top{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:
 .brand{display:flex;align-items:center;gap:8px;margin:0;font-size:1.3rem;font-weight:700;color:var(--marca)}
 .msg.resumen{padding:10px 14px;border-radius:8px;background:var(--best);color:var(--bestInk);font-size:.95rem}.resumen a{color:inherit}
 .logo{width:40px;height:40px;border-radius:50%;background:var(--marca);color:#fff;display:grid;place-items:center}.logo svg{width:24px;height:24px}
-.sp{width:120px}
+.sp{min-width:120px;display:flex;justify-content:flex-end}
+/* botón «Cómo funciona» (arriba a la derecha) */
+.guiabtn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--marca);border-radius:999px;background:none;color:var(--marca);white-space:nowrap}
+.guiabtn:hover{background:var(--best)}.guiabtn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.corta{display:none}
 .tabs{flex:1;display:flex;justify-content:center;gap:4px;height:100%}
 main{margin:16px 0;padding:0 16px 60px;display:grid;gap:12px}/* usa todo el ancho: las tablas con muchas tiendas lo aprovechan */
 #p1,#p2,.seccion,.inicio{display:grid;gap:12px}
@@ -90,6 +93,15 @@ dialog::backdrop{background:rgba(0,0,0,.45)}dialog h2{margin:0 0 4px;font-size:1
 .dlopts input{width:18px;height:18px}.dlopts small{color:var(--mute)}
 .dlnueva{display:flex;gap:8px;flex-wrap:wrap}.dlnueva input{flex:1;min-width:150px;font:inherit;padding:8px 12px;border:1px solid var(--borde);border-radius:6px;background:var(--surf);color:var(--ink)}
 /* hoja para imprimir o guardar como PDF */
+/* guía de uso: fondo opaco con el elemento del paso resaltado y una ventanita que lo señala */
+dialog.guia{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;border-radius:0;background:transparent;box-shadow:none;overflow:hidden}
+dialog.guia::backdrop{background:transparent}
+.guia-luz{position:fixed;border-radius:10px;box-shadow:0 0 0 200vmax var(--velo);outline:3px solid var(--surf);transition:left .25s,top .25s,width .25s,height .25s;pointer-events:none}.guia-luz.centro{outline:0}
+.guia-tarjeta{position:fixed;width:min(360px,calc(100vw - 32px));padding:14px 16px;border-radius:8px;background:var(--surf);color:var(--ink);box-shadow:0 8px 30px rgba(0,0,0,.35)}
+.guia-tarjeta h2{margin:0 0 4px;font-size:1.1rem}.guia-tarjeta p{margin:0}.guia-tarjeta .guia-paso{margin-bottom:2px;color:var(--mute);font-size:.8rem}
+.guia-flecha{position:absolute;width:14px;height:14px;background:var(--surf);transform:rotate(45deg)}.guia-flecha.arriba{top:-7px}.guia-flecha.abajo{bottom:-7px}
+.guia-acc{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:12px}.guia-acc .salir{margin-right:auto;padding-left:4px;background:none;color:var(--mute)}
+@media (prefers-reduced-motion:reduce){.guia-luz{transition:none}}
 #imprimir{display:none}
 @media print{
   @page{size:landscape;margin:12mm}
@@ -136,7 +148,7 @@ a.chip{text-decoration:none}
 .mtienda.best{background:var(--best);color:var(--bestInk)}.mtienda.best small{color:var(--bestInk)}.mtienda.na{color:var(--mute);font-size:.85rem}
 .mtienda a{color:inherit;font-weight:700}.mtienda small.promo{display:inline-block}.mtienda small.f,.mtienda small.product-source{font-size:.72rem}
 @media (max-width:700px){
-  .sp{display:none}header.top{height:52px}.brand{font-size:1.15rem}.logo{width:34px;height:34px}
+  .sp{min-width:0;margin-left:auto}.corta{display:inline}.guiabtn{min-height:44px}header.top{height:52px}.brand{font-size:1.15rem}.logo{width:34px;height:34px}
   /* pestañas abajo, al alcance del pulgar */
   .tabs{position:fixed;left:0;right:0;bottom:0;height:calc(60px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);gap:0;background:var(--surf);box-shadow:0 -1px 3px rgba(0,0,0,.18)}
   .tabs button{flex:1;flex-direction:column;justify-content:center;gap:2px;padding:0 8px;font-size:.8rem;border-bottom:0;border-top:3px solid transparent}
@@ -174,7 +186,7 @@ a.chip{text-decoration:none}
     <button id="tab1" role="tab" aria-selected="true" aria-controls="p1"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span>Buscar</span></button>
     <button id="tab2" role="tab" aria-selected="false" aria-controls="p2" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10h18l-2 10H5z"/><path d="M8 10l4-6 4 6"/></svg><span>Mi lista</span> <span id="nf" class="badge">0</span></button>
   </nav>
-  <span class="sp"></span>
+  <span class="sp"><button id="guiabtn" class="guiabtn" aria-label="Cómo funciona"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6"/><path d="M12 17h.01"/></svg><span class="larga">Cómo funciona</span><span class="corta">Guía</span></button></span>
 </header>
 <main>
   <p class="msg intro">Busca cualquier producto y compáralo entre supermercados. Los precios se muestran también por libra, litro o unidad.</p>
@@ -267,6 +279,16 @@ a.chip{text-decoration:none}
     <button type="submit" class="pri">Crear y agregar</button>
   </form>
   <div class="acc"><button id="dlcerrar">Listo</button></div>
+</dialog>
+<dialog id="guia" class="guia" aria-labelledby="guiatit" aria-describedby="guiatxt">
+  <div class="guia-luz" id="guialuz"></div>
+  <div class="guia-tarjeta" id="guiacard">
+    <span class="guia-flecha" id="guiaflecha"></span>
+    <p class="guia-paso" id="guiapaso"></p>
+    <h2 id="guiatit"></h2>
+    <p id="guiatxt"></p>
+    <div class="guia-acc"><button id="guiasalir" class="salir">Salir de la guía</button><button id="guiaant">Anterior</button><button id="guiasig" class="pri">Siguiente</button></div>
+  </div>
 </dialog>
 <section id="imprimir" aria-hidden="true"></section>
 

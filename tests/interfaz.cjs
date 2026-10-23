@@ -45,6 +45,32 @@ const server = http.createServer((req, res) => {
     assert.equal(await page.locator('#cattit').innerText(), 'Mayores diferencias entre tiendas');
     assert.match(await page.locator('#fecha').innerText(), /Catálogo al 17\/10/);
     if (process.env.CANASTA_CAPTURAS) { fs.mkdirSync(process.env.CANASTA_CAPTURAS, { recursive: true }); await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'inicio-escritorio.png') }); }
+    // Guía de uso: botón arriba a la derecha; cada paso resalta su elemento y la guía no cambia las listas
+    const listasAntes = await page.evaluate(() => localStorage.getItem('canasta-sv-listas-v1'));
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.getByRole('button', { name: 'Cómo funciona' }).click();
+    const guia = page.locator('#guia');
+    const pasos = await page.evaluate(() => GUIA.length);
+    for (let i = 0; i < pasos; i++) {
+      const p = await page.evaluate(() => { const el = GUIA[guiaPaso].el?.(), l = $('guialuz').style, c = $('guiacard').getBoundingClientRect();
+        const e = visible(el) ? el.getBoundingClientRect() : null;
+        return { t: GUIA[guiaPaso].t, q: $('q').value, dlista: $('dlista').open, centro: !e,
+          rodea: !e || (parseFloat(l.left) <= Math.max(4, e.left) && parseFloat(l.top) <= Math.max(4, e.top) && parseFloat(l.left) + parseFloat(l.width) >= Math.min(innerWidth - 4, e.right)),
+          dentro: c.left >= 0 && c.top >= 0 && c.right <= innerWidth && c.bottom <= innerHeight }; });
+      assert.ok(p.rodea && p.dentro, JSON.stringify(p));
+      if (p.t === 'Busca un producto') assert.equal(p.q, 'arroz');
+      if (p.t === 'Elige la lista') assert.equal(p.dlista, true);
+      if (p.t === 'Cantidades y precios por tienda') assert.equal(p.centro, true);   // lista vacía: explica al centro
+      if (i === 1 && process.env.CANASTA_CAPTURAS) await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'guia-escritorio.png') });
+      await guia.getByRole('button', { name: i === pasos - 1 ? 'Terminar' : 'Siguiente' }).click();
+    }
+    assert.deepEqual(await page.evaluate(() => [$('guia').open, $('dlista').open, $('q').value, $('p1').hidden, $('dlnombre').value]), [false, false, '', false, '']);
+    assert.equal(await page.evaluate(() => localStorage.getItem('canasta-sv-listas-v1')), listasAntes);
+    // Esc también sale de la guía
+    await page.getByRole('button', { name: 'Cómo funciona' }).click();
+    await page.keyboard.press('Escape');
+    assert.equal(await guia.evaluate(d => d.open), false);
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
     await page.getByRole('button', { name: 'arroz', exact: true }).click();
     assert.equal(await page.getByRole('searchbox', { name: 'Buscar producto' }).inputValue(), 'arroz');
     assert.equal(await page.locator('#sug').isVisible(), false);
