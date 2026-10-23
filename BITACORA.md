@@ -1,3 +1,19 @@
+# Bitácora — 23 de octubre de 2026 (agregar de nuevo un producto quitado)
+
+## Evaluación
+- Caso reportado en Android: «Pan Bimbo Para Sandwich - 560 g» no se agregaba a la lista después de haberlo quitado; se guardó al cuarto intento.
+- Agregar → quitar → agregar funciona al primer intento en Chromium con emulación de Pixel 7 y toques, desde el catálogo y desde «Buscar en las tiendas», también quitándolo mientras se consulta.
+- Causa reproducida: `favoritoItem`/`favoritoVivo` reconocían un producto por la URL de cualquier tienda del favorito, también la elegida a mano con «Cambiar producto» (`cambio`). Si en «Pan Blanco Bimbo mediano 450 g» se había elegido en Despensa el pan de sándwich, la ☆ del pan de sándwich salía marcada y la casilla «Mi lista» también; al tocarla se **quitaba el pan mediano**, y había que volver a tocar para agregar el de sándwich. Desde que «Cambiar producto» ofrece productos del catálogo esto pasa más.
+- Mismo origen, otro efecto: `mezclarCatalogo` enlazaba el favorito con la ficha del producto elegido y, con un catálogo nuevo, le pasaba sus precios a las demás tiendas (el pan mediano tomaba en Walmart el precio del de sándwich).
+- Además, la espera de `pintarFav` con un selector de «Cambiar producto» con foco podía detener la lista si el foco quedaba en una pestaña oculta (Safari).
+
+## Cambios
+- `app.js`: una tienda con `cambio` no identifica al favorito (☆, cuadro de listas) ni lo enlaza con otra ficha del catálogo; el catálogo solo actualiza su propio precio.
+- `app.js`: la espera de `pintarFav` solo aplica a consultas en segundo plano (`pintarFav(true)`) con el selector visible; agregar, quitar, vaciar o cambiar siempre redibujan.
+
+## Validación
+- 34 pruebas aprobadas (nueva: elección a mano no marca la ☆ ni borra el otro producto, y el catálogo no le pasa precios); la de «Cambiar producto» cubre selector con foco en pestaña oculta y quitar/agregar con el selector en uso. Reproducción en Pixel 7 emulado antes y después. `node tests/interfaz.cjs` aprobado.
+
 # Bitácora — 22 de octubre de 2026 («Cambiar producto» sin opciones y se cerraba)
 
 ## Evaluación
