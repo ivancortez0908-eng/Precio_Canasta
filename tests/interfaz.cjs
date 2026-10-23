@@ -39,11 +39,11 @@ const server = http.createServer((req, res) => {
       document.querySelector('#p' + i).getAttribute('role')])), [['p1', 0, 'tabpanel'], ['p2', -1, 'tabpanel']]);
     // Página principal: un solo buscador, sugerencias y mayores diferencias; fecha del catálogo junto al buscador
     assert.deepEqual((await page.getByRole('tab').allInnerTexts()).map(t => t.replace(/\s+/g, ' ')), ['Buscar', 'Mi lista 0']);
-    assert.equal(await page.locator('#sug').isVisible(), true);
-    assert.equal(await page.locator('#ilista').isVisible(), false);
+    // Página principal sin texto de más: sin sugerencias ni tarjeta de la lista
+    assert.equal(await page.locator('#sug, #ilista').count(), 0);
     assert.equal(await page.locator('#secvivo').isVisible(), false);
     assert.equal(await page.locator('#cattit').innerText(), 'Mayores diferencias entre tiendas');
-    assert.match(await page.locator('#fecha').innerText(), /Catálogo al 17\/10/);
+    assert.match(await page.locator('#fecha').innerText(), /^Catálogo actualizado al 17 de octubre\.$/);
     if (process.env.CANASTA_CAPTURAS) { fs.mkdirSync(process.env.CANASTA_CAPTURAS, { recursive: true }); await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'inicio-escritorio.png') }); }
     // Guía de uso: botón arriba a la derecha; cada paso resalta su elemento y la guía no cambia las listas
     const listasAntes = await page.evaluate(() => localStorage.getItem('canasta-sv-listas-v1'));
@@ -71,9 +71,7 @@ const server = http.createServer((req, res) => {
     await page.keyboard.press('Escape');
     assert.equal(await guia.evaluate(d => d.open), false);
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await page.getByRole('button', { name: 'arroz', exact: true }).click();
-    assert.equal(await page.getByRole('searchbox', { name: 'Buscar producto' }).inputValue(), 'arroz');
-    assert.equal(await page.locator('#sug').isVisible(), false);
+    await page.getByRole('searchbox', { name: 'Buscar producto' }).fill('arroz');
     assert.match(await page.locator('#tabla').innerText(), /Arroz Blanco Precisa/);
     assert.equal(await page.locator('#ord').inputValue(), 'dif');
     assert.equal(await page.getAttribute('#estv', 'aria-live'), 'polite');
@@ -184,9 +182,10 @@ const server = http.createServer((req, res) => {
     assert.equal(await page.getByRole('spinbutton').inputValue(), '1');
     // Celular: catálogo y resultados de las tiendas también en lista compacta, con la tienda junto a cada precio y sin desplazar la página
     await page.getByRole('tab', { name: /Buscar/ }).click();
-    // Celular: pestañas fijas abajo, y la lista activa aparece en Buscar
+    // Celular: pestañas fijas abajo; filtros del catálogo compactos, en una fila y sin ocupar todo el ancho
     assert.equal(await page.locator('.tabs').evaluate(n => Math.round(n.getBoundingClientRect().bottom) === innerHeight), true);
-    assert.match(await page.locator('#ilista').innerText(), /Tu lista «Mensual»[^]*1 producto\(s\)[^]*Ver mi lista/);
+    const filtros = await page.evaluate(() => [document.querySelector('#comp').parentElement, document.querySelector('#ord')].map(e => e.getBoundingClientRect()));
+    assert.ok(Math.abs(filtros[0].top - filtros[1].top) < 6 && filtros[1].right <= 390 - 16 && filtros[1].width < 250, JSON.stringify(filtros));
     assert.equal(await page.locator('#tabla').isVisible(), false);
     assert.match(await page.locator('#mcat .mitem').first().innerText(), /Arroz Blanco Precisa 1 lb[^]*✓\s*Super Selectos\s*\$0\.85[^]*Walmart\s*\$0\.89[^]*\$0\.85 por lb/);
     if (process.env.CANASTA_CAPTURAS) await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'catalogo-movil.png') });

@@ -21,8 +21,8 @@ header.top{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:
 .guiabtn:hover{background:var(--best)}.guiabtn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.corta{display:none}
 .tabs{flex:1;display:flex;justify-content:center;gap:4px;height:100%}
 main{margin:16px 0;padding:0 16px 60px;display:grid;gap:12px}/* usa todo el ancho: las tablas con muchas tiendas lo aprovechan */
-#p1,#p2,.seccion,.inicio{display:grid;gap:12px}
-main>*,#p1>*,#p2>*,.seccion>*,.inicio>*{min-width:0}/* las tablas anchas se desplazan dentro de .wrap sin ensanchar la página */
+#p1,#p2,.seccion{display:grid;gap:12px}
+main>*,#p1>*,#p2>*,.seccion>*{min-width:0}/* las tablas anchas se desplazan dentro de .wrap sin ensanchar la página */
 .intro{margin:4px 4px 0}
 .msg{color:var(--mute);margin:0 4px}.warn{color:var(--warn)!important}
 /* tarjetas */
@@ -42,9 +42,11 @@ button.pri{background:var(--marca);color:#fff}button.pri:hover{background:var(--
 .tabs button[aria-selected=true]{color:var(--marca);border-bottom-color:var(--marca)}
 .tabs button{display:inline-flex;align-items:center;gap:8px}.tabs svg{width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .badge{display:inline-block;min-width:22px;padding:1px 7px;border-radius:999px;background:var(--marca);color:#fff;font-size:.75rem;line-height:1.4;text-align:center}
-/* Buscar: un solo buscador; sugerencias y lista activa con la búsqueda vacía */
+/* Buscar: un solo buscador */
 .subbarra{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:4px 4px 0}.subbarra h2{flex:1;margin:0;font-size:1.15rem;min-width:200px}
-.sug{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.sug button{border-radius:999px;padding:6px 14px;background:var(--surf);box-shadow:var(--sh)}.sug button:hover{background:var(--btn)}
+/* filtros compactos de una sección: casilla y orden como etiquetas redondas */
+.subbarra select,.subbarra label.chk{padding:5px 12px;border:1px solid var(--borde);border-radius:999px;background:var(--surf);font-size:.88rem}.subbarra select{width:auto;padding-right:8px}
+.subbarra label.chk{gap:6px;cursor:pointer;white-space:nowrap}.subbarra label.chk input{margin:0;accent-color:var(--marca)}
 :focus-visible{outline:3px solid var(--marca);outline-offset:2px}
 /* tablas con encabezado y primera columna fijos */
 .wrap{background:var(--surf);border-radius:8px;box-shadow:var(--sh);overflow:auto;max-height:calc(100vh - 120px)}
@@ -155,14 +157,14 @@ a.chip{text-decoration:none}
   .tabs button[aria-selected=true]{border-top-color:var(--marca)}.tabs button:hover{background:none}/* en pantallas táctiles el :hover se queda pegado */
   .tabs button{position:relative}.tabs button .badge{position:absolute;top:5px;left:calc(50% + 6px);font-size:.7rem}
   body{padding-bottom:calc(60px + env(safe-area-inset-bottom))}
-  .subbarra h2{min-width:100%}.subbarra select{flex:1;min-width:0}
+  .subbarra h2{min-width:100%}.subbarra select,.subbarra label.chk{min-height:44px}.subbarra select{max-width:100%}
   #fbuscar{flex-wrap:nowrap}#fbuscar input{min-width:0}
   /* zonas táctiles de 44 px en celular */
   main button,main select,main input[type=search],.qty,dialog button,.ayuda button{min-height:44px}
   .mfila .star{min-width:44px;min-height:44px}details summary{padding:12px 0;line-height:20px}
   .chip{padding:5px 10px}header.top{padding:0 10px}
   /* celular compacto */
-  main{margin-top:10px;gap:8px}.intro{display:none}#p1,#p2,.seccion,.inicio{gap:8px}
+  main{margin-top:10px;gap:8px}.intro{display:none}#p1,#p2,.seccion{gap:8px}
   .controls{padding:8px 10px;gap:6px}.controls button{padding:6px 9px;font-size:.8rem}
   .larga{display:none}
   .listas{flex-wrap:nowrap}.listas label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
@@ -175,7 +177,7 @@ a.chip{text-decoration:none}
   .tot{padding:8px 24px 8px 10px;border-left-width:5px}.tot .dot{width:10px;height:10px;top:10px;right:10px}
   .tot b{font-size:1.15rem}.tn{font-size:.85rem}.tl{font-size:.72rem}
   /* 16 px en campos: Safari del iPhone no hace zoom al tocarlos */
-  main input,main input[type=search],main select,dialog input,.listas select,.opciones select{font-size:16px}
+  main input,main input[type=search],main select,dialog input,.listas select,.opciones select,.subbarra select{font-size:16px}
 }
 </style>
 </head>
@@ -195,15 +197,7 @@ a.chip{text-decoration:none}
       <input type="search" id="q" placeholder="Buscar por producto o marca (frijol, Omoa, leche…)" aria-label="Buscar producto" maxlength="60">
       <button type="submit" class="pri" aria-label="Buscar en las tiendas">Buscar<span class="larga"> en las tiendas</span></button>
     </form>
-    <p class="msg" id="fecha">El catálogo aparece al escribir; el botón consulta cada tienda en el momento.</p>
-    <div class="inicio" id="inicio">
-      <section class="cart" id="ilista" hidden>
-        <h2 id="ilistatit">Tu lista</h2>
-        <p class="msg" id="ilistamsg"></p>
-        <div class="acc"><button class="pri" id="iver">Ver mi lista</button></div>
-      </section>
-      <div class="sug" id="sug"><span class="msg">Prueba:</span><button type="button" data-q="leche">leche</button><button type="button" data-q="arroz">arroz</button><button type="button" data-q="huevos">huevos</button><button type="button" data-q="aceite">aceite</button><button type="button" data-q="frijol">frijol</button><button type="button" data-q="azúcar">azúcar</button><button type="button" data-q="café">café</button></div>
-    </div>
+    <p class="msg" id="fecha">Cargando el catálogo…</p>
     <section class="seccion" id="secvivo" hidden>
       <div class="subbarra"><h2>En las tiendas ahora</h2>
         <select id="ordv" aria-label="Ordenar resultados de las tiendas">
@@ -219,11 +213,11 @@ a.chip{text-decoration:none}
     </section>
     <section class="seccion" id="seccat">
       <div class="subbarra"><h2 id="cattit">Mayores diferencias entre tiendas</h2>
-        <label class="chk"><input type="checkbox" id="comp" checked> Solo en 2 o más tiendas</label>
+        <label class="chk"><input type="checkbox" id="comp" checked> 2 o más tiendas</label>
         <select id="ord" aria-label="Ordenar catálogo">
-          <option value="dif" selected>Mayor diferencia entre tiendas</option>
-          <option value="pu">Más barato por unidad</option>
-          <option value="n">Nombre</option>
+          <option value="dif" selected>Mayor diferencia</option>
+          <option value="pu">Precio por unidad</option>
+          <option value="n">Nombre (A-Z)</option>
         </select>
       </div>
       <p class="msg" id="count" aria-live="polite"></p>
