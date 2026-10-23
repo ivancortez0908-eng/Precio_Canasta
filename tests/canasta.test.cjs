@@ -220,7 +220,10 @@ test('la lista exportada respeta cantidades, centavos y totales parciales', () =
     { n: 'Arroz', m: '', cant: 2, t: { A: { p: 1.25, f: '2026-10-18' } } }];
   const t = tablaLista(items, ['A', 'B'], () => '1 L');
   assert.deepEqual(t.cabecera.slice(3, 8), ['Cantidad', 'A', 'B', 'Más barato en', 'Subtotal']);
-  assert.deepEqual(t.filas[0].slice(3), [3, .1, .2, 'A', .3, '', '2026-10-17 a 2026-10-18']);
+  // fecha más reciente y, aparte, la tienda con un precio de un día anterior
+  assert.deepEqual(t.filas[0].slice(3), [3, .1, .2, 'A', .3, '', '2026-10-18 · A: 2026-10-17']);
+  assert.equal(t.filas[1].at(-1), '2026-10-18');
+  assert.equal(t.cabecera.at(-1), 'Fecha del precio');
   assert.deepEqual(t.pie[0].slice(3, 6), [5, 2.8, .6]);
   assert.deepEqual(t.pie[1].slice(4, 6), ['2 de 2', '1 de 2 (total parcial)']);
   assert.equal(t.pie[2].at(-3), 2.8);
@@ -495,4 +498,24 @@ test('un producto elegido con «Cambiar producto» no se confunde con el favorit
   ui.run('D.items[1].t[1][1] = 1.95; D.items[0].t[0][1] = 1.55; D.actualizado = "2026-10-25"; refrescarFavs();');
   const mediano = ui.saved()[0];
   assert.deepEqual([mediano.t.Walmart.p, mediano.t.Despensa.p, mediano.t.Despensa.manual], [1.55, 1.95, true]);
+});
+test('«Actualizar precios» reconoce el producto por el ID de la tienda aunque cambie el enlace, y actualiza su fecha', async () => {
+  const fav = { id: 'g:leche', n: base.nombre, m: 'Salud', q: 1000, u: 'ml', cant: 1, consultado: '2026-10-15T12:00:00Z',
+    t: { Walmart: { p: 2.1, url: 'https://tienda.test/Walmart/leche-vieja/p', id: 'Walmart-1', f: '2026-10-15', src: 'cat' } } };
+  const ui = interfaz({ guardados: [fav], resultados: [producto('Walmart', 1.95, { url: 'https://tienda.test/Walmart/leche-nueva/p?sku=9' })] });
+  await terminar();
+  await ui.run('completarFavorito(FAV[0])');
+  const w = ui.saved()[0].t.Walmart;
+  assert.deepEqual([w.p, w.f, w.url], [1.95, '2026-10-17T12:00:00Z', 'https://tienda.test/Walmart/leche-nueva/p?sku=9']);
+});
+test('las fechas usan la hora del dispositivo: una consulta de la noche en El Salvador no pasa al día siguiente', () => {
+  const tz = process.env.TZ;
+  try {
+    process.env.TZ = 'America/El_Salvador';
+    const { dia } = require('../comparador.js');
+    assert.equal(dia('2026-10-23T01:30:00Z'), '2026-10-22');   // 7:30 p. m. del 22 en El Salvador
+    assert.equal(dia('2026-10-23T12:00:00Z'), '2026-10-23');
+    assert.equal(dia('2026-10-22'), '2026-10-22');            // fecha del catálogo, sin hora
+    assert.equal(dia(''), '');
+  } finally { if (tz === undefined) delete process.env.TZ; else process.env.TZ = tz; }
 });

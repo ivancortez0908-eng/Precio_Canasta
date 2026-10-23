@@ -9,7 +9,7 @@ let D, limite = 60, RV = [], fechaRV = "", busquedaRV = "", ctl, actualizando = 
 const tiendasConocidas = new Set();
 // Consultas y opciones por favorito (el objeto, porque un producto puede estar en varias listas)
 const pendientes = new Map();
-const { equivalente, precioValido, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda } = Canasta;
+const { equivalente, precioValido, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda, dia } = Canasta;
 // Oferta y precio anterior que reporta cada tienda; solo valen para esa tienda
 const oferta = x => ({ promo: x.promo || null, antes: x.antes > x.precio ? x.antes : null });
 
@@ -47,8 +47,9 @@ function crearLista(nombre) {
 }
 function activar(l) { ACTIVA = l; FAV = l.items; guardar(); }
 
-const hoy = () => new Date().toISOString().slice(0, 10);
-const fecha = f => (f ? f.slice(8, 10) + "/" + f.slice(5, 7) : "");
+// Fechas en la hora del dispositivo (las consultas se guardan en UTC)
+const hoy = () => dia(new Date().toISOString());
+const fecha = f => (f ? dia(f).slice(8, 10) + "/" + dia(f).slice(5, 7) : "");
 const MESES = "enero febrero marzo abril mayo junio julio agosto septiembre octubre noviembre diciembre".split(" ");
 const fechaLarga = f => (f ? `${+f.slice(8, 10)} de ${MESES[+f.slice(5, 7) - 1]}` : "");
 const idGrupo = it => "g:" + norm(it.n) + "|" + (it.q || "") + (it.u || "");
@@ -103,7 +104,8 @@ function mezclarCatalogo(f) {
     }
   }
 }
-const coincideCon = (previo, x) => previo && (previo.ref === idVivo(x) || (previo.url === x.url && !/[?&]q=/.test(x.url || "")));
+// El mismo producto de la tienda: por referencia, por ID de la tienda o por enlace (no de búsqueda)
+const coincideCon = (previo, x) => previo && (previo.ref === idVivo(x) || (!!previo.id && String(previo.id) === pidDe(x)) || (previo.url === x.url && !/[?&]q=/.test(x.url || "")));
 function aplicarResultados(f, resultados, generado) {
   const porTienda = new Map();
   for (const x of resultados) {
@@ -224,7 +226,7 @@ async function actualizarItems(items) {
     }
   } finally { actualizando = false; $("favest").textContent = ""; pintarFav(true); }
 }
-const actualizarViejos = () => { if (window.API_VIVO) actualizarItems(FAV.filter(f => (f.consultado || "").slice(0, 10) !== hoy())); };
+const actualizarViejos = () => { if (window.API_VIVO) actualizarItems(FAV.filter(f => dia(f.consultado) !== hoy())); };
 // Al cargar datos nuevos, actualiza los precios de los favoritos (por producto o por enlace de tienda)
 function refrescarFavs() {
   todos().forEach(mezclarCatalogo);

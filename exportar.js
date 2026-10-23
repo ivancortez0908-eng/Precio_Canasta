@@ -6,15 +6,18 @@
   // Filas de la lista: producto, presentación, cantidad, precio por tienda y dónde conviene comprar.
   // Los precios son números; una tienda sin precio queda vacía, nunca en cero.
   function tablaLista(items, tiendas, presentacion = () => "") {
-    const cabecera = ["Producto", "Marca", "Presentación", "Cantidad", ...tiendas, "Más barato en", "Subtotal", "Ofertas", "Precio consultado"];
+    const cabecera = ["Producto", "Marca", "Presentación", "Cantidad", ...tiendas, "Más barato en", "Subtotal", "Ofertas", "Fecha del precio"];
     const filas = items.map(f => {
       // La tienda más barata para la cantidad pedida, cada una con su propia oferta
       const ops = tiendas.filter(s => C.precioValido(f.t[s]?.p)).sort((a, b) => C.costo(f.t[a], f.cant) - C.costo(f.t[b], f.cant)), mejor = ops[0];
       const ofertas = tiendas.filter(s => C.precioValido(f.t[s]?.p) && C.leerPromo(f.t[s].promo)).map(s => `${s}: ${f.t[s].promo}`).join("; ");
-      const fechas = Object.values(f.t).map(v => (v.f || "").slice(0, 10)).filter(Boolean).sort();
+      // Fecha más reciente y, aparte, las tiendas cuyo precio es de un día anterior (no se reconfirmó)
+      const porDia = {};
+      for (const s of tiendas) if (C.precioValido(f.t[s]?.p) && f.t[s].f) (porDia[C.dia(f.t[s].f)] ||= []).push(s);
+      const dias = Object.keys(porDia).sort().reverse();
       return [f.n || "", f.m || "", presentacion(f), f.cant, ...tiendas.map(s => C.precioValido(f.t[s]?.p) ? f.t[s].p : ""),
         mejor || "Sin precio", mejor ? C.costo(f.t[mejor], f.cant) / 100 : "", ofertas,
-        fechas.length ? (fechas[0] === fechas.at(-1) ? fechas[0] : `${fechas[0]} a ${fechas.at(-1)}`) : ""];
+        [dias[0] || "", ...dias.slice(1).map(d => `${porDia[d].join(", ")}: ${d}`)].join(" · ")];
     });
     const { res, mix, sinPrecio } = C.resumir(items, tiendas);
     const n = items.length;

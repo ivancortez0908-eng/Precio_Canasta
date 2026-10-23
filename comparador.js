@@ -84,7 +84,15 @@
     const ok = qs.filter(t => ws.some(w => igual(t, w)) || (t.length >= 4 && junto.includes(t)));
     return ok.length >= Math.min(2, qs.length);
   }
-  const api = { equivalente, precioValido, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda };
+  // Día (AAAA-MM-DD) de una fecha guardada. Las consultas guardan hora UTC: se pasan a la hora del dispositivo
+  // para que una consulta de las 7 p. m. en El Salvador no aparezca con la fecha del día siguiente.
+  function dia(f) {
+    f = String(f || "");
+    const d = f.includes("T") ? new Date(f) : null;
+    if (!d || isNaN(d)) return f.slice(0, 10);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+  const api = { equivalente, precioValido, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda, dia };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.Canasta = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);
