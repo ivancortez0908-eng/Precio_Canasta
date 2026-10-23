@@ -49,6 +49,8 @@ function activar(l) { ACTIVA = l; FAV = l.items; guardar(); }
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 const fecha = f => (f ? f.slice(8, 10) + "/" + f.slice(5, 7) : "");
+const MESES = "enero febrero marzo abril mayo junio julio agosto septiembre octubre noviembre diciembre".split(" ");
+const fechaLarga = f => (f ? `${+f.slice(8, 10)} de ${MESES[+f.slice(5, 7) - 1]}` : "");
 const idGrupo = it => "g:" + norm(it.n) + "|" + (it.q || "") + (it.u || "");
 const idVivo = x => x.ref || (String(x.id || "").startsWith("v:") ? x.id : "v:" + x.tienda + ":" + (x.id || x.url));
 const pidDe = x => String(x.pid ?? (String(x.id || "").startsWith("v:") ? "" : x.id || ""));
@@ -251,8 +253,7 @@ function render() {
   if (!D) return;
   const r = filtrar(), S = D.supers;
   const q = $("q").value.trim();
-  // Con la búsqueda vacía se ven la lista activa, sugerencias y las mayores diferencias del catálogo
-  $("inicio").hidden = !!q;
+  // Con la búsqueda vacía se ven las mayores diferencias del catálogo
   $("cattit").textContent = q ? "En el catálogo guardado" : $("ord").value === "dif" ? "Mayores diferencias entre tiendas" : "Todo el catálogo";
   $("count").textContent = r.length ? `${r.length} producto(s)` : "";
   let h = `<thead><tr><th>Producto</th>${S.map(s => `<th>${esc(s)}</th>`).join("")}<th>Por unidad</th><th>Fav.</th></tr></thead><tbody>`;
@@ -383,9 +384,6 @@ function pintarFav(fondo = false) {
   const S = tiendasFav();
   $("lsel").innerHTML = LISTAS.map(l => `<option value="${esc(l.id)}"${l === ACTIVA ? " selected" : ""}>${esc(l.nombre)} (${l.items.length})</option>`).join("");
   const fallan = [...new Set(FAV.flatMap(f => f.fallos || []))];
-  // Tarjeta de la lista activa en Buscar
-  $("ilista").hidden = !FAV.length;
-  $("ilistatit").textContent = `Tu lista «${ACTIVA.nombre}»`;
   $("favmsg").textContent = FAV.length ? `${FAV.length} producto(s) en «${ACTIVA.nombre}». Cada uno se busca en todas las tiendas y solo estos se comparan para tu compra.` +
     (fallan.length ? ` No respondieron: ${fallan.join(", ")}. Usa «Actualizar precios» para reintentar.` : "") : `«${ACTIVA.nombre}» está vacía. Marca la ☆ en Buscar y elige esta lista.`;
   $("favresumen").hidden = !FAV.length;
@@ -438,8 +436,6 @@ function pintarFav(fondo = false) {
     `<span class="tl">${FAV.length - r.faltan} de ${FAV.length} productos</span><span class="tl${r.faltan ? " warn" : ""}">${t}</span></div>`; }).join("");
   const gan = ok.find(r => r.total === min);
   // Resumen arriba de la tabla: lo que la persona viene a saber, sin bajar hasta los totales
-  $("ilistamsg").innerHTML = `${FAV.length} producto(s) · ` + (gan ? `Compra completa más barata: <b>${esc(gan.s)} ${fmt(min)}</b>` : "Ninguna tienda tiene todos los productos") +
-    ` · Combinando tiendas: <b>${fmt(mix)}</b>${sinPrecio ? " (parcial)" : ""}`;
   $("favresumen").innerHTML = (gan ? `Compra completa más barata: <b>${esc(gan.s)} ${fmt(min)}</b>` : "Ninguna tienda tiene todos los productos") +
     ` · Combinando tiendas: <b>${fmt(mix)}</b>${sinPrecio ? " (parcial)" : ""} · <a href="#favres">Ver detalle</a>`;
   $("favmix").textContent = `Comprando cada producto donde es más barato: ${fmt(mix)} (${Object.entries(por).map(([s, n]) => `${n} unidad(es) en ${s}`).join(", ")})` +
@@ -523,7 +519,6 @@ function pestana(n) {
 }
 $("tab1").onclick = () => pestana(1);
 $("tab2").onclick = () => pestana(2);
-$("iver").onclick = () => { pestana(2); $("tab2").focus(); };
 document.querySelector(".tabs").onkeydown = e => {
   if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
   e.preventDefault();
@@ -533,7 +528,6 @@ document.querySelector(".tabs").onkeydown = e => {
 };
 $("q").oninput = $("comp").onchange = $("ord").onchange = () => { limite = 60; render(); };
 $("mas").onclick = () => { limite += 60; render(); };
-$("sug").onclick = e => { const b = e.target.closest("[data-q]"); if (b) { $("q").value = b.dataset.q; limite = 60; render(); $("q").focus(); } };
 $("tabla").onclick = e => {
   const b = e.target.closest(".star");
   if (b) abrirListas({ tipo: "item", x: D.items[+b.dataset.i] });
@@ -712,10 +706,10 @@ fetch("data/productos.json").then(r => { if (!r.ok) throw 0; return r.json(); })
   D = d;
   D.items.forEach((it, i) => { it.i = i; it.fid = idGrupo(it); it.s = norm(it.n + " " + it.m + " " + it.t.map(e => (e[4] || "") + " " + (e[5] || "")).join(" ")); });
   refrescarFavs();
-  $("fecha").textContent = (D.ejemplo ? "Catálogo de ejemplo (no son precios reales)." : `Catálogo al ${fecha(D.actualizado)}.`) + " Aparece al escribir; el botón consulta cada tienda en el momento.";
+  $("fecha").textContent = D.ejemplo ? "Catálogo de ejemplo (no son precios reales)." : `Catálogo actualizado al ${fechaLarga(D.actualizado)}.`;
   $("foot").textContent = D.ejemplo
     ? "Datos de ejemplo (no son precios reales). Ejecuta la acción “Actualizar precios” en GitHub para cargar los reales."
     : `Precios en USD tomados de las tiendas en línea. Actualizado: ${D.actualizado}. Pueden diferir de los precios en sala.`;
   if (D.supers.length < 2) { $("comp").checked = false; $("comp").disabled = true; $("comp").parentElement.title = "Se activa cuando haya 2 o más tiendas con datos"; }
   render(); pintarFav();
-}).catch(() => { $("tabla").innerHTML = "<tr><td>No se pudieron cargar los precios. Si abriste el archivo directo, usa GitHub Pages o un servidor local (python3 -m http.server).</td></tr>"; pintarFav(); });
+}).catch(() => { $("fecha").textContent = "No se pudo cargar el catálogo."; $("tabla").innerHTML = "<tr><td>No se pudieron cargar los precios. Si abriste el archivo directo, usa GitHub Pages o un servidor local (python3 -m http.server).</td></tr>"; pintarFav(); });

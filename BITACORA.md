@@ -1,3 +1,13 @@
+# Bitácora — 23 de octubre de 2026 (página principal con menos texto)
+
+## Cambios
+- Buscar: debajo del buscador solo «Catálogo actualizado al 22 de octubre.» (`fechaLarga`); la explicación del botón queda en la guía de uso. Si el catálogo no carga: «No se pudo cargar el catálogo.».
+- Se quitan las sugerencias «Prueba: …» y la tarjeta de la lista activa (`#inicio`, `#ilista`, `.sug`).
+- Filtros del catálogo y de los resultados de las tiendas compactos: casilla «2 o más tiendas» y orden como etiquetas redondas de ancho automático; en celular van en una fila bajo el título. Opciones: «Mayor diferencia», «Precio por unidad», «Nombre (A-Z)».
+
+## Validación
+- 34 pruebas aprobadas; `node tests/interfaz.cjs` aprobado con comprobaciones nuevas (sin sugerencias ni tarjeta, texto exacto de la fecha, filtros en una fila en 390 px). Capturas revisadas en escritorio y celular.
+
 # Bitácora — 23 de octubre de 2026 (guía de uso)
 
 ## Cambios

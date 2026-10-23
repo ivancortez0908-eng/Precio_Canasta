@@ -45,10 +45,9 @@ header.top (fija, 56 px; 52 px en celular)
 main (todo el ancho, 16 px de margen lateral)
  ├─ p.msg.intro   una línea que explica el sitio
  ├─ #p1 Buscar (página principal):
- │    form#fbuscar.controls (#q · «Buscar en las tiendas» .pri) → #fecha (fecha del catálogo)
- │    → #inicio, solo con la búsqueda vacía: section.cart#ilista (lista activa + «Ver mi lista») · .sug (sugerencias)
+ │    form#fbuscar.controls (#q · «Buscar en las tiendas» .pri) → #fecha («Catálogo actualizado al 22 de octubre.», nada más)
  │    → section#secvivo, tras buscar en las tiendas: .subbarra (h2 «En las tiendas ahora» · #ordv) → #estv → #ocultos → .wrap>table#tv / #mvivo → aviso
- │    → section#seccat: .subbarra (h2#cattit · #comp · #ord, por defecto «Mayor diferencia entre tiendas») → #count → .wrap>table#tabla / #mcat → «Mostrar más»
+ │    → section#seccat: .subbarra (h2#cattit · casilla #comp «2 o más tiendas» · #ord, por defecto «Mayor diferencia») → #count → .wrap>table#tabla / #mcat → «Mostrar más»
  └─ #p2 Mi lista:  .controls.listas → .controls.acciones (#favmsg + .botones) → #favresumen → #favest → .wrap.solo-escritorio>table#tfav
                     → #mfav (lista compacta, solo celular) → section.cart#favres
 section#ayuda.ayuda   pregunta de aportes, al pie, solo cuando aplica
@@ -61,7 +60,8 @@ section#imprimir      hoja para PDF; solo visible al imprimir
 - Un solo buscador: al escribir filtra el catálogo; Enter o «Buscar en las tiendas» consulta cada tienda (`vivo`). No vuelvas a separar Catálogo y En vivo en pestañas.
 - Pestañas: ícono SVG en línea (`stroke: currentColor`, `aria-hidden`) + una o dos palabras; nada de emojis. Una pestaña nueva va **al final** de `nav.tabs`, con su panel `#pN` y `hidden`. Actualiza `pestana()`, las flechas del teclado (`onkeydown` de `.tabs`) y deja `role="tab"`/`aria-selected`.
 - No agregues menús desplegables a la barra superior: tres pestañas como máximo; lo demás va dentro del panel.
-- Títulos de sección dentro de un panel: `.subbarra` con `h2` a la izquierda y sus filtros a la derecha.
+- Títulos de sección dentro de un panel: `.subbarra` con `h2` a la izquierda y sus filtros a la derecha, compactos: `label.chk` y `select` como etiquetas redondas con borde, de ancho automático (en celular, en una fila bajo el título, 44 px de alto y 16 px de letra). Opciones de orden en dos o tres palabras.
+- La página principal lleva poco texto: sin sugerencias ni tarjetas extra; lo que hay que explicar va en la guía de uso.
 
 - Los `id` que usa `app.js` no se renombran sin cambiar también `app.js` y las pruebas.
 
@@ -88,7 +88,6 @@ Siempre de arriba abajo: **controles → estado → tabla → resumen**.
 | renglón compacto (celular) | `article.mitem > button.mcab[data-a=abrir][aria-expanded]` con `.mnom`, `.mcant`, `.mprecios > .chip` y, abierto, `.mdet` |
 | cantidad | `span.stp` con `button[data-a=menos]`, `input.qty`, `button[data-a=mas]` (1 a 99) |
 | favorito | `button.star` con `aria-pressed` y ☆/★; abre `dialog#dlista` |
-| sugerencia de búsqueda | `.sug > button[data-q]` (redonda, fondo blanco) |
 | contador en pestaña | `span.badge` (verde, texto blanco) |
 | etiqueta pequeña | `.tag` (criterio de unión), `.store` (nombre de tienda), `.marca` (marca, verde) |
 | precio más barato | `td.best` con `barato(html)` (✓ visible + «(más barato)» en `.vh`); nunca solo el color verde |
