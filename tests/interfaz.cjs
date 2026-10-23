@@ -139,6 +139,12 @@ const server = http.createServer((req, res) => {
     // El producto abierto se distingue de los demás: franja verde a la izquierda
     assert.equal(await page.locator('#mfav .mitem.abierto').evaluate(n => getComputedStyle(n).borderLeftColor), 'rgb(10, 110, 55)');
     assert.match(await page.locator('#mfav .mdet').innerText(), /Walmart[^]*Oferta 2 x \$3\.80[^]*Cambiar producto/);
+    // «Cambiar producto» en celular: selector a todo el ancho del renglón, con opciones y «Buscar más opciones»
+    await page.locator('#mfav .mtienda').first().getByText('Cambiar producto').click();
+    const sel = page.locator('#mfav details.opciones[open] select');
+    assert.ok((await sel.boundingBox()).width > 300);
+    assert.match((await sel.locator('option').allInnerTexts()).join('|'), /Leche entera Salud 1 L · \$2\.00 \(actual\)/);
+    assert.equal(await page.locator('#mfav details.opciones[open]').getByRole('button', { name: 'Buscar más opciones' }).count(), 1);
     if (process.env.CANASTA_CAPTURAS) await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'favoritos-movil.png'), fullPage: true });
     await page.reload();
     await page.getByRole('tab', { name: /Mi lista/ }).click();

@@ -93,7 +93,7 @@ Siempre de arriba abajo: **controles → estado → tabla → resumen**.
 | sin dato | `td.na` con texto («Sin coincidencia», «Tienda sin respuesta», «Descartado por ti»); nunca cero dólares |
 | oferta | `small.promo` («Oferta 2 x … · lleva 2 para aplicarla»), `small.promo.si` cuando ya se aplica, `small.antes` tachado |
 | fecha y origen | `small.f` («al 20/10 · Elegido por ti») y `small.product-source` |
-| elegir otra opción | `details.opciones > summary + select` dentro de la celda |
+| elegir otra opción | `details.opciones[data-fav][data-store] > summary + select` + `button.retry[data-a=opciones]` «Buscar más opciones»; en la tabla dentro de la celda, en celular en `.msel` a todo el renglón. Sigue abierto aunque lleguen precios, y la lista no se redibuja mientras el selector tiene el foco |
 | semáforo | `.totals > .tot.v|.a|.r` con `.dot`, `.tn`, `b`, `.tl` y la `.leyenda` |
 | cuadro emergente | `<dialog>` con `h2`, contenido y botón «Listo» al final; `showModal()` |
 | texto plegable | `details > summary` |

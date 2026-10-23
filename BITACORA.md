@@ -1,3 +1,18 @@
+# Bitácora — 22 de octubre de 2026 («Cambiar producto» sin opciones y se cerraba)
+
+## Evaluación
+- Reproducido en Chromium (celular y escritorio): al abrir «Cambiar producto» mientras corría la actualización automática de Mi lista, cada respuesta redibujaba la lista y cerraba el selector.
+- Las opciones solo salían de la última consulta de la sesión (`candidatos`, en memoria): tras recargar no quedaba ninguna, y la consulta se detenía en la primera búsqueda con coincidencias, así que traía pocas. El catálogo no se ofrecía.
+- En celular el selector medía como máximo 230 px y cortaba el texto.
+
+## Cambios
+- `app.js`: las opciones se guardan con el favorito (`opc`, hasta 8 por tienda, solo las parecidas por equivalencia o por `coincideBusqueda`); `opcionesDe` suma las del catálogo y pone las equivalentes primero; el valor de cada opción es su identificador (no la posición). Botón «Buscar más opciones» (`completarFavorito(f, true)` hace todas las búsquedas). Sin opciones se explica y se ofrece «No está en esta tienda».
+- `pintarFav` mantiene abiertos los «Cambiar producto» y no redibuja mientras un selector tiene el foco (repinta al soltarlo).
+- `index.html`: en celular el selector va en `.msel`, a todo el renglón de la tienda.
+
+## Validación
+- 33 pruebas aprobadas (2 nuevas: opciones guardadas y del catálogo, búsqueda completa; no redibujar con el selector en uso). `node tests/interfaz.cjs` aprobado con comprobación nueva del selector en celular.
+
 # Bitácora — 22 de octubre de 2026 (producto abierto en Mi lista)
 
 ## Cambios
