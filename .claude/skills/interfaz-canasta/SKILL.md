@@ -47,8 +47,8 @@ main (todo el ancho, 16 px de margen lateral)
  ├─ #p1 Buscar (página principal):
  │    form#fbuscar.controls (#q · «Buscar en las tiendas» .pri) → #fecha («Catálogo actualizado al 22 de octubre.», nada más)
  │    → section#secvivo, tras buscar en las tiendas: .subbarra (h2 «En las tiendas ahora» · #ordv) → #estv → #ocultos → .wrap>table#tv / #mvivo → aviso
- │    → section#seccat: .subbarra (h2#cattit · casilla #comp «2 o más tiendas» · #ord, por defecto «Mayor diferencia») → #count → .wrap>table#tabla / #mcat → «Mostrar más»
- └─ #p2 Mi lista:  .controls.listas → .controls.acciones (#favmsg + .botones) → #favresumen → #favest → .wrap.solo-escritorio>table#tfav
+ │    → section#seccat: .subbarra (h2#cattit · .filtros: casilla #comp «2 o más tiendas» / «2+ tiendas» en celular · #ord, por defecto «Mayor diferencia») → #count → .wrap>table#tabla / #mcat → «Mostrar más»
+ └─ #p2 Mi lista:  .controls.listas (#lsel · «Actualizar precios» .pri · .menu «⋯») → #favmsg → #favresumen → #favest → .wrap.solo-escritorio>table#tfav
                     → #mfav (lista compacta, solo celular) → section.cart#favres
 section#ayuda.ayuda   pregunta de aportes, al pie, solo cuando aplica
 footer#foot           fecha y origen de los datos
@@ -70,7 +70,8 @@ section#imprimir      hoja para PDF; solo visible al imprimir
 Siempre de arriba abajo: **controles → estado → tabla → resumen**.
 
 - **Barra de controles** (`.controls`, tarjeta en fila que se acomoda en móvil): primero lo que se escribe o elige (búsqueda, selector), después los botones.
-- **Orden de botones** en una barra: mensaje a la izquierda (`flex:1`), luego acción principal (`.pri`, la única rellena de verde) → acciones secundarias → acción que borra al final (clase `.rm`, roja). Ejemplo real: «Actualizar precios · Descargar PDF · Descargar Excel · Vaciar lista».
+- **Orden de botones** en una barra: lo que se elige a la izquierda, luego la acción principal (`.pri`, la única rellena de verde) y al final el menú «⋯» con las secundarias; dentro del menú, las que borran (`.rm`, rojas) van en el último grupo. Ejemplo real (Mi lista): «[lista] · Actualizar precios · ⋯» con «Nueva lista · Renombrar lista | Descargar PDF · Descargar Excel | Vaciar lista · Eliminar lista».
+- Si una barra pasa de 3 botones, las acciones secundarias van al menú «⋯»; no las partas en dos barras.
 - **Estado** (`p.msg` con `id`): justo debajo de la barra; dice qué pasó, en una frase («Buscando “leche” en las tiendas…», «No respondieron: …. Puedes reintentar.»).
 - **Resumen** (`section.cart` con `h2`): debajo de la tabla, como la «Comparación de tu compra».
 - Acciones de una fila van **en la primera columna** (fija), bajo el nombre: cantidad `.stp` (− número +), «Quitar» (`.rm`) y «Consultar tiendas» (`.retry`). Así se ven aunque haya muchas tiendas.
@@ -96,6 +97,7 @@ Siempre de arriba abajo: **controles → estado → tabla → resumen**.
 | fecha y origen | `small.f` («al 20/10 · Elegido por ti») y `small.product-source` |
 | elegir otra opción | `details.opciones[data-fav][data-store] > summary + select` + `button.retry[data-a=opciones]` «Buscar más opciones»; en la tabla dentro de la celda, en celular en `.msel` a todo el renglón. Sigue abierto aunque lleguen precios, y la lista no se redibuja mientras el selector tiene el foco |
 | semáforo | `.totals > .tot.v|.a|.r` con `.dot`, `.tn`, `b`, `.tl` y la `.leyenda` |
+| menú de acciones | `.menu > button.menubtn#…[aria-haspopup=menu][aria-expanded]` (tres puntos en SVG, `aria-label`) + `div.menu-lista[role=menu]` con `.grupo[role=group]` y `button[role=menuitem]`; abre hacia abajo alineado a la derecha; se cierra al elegir, con Esc (vuelve el foco al botón), tocando fuera o con Tab; flechas, Inicio y Fin para moverse. Grupos vacíos se ocultan (`hidden`) |
 | cuadro emergente | `<dialog>` con `h2`, contenido y botón «Listo» al final; `showModal()` |
 | texto plegable | `details > summary` |
 | guía de uso | `GUIA` en `app.js`: cada paso con título `t`, texto `x`, elemento `el()` y estado (`tab`, `q` búsqueda de ejemplo, `dlg` cuadro de listas, `nombre`). `dialog#guia` con `.guia-luz` (hueco con sombra `--velo` sobre el elemento) y `.guia-tarjeta` con `.guia-flecha` que lo señala; sin elemento visible, al centro. «Salir de la guía · Anterior · Siguiente/Terminar»; Esc sale. La guía solo muestra: no marca casillas ni crea listas, y al salir deja la búsqueda, la pestaña y el desplazamiento como estaban. Si agregas una parte importante a la página, agrega su paso |
@@ -112,7 +114,7 @@ Siempre de arriba abajo: **controles → estado → tabla → resumen**.
 ## 6. Móvil y accesibilidad
 
 **Celular (hasta 700 px) = versión compacta:**
-- Cada barra de controles va **en una sola fila**: «Lista [selector] · Nueva · Renombrar · Eliminar» y «Actualizar · PDF · Excel · Vaciar». El mensaje de la barra va en su propia línea, encima de los botones.
+- Cada barra de controles va **en una sola fila**: «[selector de lista] · Actualizar · ⋯». Los filtros de una sección también, también a 360 px (teléfonos Android): textos cortos con `.larga`/`.corta` y el `select` puede encogerse.
 - En celular los botones muestran una versión corta: la parte larga del texto va en `<span class="larga">` (se oculta) y el botón lleva `aria-label` con el nombre completo («Descargar PDF»). Si el texto lo cambia `app.js`, actualiza también el `aria-label`.
 - **Las pestañas van en una barra fija abajo** (60 px + zona segura), con ícono arriba y texto abajo; la activa lleva borde superior verde. El `body` reserva ese espacio con `padding-bottom`. La barra superior queda solo con el logo y el nombre.
 - **Ninguna pestaña muestra tablas en el celular** (`.solo-escritorio`): el catálogo usa `#mcat` y los resultados de las tiendas `#mvivo` (`.mlista`, renglones `.mitem > .mfila` con nombre, marca y tamaño, ☆, etiquetas «Tienda $precio» con el más barato primero y precio por unidad).

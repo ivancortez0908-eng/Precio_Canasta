@@ -386,10 +386,10 @@ function pintarFav(fondo = false) {
   const S = tiendasFav();
   $("lsel").innerHTML = LISTAS.map(l => `<option value="${esc(l.id)}"${l === ACTIVA ? " selected" : ""}>${esc(l.nombre)} (${l.items.length})</option>`).join("");
   const fallan = [...new Set(FAV.flatMap(f => f.fallos || []))];
-  $("favmsg").textContent = FAV.length ? `${FAV.length} producto(s) en «${ACTIVA.nombre}». Cada uno se busca en todas las tiendas y solo estos se comparan para tu compra.` +
+  $("favmsg").textContent = FAV.length ? `${FAV.length} producto(s) en «${ACTIVA.nombre}».` +
     (fallan.length ? ` No respondieron: ${fallan.join(", ")}. Usa «Actualizar precios» para reintentar.` : "") : `«${ACTIVA.nombre}» está vacía. Marca la ☆ en Buscar y elige esta lista.`;
   $("favresumen").hidden = !FAV.length;
-  for (const id of ["favclear", "favres", "favrefresh", "favpdf", "favxlsx"]) $(id).hidden = !FAV.length;
+  for (const id of ["favclear", "favres", "favrefresh", "ldescargas"]) $(id).hidden = !FAV.length;
   $("favrefresh").disabled = actualizando || pendientes.size > 0;
   // En celular se ve la versión corta; el nombre completo queda para lectores de pantalla
   $("favrefresh").innerHTML = pendientes.size ? `Consultando<span class="larga"> ${pendientes.size} producto(s)</span>…` : `Actualizar<span class="larga"> precios</span>`;
@@ -590,6 +590,24 @@ $("lborrar").onclick = () => {
 };
 $("favclear").onclick = () => { if (confirm(`¿Vaciar la lista «${ACTIVA.nombre}»?`)) { FAV.forEach(cancelar); FAV.length = 0; guardar(); pintarFav(); pintarVivo(); render(); } };
 $("favrefresh").onclick = () => actualizarItems([...FAV]);
+// Menú «⋯» de la lista: se cierra al elegir, con Esc o tocando fuera; flechas para moverse
+function menuLista(abrir, enfocar = true) {
+  $("lacciones").hidden = !abrir; $("lmenu").setAttribute("aria-expanded", abrir);
+  if (abrir && enfocar) $("lacciones").querySelector("button:not([hidden])")?.focus();
+}
+const itemsMenu = () => [...$("lacciones").querySelectorAll("button")].filter(visible);
+$("lmenu").onclick = () => menuLista($("lacciones").hidden);
+$("lacciones").addEventListener?.("click", e => { if (e.target.closest("button")) menuLista(false, false); });
+$("lacciones").onkeydown = e => {
+  const its = itemsMenu(), i = its.indexOf(document.activeElement);
+  if (e.key === "Escape") { menuLista(false); $("lmenu").focus(); }
+  else if (["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) {
+    e.preventDefault();
+    its[e.key === "Home" ? 0 : e.key === "End" ? its.length - 1 : (i + (e.key === "ArrowDown" ? 1 : its.length - 1)) % its.length]?.focus();
+  } else if (e.key === "Tab") menuLista(false, false);
+};
+// (los toques dentro de la guía de uso no cuentan: la guía abre el menú para mostrarlo)
+document.addEventListener?.("click", e => { if (!$("lacciones").hidden && !e.target.closest?.(".menu, #guia")) menuLista(false, false); });
 
 // ---------- Guía de uso: pasos con el elemento resaltado; simula la búsqueda y el cuadro de listas sin cambiar las listas ----------
 const visible = el => !!el && el.getClientRects().length > 0;
@@ -605,9 +623,10 @@ const GUIA = [
   { t: "O crea una lista nueva", tab: 1, q: true, dlg: true, nombre: true, el: () => $("dlnueva"), x: "Escribe un nombre, por ejemplo «Compras del mes», y toca «Crear y agregar»." },
   { t: "Termina con «Listo»", tab: 1, q: true, dlg: true, el: () => $("dlcerrar"), x: "Al guardar un producto, la página lo busca en las demás tiendas para compararlo." },
   { t: "Abre tus listas", tab: 1, q: true, el: () => $("tab2"), x: "Aquí ves tus listas. El número indica cuántos productos tiene la lista que estás viendo." },
-  { t: "Cambia o administra tus listas", tab: 2, el: () => $("lsel").closest(".controls"), x: "Elige la lista que quieres ver, crea una nueva, cámbiale el nombre o elimínala." },
-  { t: "Actualiza y descarga", tab: 2, el: () => document.querySelector(".acciones"),
-    x: conLista("«Actualizar precios» vuelve a consultar las tiendas. Descarga la lista en PDF o Excel, o vacíala.", "Cuando tengas productos, aquí podrás actualizar los precios, descargar la lista en PDF o Excel y vaciarla.") },
+  { t: "Elige la lista y actualiza", tab: 2, el: () => $("lsel").closest(".controls"),
+    x: conLista("Elige la lista que quieres ver. «Actualizar precios» vuelve a consultar las tiendas.", "Elige la lista que quieres ver. Cuando tenga productos, «Actualizar precios» volverá a consultar las tiendas.") },
+  { t: "Más opciones en ⋯", tab: 2, menu: true, el: () => primero("#lacciones", "#lmenu"),
+    x: conLista("Aquí creas una lista nueva, le cambias el nombre, la descargas en PDF o Excel, la vacías o la eliminas.", "Aquí creas una lista nueva, le cambias el nombre o la eliminas. Con productos también podrás descargarla en PDF o Excel y vaciarla.") },
   { t: "Cantidades y precios por tienda", tab: 2, el: () => primero("#tfav tbody tr", "#mfav .mitem"),
     x: conLista("Ajusta la cantidad con − y +. Cada tienda muestra su precio y su fecha; con «Cambiar producto» eliges otra presentación si no es la correcta.", "Cuando agregues productos, cada uno mostrará su cantidad (− y +) y el precio de cada tienda con su fecha. Con «Cambiar producto» eliges otra presentación si no es la correcta.") },
   { t: "Compara tu compra", tab: 2, el: () => primero("#favtot"),
@@ -628,6 +647,7 @@ function guiaEstado(p) {
   if (p.tab && $("p" + p.tab).hidden) pestana(p.tab);
   if (p.tab) guiaBuscar(p.q ? guiaDemo : guiaPrevio.q, p.escribir);
   $("dlnombre").value = p.nombre ? "Compras del mes" : "";
+  menuLista(!!p.menu, false);
   if (!p.dlg && $("dlista").open) $("dlista").close();
   const item = D && (filtrar()[0] || D.items[0]);
   if (p.dlg && !$("dlista").open && item) {
@@ -682,6 +702,7 @@ function guiaFin() {
   if ($("guia").open) $("guia").close();
   if ($("dlista").open) $("dlista").close();
   $("dlnombre").value = "";
+  menuLista(false, false);
   if ($("q").value !== prev.q) { $("q").value = prev.q; limite = 60; render(); }
   if ($("p" + prev.tab).hidden) pestana(prev.tab);
   window.scrollTo(0, prev.y);

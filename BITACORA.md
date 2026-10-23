@@ -1,3 +1,14 @@
+# Bitácora — 23 de octubre de 2026 (menú «⋯» en Mi lista y filtros en una fila)
+
+## Cambios
+- Mi lista: una sola barra «[lista] · Actualizar precios · ⋯». El menú «⋯» agrupa «Nueva lista · Renombrar lista», «Descargar PDF · Descargar Excel» (solo con productos) y «Vaciar lista · Eliminar lista» (rojas, al final). Se cierra al elegir, con Esc, Tab o tocando fuera; flechas, Inicio y Fin. Los `id` de los botones no cambian.
+- El mensaje de la lista se acorta a «N producto(s) en «lista».» (más «No respondieron: …» si aplica).
+- Buscar: los filtros del catálogo van en `.filtros`, que no se parte; en celular la casilla dice «2+ tiendas» y el orden puede encogerse. En un teléfono de 360 px (el del reporte) caben en una fila.
+- Guía de uso: «Elige la lista y actualiza» y «Más opciones en ⋯» (abre el menú para mostrarlo). Un toque dentro de la guía no cierra el menú.
+
+## Validación
+- 36 pruebas aprobadas; `node tests/interfaz.cjs` aprobado con comprobaciones nuevas: orden de las opciones del menú, teclado, Esc y toque fuera, menú dentro de la pantalla con opciones de 44 px, barra en una fila y filtros en una fila a 360 px. Capturas revisadas en escritorio, 390 px y 360 px.
+
 # Bitácora — 23 de octubre de 2026 (fechas de los precios después de «Actualizar precios»)
 
 ## Evaluación
