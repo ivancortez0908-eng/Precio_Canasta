@@ -73,8 +73,10 @@ for (const [r, idxs] of grupos) {
   const ts = tipos.get(raiz(r));
   const k = lista.length < 2 ? null : ts?.has("manual") ? "manual" : ts?.has("ean") ? "ean" : "nombre";
   const conMarca = lista.find(x => x.marca);
+  // Códigos de barras válidos del grupo (14 cifras): la página los usa para buscar o escanear un producto
+  const b = [...new Set(idxs.map(i => gtin(todos[i].ean)).filter(Boolean))];
   items.push({ n: bonito(base.nombre), m: conMarca ? bonito(conMarca.marca) : "", q: conQ.q, u: conQ.u,
-    pl: precioUnitario(1, conQ.q, conQ.u)?.pl ?? null, pu: pus.length ? Math.min(...pus) : null, k, t });
+    pl: precioUnitario(1, conQ.q, conQ.u)?.pl ?? null, pu: pus.length ? Math.min(...pus) : null, k, t, ...(b.length ? { b } : {}) });
 }
 items.sort((a, b) => a.n.localeCompare(b.n, "es"));
 

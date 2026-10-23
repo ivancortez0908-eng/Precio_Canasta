@@ -5,11 +5,11 @@ const fmt = n => "$" + n.toFixed(2);
 const fpu = n => "$" + n.toFixed(n < 0.01 ? 4 : n < 0.1 ? 3 : 2);
 const puDe = x => (x.pu > 0 ? x.pu : 1e9);   // para ordenar: sin precio por unidad conocido, al final
 const TAG = { ean: "Mismo código de barras", nombre: "Coincide por nombre y tamaño", manual: "Equivalencia verificada" };
-let D, limite = 60, RV = [], fechaRV = "", busquedaRV = "", ctl, actualizando = false, porGuardar = null, abierto = null, verTodos = false;
+let D, limite = 60, RV = [], fechaRV = "", busquedaRV = "", codigoRV = "", ctl, actualizando = false, porGuardar = null, abierto = null, verTodos = false;
 const tiendasConocidas = new Set();
 // Consultas y opciones por favorito (el objeto, porque un producto puede estar en varias listas)
 const pendientes = new Map();
-const { equivalente, precioValido, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda, dia } = Canasta;
+const { equivalente, precioValido, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda, dia, gtin } = Canasta;
 // Oferta y precio anterior que reporta cada tienda; solo valen para esa tienda
 const oferta = x => ({ promo: x.promo || null, antes: x.antes > x.precio ? x.antes : null });
 
@@ -242,7 +242,11 @@ const desc = it => {
 };
 const dif = it => { const v = it.t.map(x => x[1]); return it.t.length > 1 ? (Math.max(...v) - Math.min(...v)) / Math.min(...v) : -1; };
 
+// Un texto de solo cifras con dígito de control válido es un código de barras
+const codigoDe = q => (/^\d{8,14}$/.test(q.trim()) ? gtin(q) : "");
 function filtrar() {
+  const cod = codigoDe($("q").value);
+  if (cod) return D.items.filter(it => it.b?.includes(cod));
   const ts = norm($("q").value).split(/\s+/).filter(Boolean), c = $("comp").checked, o = $("ord").value;
   const r = D.items.filter(it => ts.every(t => it.s.includes(t)) && (!c || it.t.length > 1));
   if (o === "pu") r.sort((a, b) => puDe(a) - puDe(b));
@@ -300,21 +304,22 @@ function pintarVivo() {
   // Solo los resultados que contienen al menos 2 palabras de la búsqueda, salvo que la persona pida ver todos
   const o = $("ordv").value, r = RV.filter(x => verTodos || x.coincide), ocultos = RV.length - RV.filter(x => x.coincide).length;
   $("ocultos").hidden = !ocultos;
-  $("ocultostxt").textContent = verTodos ? `Se muestran también ${ocultos} resultado(s) que no coinciden con 2 palabras de tu búsqueda. `
-    : `Se ocultaron ${ocultos} resultado(s) de otros productos (no coinciden con 2 palabras de tu búsqueda). `;
+  const motivo = codigoRV ? "no son el mismo producto ni uno equivalente" : "no coinciden con 2 palabras de tu búsqueda";
+  $("ocultostxt").textContent = verTodos ? `Se muestran también ${ocultos} resultado(s) que ${motivo}. ` : `Se ocultaron ${ocultos} resultado(s) de otros productos (${motivo}). `;
   $("vertodos").textContent = verTodos ? "Ocultar los que no coinciden" : "Mostrar todos";
-  r.sort((a, b) => o === "pu" ? puDe(a) - puDe(b) : a.precio - b.precio);
+  r.sort((a, b) => (b.porCodigo ? 1 : 0) - (a.porCodigo ? 1 : 0) || (o === "pu" ? puDe(a) - puDe(b) : a.precio - b.precio));
+  const etq = x => x.porCodigo ? `<span class="tag">${TAG.ean}</span>` : codigoRV && x.coincide ? `<span class="tag">${TAG.nombre}</span>` : "";
   const min = r.length ? Math.min(...r.map(x => x.precio)) : 0;
   $("tv").innerHTML = r.length
     ? `<thead><tr><th>Producto</th><th>Tienda</th><th>Precio</th><th>Por unidad</th><th>Fav.</th></tr></thead><tbody>` + r.map(x => `<tr>
-        <td>${esc(x.nombre)}<small>${x.marca ? `<span class="marca">${esc(x.marca)}</span>` : "Marca no indicada"}${tam(x) ? " · " + tam(x) : ""}</small></td>
+        <td>${esc(x.nombre)}<small>${x.marca ? `<span class="marca">${esc(x.marca)}</span>` : "Marca no indicada"}${tam(x) ? " · " + tam(x) : ""}${etq(x)}</small></td>
         <td><span class="store">${esc(x.tienda)}</span></td>
         <td class="${x.precio === min && r.length > 1 ? "best" : ""}">${(x.precio === min && r.length > 1 ? barato : h => h)(`<a href="${esc(x.url)}" target="_blank" rel="noopener">${fmt(x.precio)}</a>`)}${notaOferta({ p: x.precio, ...oferta(x) })}</td>
         <td>${x.pu > 0 ? `${fpu(x.pu)}<small>por ${x.pl}</small>` : "—"}</td>
         <td>${estrella(`data-id="${esc(x.id)}"`, !!favoritoVivo(x))}</td></tr>`).join("") + "</tbody>"
     : "";
   // Celular: un renglón por resultado con su tienda, precio, oferta y ☆
-  $("mvivo").innerHTML = r.map(x => `<article class="mitem"><div class="mfila"><span class="mnom">${esc(x.nombre)}<small>${x.marca ? `<span class="marca">${esc(x.marca)}</span>` : "Marca no indicada"}${tam(x) ? " · " + tam(x) : ""}</small></span>` +
+  $("mvivo").innerHTML = r.map(x => `<article class="mitem"><div class="mfila"><span class="mnom">${esc(x.nombre)}<small>${x.marca ? `<span class="marca">${esc(x.marca)}</span>` : "Marca no indicada"}${tam(x) ? " · " + tam(x) : ""}${etq(x)}</small></span>` +
     estrella(`data-id="${esc(x.id)}"`, !!favoritoVivo(x)) +
     `<span class="mprecios">${chip(x.tienda, x.precio, x.precio === min && r.length > 1, leerPromo(x.promo) ? "<i>oferta</i>" : "", x.url)}</span>` +
     `<span class="mpu">${x.pu > 0 ? `<small>${fpu(x.pu)} por ${x.pl}</small>` : ""}${notaOferta({ p: x.precio, ...oferta(x) })}</span></div></article>`).join("");
@@ -326,18 +331,26 @@ async function vivo(q) {
   RV = [];
   $("estv").textContent = `Buscando “${q}” en las tiendas…`; $("tv").innerHTML = "";
   try {
-    const r = await fetch(`${window.API_VIVO}?q=${encodeURIComponent(q)}`, { signal: ctl.signal });
+    // Un código de barras se busca por código; las demás tiendas, con el nombre que encuentre
+    const cod = codigoDe(q);
+    const r = await fetch(`${window.API_VIVO}?${cod ? "ean" : "q"}=${encodeURIComponent(q)}`, { signal: ctl.signal });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || "Error " + r.status);
-    RV = d.resultados.map(x => ({ ...x, pid: String(x.id ?? ""), id: idVivo(x), coincide: coincideBusqueda(q, `${x.nombre} ${x.marca || ""}`) }));
+    const ref = cod && d.resultados.find(x => x.porCodigo);
+    // Con código: se muestran el mismo producto (mismo código) y sus equivalentes por marca, nombre y tamaño
+    RV = d.resultados.map(x => ({ ...x, pid: String(x.id ?? ""), id: idVivo(x),
+      coincide: cod ? !!x.porCodigo || (!!ref && equivalente(ref, x)) : coincideBusqueda(q, `${x.nombre} ${x.marca || ""}`) }));
     verTodos = false;
     fechaRV = d.generado;
-    busquedaRV = q;
+    busquedaRV = ref ? ref.nombre : q;
+    codigoRV = cod;
     Object.keys(d.tiendas).forEach(s => tiendasConocidas.add(s));
     const est = Object.entries(d.tiendas).map(([t, v]) => v.ok ? `${t}: ${RV.filter(x => x.tienda === t && x.coincide).length} resultado(s)` : `${t}: no respondió`).join(" · ");
     const n = RV.filter(x => x.coincide).length;
-    $("estv").textContent = n ? `${est}. Consultado ${new Date(d.generado).toLocaleTimeString("es-SV", { hour: "2-digit", minute: "2-digit" })}`.replace(/\.?$/, ".")
-      : `Sin resultados que coincidan con “${q}”. ${est}. Prueba con otras palabras${RV.length ? " o usa «Mostrar todos»" : ""}.`;
+    const hora = `Consultado ${new Date(d.generado).toLocaleTimeString("es-SV", { hour: "2-digit", minute: "2-digit" })}`.replace(/\.?$/, ".");
+    $("estv").textContent = cod && !ref ? `No encontramos el código ${q} en Walmart, Despensa de Don Juan ni Maxi Despensa (las tiendas que publican códigos de barras). Busca el producto por su nombre.`
+      : cod ? `Código ${q}: ${ref.nombre}. ${est}. ${hora}`
+      : n ? `${est}. ${hora}` : `Sin resultados que coincidan con “${q}”. ${est}. Prueba con otras palabras${RV.length ? " o usa «Mostrar todos»" : ""}.`;
     pintarVivo();
   } catch (e) { if (e.name !== "AbortError") $("estv").textContent = "No se pudo consultar: " + e.message; }
 }
@@ -535,6 +548,56 @@ $("tabla").onclick = e => {
   if (b) abrirListas({ tipo: "item", x: D.items[+b.dataset.i] });
 };
 $("mcat").onclick = e => $("tabla").onclick(e);
+// ---------- Código de barras: escanear con la cámara (BarcodeDetector, sin librerías) o escribirlo ----------
+let scanStream = null, scanTimer = null;
+function pararEscaner() {
+  clearTimeout(scanTimer); scanStream?.getTracks().forEach(t => t.stop()); scanStream = null;
+  if ($("scanvideo").srcObject) $("scanvideo").srcObject = null;
+}
+function cerrarEscaner() { pararEscaner(); if ($("dscan").open) $("dscan").close(); }
+const sinCamara = txt => { pararEscaner(); $("scancaja").hidden = true; $("scanest").textContent = txt; $("scancod").focus(); };
+async function abrirEscaner() {
+  $("scancod").value = ""; $("scancaja").hidden = false;
+  $("dscan").showModal();
+  if (!("BarcodeDetector" in window) || !navigator.mediaDevices?.getUserMedia)
+    return sinCamara("Este navegador no puede leer códigos con la cámara. Escribe los números que aparecen debajo de las barras.");
+  try {
+    const formatos = (await BarcodeDetector.getSupportedFormats()).filter(f => ["ean_13", "ean_8", "upc_a"].includes(f));
+    if (!formatos.length) return sinCamara("Este navegador no lee códigos de productos. Escribe los números que aparecen debajo de las barras.");
+    const lector = new BarcodeDetector({ formats: formatos });
+    $("scanest").textContent = "Abriendo la cámara…";
+    scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+    if (!$("dscan").open) return pararEscaner();
+    const v = $("scanvideo"); v.srcObject = scanStream; await v.play();
+    $("scanest").textContent = "Apunta la cámara al código de barras del producto.";
+    const leer = async () => {
+      if (!scanStream) return;
+      try {
+        const c = (await lector.detect(v)).map(x => x.rawValue.replace(/\D/g, "")).find(x => gtin(x));
+        if (c) { cerrarEscaner(); buscarCodigo(c); return; }
+      } catch {}
+      scanTimer = setTimeout(leer, 250);
+    };
+    leer();
+  } catch (e) {
+    sinCamara(e.name === "NotAllowedError" ? "No hay permiso para usar la cámara. Puedes escribir el código." : "No se pudo abrir la cámara. Puedes escribir el código.");
+  }
+}
+// Muestra el producto del catálogo con ese código y lo busca por código en las tiendas
+function buscarCodigo(c) {
+  if ($("p1").hidden) pestana(1);
+  $("q").value = c; limite = 60; render(); vivo(c);
+}
+$("escanear").onclick = abrirEscaner;
+$("dscan").onclose = pararEscaner;
+$("scancerrar").onclick = cerrarEscaner;
+$("scanform").onsubmit = e => {
+  e.preventDefault();
+  const c = $("scancod").value.replace(/\D/g, "");
+  if (!gtin(c)) { $("scanest").textContent = "Ese código no es válido: revisa los números (8, 12, 13 o 14 cifras)."; $("scancod").focus(); return; }
+  cerrarEscaner(); buscarCodigo(c);
+};
+
 // Enter o «Buscar en las tiendas»: consulta cada tienda con lo que se escribió
 $("fbuscar").onsubmit = e => { e.preventDefault(); const q = $("q").value.trim(); if (q.length >= 2) vivo(q); else $("q").focus(); };
 $("ordv").onchange = pintarVivo;
@@ -617,6 +680,7 @@ const GUIA = [
   { t: "Así funciona Canasta SV", tab: 1, x: "Compara los precios de los supermercados de El Salvador. En unos pasos verás cómo buscar un producto, guardarlo en una lista y comparar tu compra. La guía no cambia tus listas." },
   { t: "Busca un producto", tab: 1, q: true, escribir: true, el: () => $("q"), x: "Escribe un producto o una marca. Los resultados del catálogo aparecen mientras escribes." },
   { t: "Consulta las tiendas en el momento", tab: 1, q: true, el: () => $("fbuscar").querySelector("button"), x: "Si no lo encuentras o quieres el precio de hoy, toca «Buscar en las tiendas»: se consulta cada supermercado al instante." },
+  { t: "Escanea un código de barras", tab: 1, q: true, el: () => $("escanear"), x: "Con la cámara lees el código de un producto (o escribes sus números) y ves sus precios en cada tienda, con sus equivalentes." },
   { t: "Compara los precios", tab: 1, q: true, el: () => primero("#tabla tbody tr", "#mcat .mitem"), x: "Cada producto muestra su precio en cada tienda. El más barato lleva ✓ y fondo verde; también ves el precio por libra, litro o unidad." },
   { t: "Guárdalo en una lista", tab: 1, q: true, el: () => primero("#tabla tbody .star", "#mcat .star"), x: "Toca la ☆ del producto para guardarlo como favorito." },
   { t: "Elige la lista", tab: 1, q: true, dlg: true, el: () => $("dlopts"), x: "Marca una o varias listas. Cada lista guarda su propia cantidad y tus elecciones." },

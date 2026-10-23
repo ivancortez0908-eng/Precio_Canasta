@@ -1,3 +1,23 @@
+# Bitácora — 23 de octubre de 2026 (códigos de barras)
+
+## Evaluación
+- El emparejador ya usaba los códigos (2,164 grupos unidos por código), pero `data/productos.json` no los guardaba y el Worker no los devolvía.
+- Publican código: Walmart y Despensa de Don Juan en el catálogo (todos sus productos) y Maxi Despensa en vivo (VTEX). Super Selectos, Superea y PriceSmart no.
+
+## Cambios
+- `scraper/emparejar.mjs`: cada producto guarda en `b` sus códigos válidos (14 cifras). Probado sin red sobre una copia de `data/catalogo/`: 2,782 de 5,312 productos con código, mismos grupos, +62 KB. `data/productos.json` no se sube: lo regenera el workflow en su próxima ejecución; mientras tanto la búsqueda por código usa el Worker.
+- `worker/worker.js` (versión `2026-10-23-a`): `?ean=` valida el código, busca con `fq=alternateIds_Ean` en Walmart, Despensa de Don Juan y Maxi (con 13 cifras si llega un UPC de 12), marca esos resultados con `porCodigo` y, con el nombre encontrado, consulta las tiendas que no lo tenían. Las tiendas VTEX devuelven `ean` también en la búsqueda normal.
+- `comparador.js`: `gtin`, la misma regla del emparejador.
+- `app.js` e `index.html`: botón de código de barras junto al buscador y cuadro «Escanear código de barras» con la cámara (`BarcodeDetector`, sin librerías; formatos EAN-13, EAN-8 y UPC-A); sin lector o sin permiso, se explica y se escribe el código. Escribir un código válido en el buscador también funciona: el catálogo muestra el producto con ese código y «Buscar» consulta las tiendas por código. Los resultados con el mismo código van primero con su etiqueta; los equivalentes por marca, nombre y tamaño llevan la suya; lo demás queda en «Mostrar todos».
+- Guía de uso: paso «Escanea un código de barras».
+
+## Validación
+- 39 pruebas aprobadas (nuevas: `gtin`; Worker por código con segunda búsqueda por nombre y error 400; catálogo y búsqueda por código en la página). `node tests/interfaz.cjs` aprobado: código escrito a mano (inválido y válido) y lectura con cámara simulada que apaga la cámara al leer.
+
+## Límites
+- No se pudo probar con el Worker real ni con una cámara real desde este entorno. `fq=alternateIds_Ean` es el filtro documentado de la búsqueda VTEX.
+- iPhone: Safari no trae `BarcodeDetector`; queda escribir el código.
+
 # Bitácora — 23 de octubre de 2026 (menú «⋯» en Mi lista y filtros en una fila)
 
 ## Cambios

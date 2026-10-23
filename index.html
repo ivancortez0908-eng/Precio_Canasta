@@ -126,6 +126,11 @@ footer{padding:0 16px 40px;color:var(--mute);font-size:.85rem}
 .menu-lista .grupo{display:grid}.menu-lista .grupo:not([hidden]) ~ .grupo:not([hidden]){margin-top:4px;padding-top:4px;border-top:1px solid var(--line)}
 .menu-lista button{padding:10px 12px;border-radius:6px;background:none;font-weight:500;text-align:left}.menu-lista button:hover,.menu-lista button:focus{background:var(--bg)}
 .filtros{display:flex;align-items:center;gap:8px;min-width:0}
+/* código de barras: botón junto al buscador y vista de la cámara */
+.scanbtn{display:inline-grid;place-items:center;padding:8px 10px}.scanbtn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.scancaja{position:relative;margin:10px 0;border-radius:8px;overflow:hidden;background:var(--ink);aspect-ratio:4/3}
+.scancaja video{display:block;width:100%;height:100%;object-fit:cover}
+.scanlinea{position:absolute;left:10%;right:10%;top:50%;height:2px;background:var(--r);box-shadow:0 0 6px var(--r)}
 /* listas compactas: solo en celular (Favoritos, Catálogo y En vivo) */
 .mfav,.mlista{display:none}
 .mfila{display:grid;grid-template-columns:1fr auto;align-items:start;gap:4px 8px;padding:10px 12px}
@@ -163,7 +168,7 @@ a.chip{text-decoration:none}
   .tabs button{position:relative}.tabs button .badge{position:absolute;top:5px;left:calc(50% + 6px);font-size:.7rem}
   body{padding-bottom:calc(60px + env(safe-area-inset-bottom))}
   .subbarra h2{min-width:100%}.subbarra select,.subbarra label.chk{min-height:44px}.subbarra select{max-width:100%}
-  #fbuscar{flex-wrap:nowrap}#fbuscar input{min-width:0}
+  #fbuscar{flex-wrap:nowrap}#fbuscar input{min-width:0}.scanbtn{flex:none;width:44px;padding:0}
   /* zonas táctiles de 44 px en celular */
   main button,main select,main input[type=search],.qty,dialog button,.ayuda button{min-height:44px}
   .mfila .star{min-width:44px;min-height:44px}details summary{padding:12px 0;line-height:20px}
@@ -200,6 +205,7 @@ a.chip{text-decoration:none}
   <div id="p1" role="tabpanel" aria-labelledby="tab1">
     <form class="controls" id="fbuscar">
       <input type="search" id="q" placeholder="Buscar por producto o marca (frijol, Omoa, leche…)" aria-label="Buscar producto" maxlength="60">
+      <button type="button" id="escanear" class="scanbtn" aria-label="Escanear código de barras"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7V4h3M18 4h3v3M21 17v3h-3M6 20H3v-3"/><path d="M7 8v8M10 8v8M13 8v8M16 8v8"/></svg></button>
       <button type="submit" class="pri" aria-label="Buscar en las tiendas">Buscar<span class="larga"> en las tiendas</span></button>
     </form>
     <p class="msg" id="fecha">Cargando el catálogo…</p>
@@ -282,6 +288,16 @@ a.chip{text-decoration:none}
     <button type="submit" class="pri">Crear y agregar</button>
   </form>
   <div class="acc"><button id="dlcerrar">Listo</button></div>
+</dialog>
+<dialog id="dscan" aria-labelledby="scantit">
+  <h2 id="scantit">Escanear código de barras</h2>
+  <div class="scancaja" id="scancaja"><video id="scanvideo" playsinline muted></video><span class="scanlinea" aria-hidden="true"></span></div>
+  <p class="msg" id="scanest" aria-live="polite"></p>
+  <form class="dlnueva" id="scanform">
+    <input id="scancod" inputmode="numeric" autocomplete="off" maxlength="14" placeholder="O escribe el código (13 cifras)" aria-label="Código de barras">
+    <button type="submit">Buscar código</button>
+  </form>
+  <div class="acc"><button id="scancerrar">Cerrar</button></div>
 </dialog>
 <dialog id="guia" class="guia" aria-labelledby="guiatit" aria-describedby="guiatxt">
   <div class="guia-luz" id="guialuz"></div>

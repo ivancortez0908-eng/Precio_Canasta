@@ -10,6 +10,9 @@ const leche = { nombre: 'Leche entera Salud 1 L', marca: 'Salud', q: 1000, u: 'm
 const fila = (tienda, id, precio, extra = {}) => ({ ...leche, tienda, id, precio, url: 'https://tienda.test/' + id, ...extra });
 const respuesta = { generado: '2026-10-17T12:00:00Z', tiendas: { Walmart: { ok: true, n: 1 }, 'Super Selectos': { ok: true, n: 1 }, 'Despensa de Don Juan': { ok: false }, 'Maxi Despensa': { ok: true, n: 0 }, Superea: { ok: true, n: 0 }, PriceSmart: { ok: true, n: 0 } },
   resultados: [fila('Walmart', '1', 2, { promo: '2 x $3.80', antes: 2.10 }), fila('Super Selectos', '2', 1.75)] };
+// Búsqueda por código de barras: el mismo producto en Walmart (por código) y su equivalente en Super Selectos (por nombre)
+const respuestaCodigo = { generado: '2026-10-17T12:00:00Z', ean: '07441029556735', nombre: 'Leche entera Salud 1 L', tiendas: { Walmart: { ok: true, n: 1 }, 'Super Selectos': { ok: true, n: 1 } },
+  resultados: [fila('Walmart', '1', 2, { porCodigo: true, ean: '07441029556735' }), fila('Super Selectos', '2', 1.75)] };
 const server = http.createServer((req, res) => {
   const archivos = { '/': 'index.html', '/app.js': 'app.js', '/comparador.js': 'comparador.js', '/exportar.js': 'exportar.js' };
   if (req.url === '/config.js') { res.setHeader('Content-Type', 'text/javascript'); res.end('window.API_VIVO="https://worker.test";'); return; }
@@ -28,7 +31,7 @@ const server = http.createServer((req, res) => {
     const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
     const errores = [];
     page.on('pageerror', e => errores.push(e.message));
-    await page.route('https://worker.test/**', route => route.fulfill({ json: respuesta }));
+    await page.route('https://worker.test/**', route => route.fulfill({ json: route.request().url().includes('ean=') ? respuestaCodigo : respuesta }));
     const url = 'http://127.0.0.1:' + server.address().port;
     // La impresión real abriría un cuadro del sistema; se registra la llamada
     await page.addInitScript(() => { window.print = () => { window.impreso = (window.impreso || 0) + 1; }; });
@@ -233,6 +236,34 @@ const server = http.createServer((req, res) => {
     // Celular: campos de 16 px para que Safari no haga zoom al tocarlos
     assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('main input, main select')].filter(e => e.getBoundingClientRect().height)
       .filter(e => getComputedStyle(e).fontSize !== '16px').map(e => e.id || e.className || e.type)), []);
+    // Código de barras escrito a mano (este Chromium no trae lector de códigos: lo explica y deja escribirlo)
+    await page.getByRole('button', { name: 'Escanear código de barras' }).click();
+    const escaner = page.getByRole('dialog', { name: 'Escanear código de barras' });
+    assert.match(await escaner.locator('#scanest').innerText(), /no puede leer códigos con la cámara/);
+    await escaner.getByRole('textbox', { name: 'Código de barras' }).fill('7441029556736');
+    await escaner.getByRole('button', { name: 'Buscar código' }).click();
+    assert.match(await escaner.locator('#scanest').innerText(), /no es válido/);
+    await escaner.getByRole('textbox', { name: 'Código de barras' }).fill('7441029556735');
+    await escaner.getByRole('button', { name: 'Buscar código' }).click();
+    await page.locator('#mvivo .mitem').first().waitFor();
+    assert.equal(await escaner.isVisible(), false);
+    assert.equal(await page.locator('#q').inputValue(), '7441029556735');
+    assert.match(await page.locator('#estv').innerText(), /^Código 7441029556735: Leche entera Salud 1 L\./);
+    assert.match(await page.locator('#mvivo').innerText(), /Mismo código de barras[^]*Walmart\s*\$2\.00[^]*Coincide por nombre y tamaño[^]*Super Selectos\s*\$1\.75/);
+    if (process.env.CANASTA_CAPTURAS) await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'codigo-movil.png') });
+    // Con cámara (simulada, como en Chrome de Android): lee el código, cierra la cámara y busca
+    const cam = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    cam.on('pageerror', e => errores.push(e.message));
+    await cam.route('https://worker.test/**', route => route.fulfill({ json: route.request().url().includes('ean=') ? respuestaCodigo : respuesta }));
+    await cam.addInitScript(() => {
+      window.BarcodeDetector = class { static async getSupportedFormats() { return ['ean_13', 'qr_code']; } async detect() { return (window.lecturas = (window.lecturas || 0) + 1) > 2 ? [{ rawValue: '7441029556735' }] : []; } };
+      navigator.mediaDevices.getUserMedia = async () => { const c = document.createElement('canvas'); c.getContext('2d').fillRect(0, 0, 10, 10); window.camara = c.captureStream(); return window.camara; };
+    });
+    await cam.goto(url);
+    await cam.getByRole('button', { name: 'Escanear código de barras' }).click();
+    await cam.locator('#mvivo .mitem').first().waitFor();
+    assert.deepEqual(await cam.evaluate(() => [$('dscan').open, $('q').value, window.camara.getTracks().every(t => t.readyState === 'ended')]), [false, '7441029556735', true]);
+    await cam.close();
     assert.deepEqual(errores, []);
     console.log('Interfaz verificada: búsqueda → guardar en dos listas → cantidades → Excel y PDF → móvil → persistencia → quitar → cambiar de lista.');
   } finally {
