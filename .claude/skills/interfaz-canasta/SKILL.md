@@ -46,7 +46,8 @@ main (todo el ancho, 16 px de margen lateral)
  ├─ p.msg.intro   una línea que explica el sitio
  ├─ #p1 Buscar (página principal):
  │    form#fbuscar.controls (#q · button#escanear.scanbtn (código de barras) · «Buscar en las tiendas» .pri) → #fecha («Catálogo actualizado al 22 de octubre.», nada más)
- │    → section#secvivo, tras buscar en las tiendas: .subbarra (h2 «En las tiendas ahora» · #ordv) → #estv → #ocultos → .wrap>table#tv / #mvivo → aviso
+ │    → section#secvivo, tras buscar en las tiendas: .subbarra (.titulo: h2 «En las tiendas ahora» + button#infov.infobtn «!» · #ordv) → #estvb (solo buscando, error o sin resultados)
+ │         → #infopanel plegable (#estv con tiendas, resultados y hora · #ocultos con «Mostrar todos» · aviso) → .wrap>table#tv / #mvivo
  │    → section#seccat: .subbarra (h2#cattit · .filtros: casilla #comp «2 o más tiendas» / «2+ tiendas» en celular · #ord, por defecto «Mayor diferencia») → #count → .wrap>table#tabla / #mcat → «Mostrar más»
  └─ #p2 Mi lista:  .controls.listas (#lsel · «Actualizar precios» .pri · .menu «⋯») → #favmsg → #favresumen → #favest → .wrap.solo-escritorio>table#tfav
                     → #mfav (lista compacta, solo celular) → section.cart#favres
@@ -62,7 +63,7 @@ section#imprimir      hoja para PDF; solo visible al imprimir
 - Pestañas: ícono SVG en línea (`stroke: currentColor`, `aria-hidden`) + una o dos palabras; nada de emojis. Una pestaña nueva va **al final** de `nav.tabs`, con su panel `#pN` y `hidden`. Actualiza `pestana()`, las flechas del teclado (`onkeydown` de `.tabs`) y deja `role="tab"`/`aria-selected`.
 - No agregues menús desplegables a la barra superior: tres pestañas como máximo; lo demás va dentro del panel.
 - Títulos de sección dentro de un panel: `.subbarra` con `h2` a la izquierda y sus filtros a la derecha, compactos: `label.chk` y `select` como etiquetas redondas con borde, de ancho automático (en celular, en una fila bajo el título, 44 px de alto y 16 px de letra). Opciones de orden en dos o tres palabras.
-- La página principal lleva poco texto: sin sugerencias ni tarjetas extra; lo que hay que explicar va en la guía de uso.
+- La página principal lleva poco texto: sin sugerencias ni tarjetas extra; lo que hay que explicar va en la guía de uso. Si se buscó en las tiendas y el catálogo no tiene resultados, la sección del catálogo se oculta.
 
 - Los `id` que usa `app.js` no se renombran sin cambiar también `app.js` y las pruebas.
 
@@ -100,6 +101,7 @@ Siempre de arriba abajo: **controles → estado → tabla → resumen**.
 | semáforo | `.totals > .tot.v|.a|.r` con `.dot`, `.tn`, `b`, `.tl` y la `.leyenda` |
 | menú de acciones | `.menu > button.menubtn#…[aria-haspopup=menu][aria-expanded]` (tres puntos en SVG, `aria-label`) + `div.menu-lista[role=menu]` con `.grupo[role=group]` y `button[role=menuitem]`; abre hacia abajo alineado a la derecha; se cierra al elegir, con Esc (vuelve el foco al botón), tocando fuera o con Tab; flechas, Inicio y Fin para moverse. Grupos vacíos se ocultan (`hidden`) |
 | código de barras | `button.scanbtn` (ícono de barras, `aria-label`) abre `dialog#dscan`; la cámara se apaga al leer, al cerrar o al salir. Sin lector (`BarcodeDetector`) o sin permiso, se explica y se ofrece escribir el código. En los resultados, `.tag` «Mismo código de barras» o «Coincide por nombre y tamaño» |
+| detalles plegables | `button.infobtn` «!» (redondo, borde verde; abierto, relleno) con `aria-expanded`/`aria-controls` y `aria-label` «Detalles de la búsqueda» → `div.infopanel[hidden]`. A la vista quedan solo los resultados; el detalle técnico (tiendas, conteos, hora, ocultos, avisos) va en el panel |
 | cuadro emergente | `<dialog>` con `h2`, contenido y botón «Listo» al final; `showModal()` |
 | texto plegable | `details > summary` |
 | guía de uso | `GUIA` en `app.js`: cada paso con título `t`, texto `x`, elemento `el()` y estado (`tab`, `q` búsqueda de ejemplo, `dlg` cuadro de listas, `nombre`). `dialog#guia` con `.guia-luz` (hueco con sombra `--velo` sobre el elemento) y `.guia-tarjeta` con `.guia-flecha` que lo señala; sin elemento visible, al centro. «Salir de la guía · Anterior · Siguiente/Terminar»; Esc sale. La guía solo muestra: no marca casillas ni crea listas, y al salir deja la búsqueda, la pestaña y el desplazamiento como estaban. Si agregas una parte importante a la página, agrega su paso |

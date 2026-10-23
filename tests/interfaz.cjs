@@ -77,7 +77,7 @@ const server = http.createServer((req, res) => {
     await page.getByRole('searchbox', { name: 'Buscar producto' }).fill('arroz');
     assert.match(await page.locator('#tabla').innerText(), /Arroz Blanco Precisa/);
     assert.equal(await page.locator('#ord').inputValue(), 'dif');
-    assert.equal(await page.getAttribute('#estv', 'aria-live'), 'polite');
+    assert.equal(await page.getAttribute('#estvb', 'aria-live'), 'polite');
     // Solo modo claro: aunque el dispositivo esté en modo oscuro, el fondo y las tarjetas siguen claros
     await page.emulateMedia({ colorScheme: 'dark' });
     assert.deepEqual(await page.evaluate(() => [getComputedStyle(document.body).backgroundColor, getComputedStyle(document.querySelector('.controls')).backgroundColor]),
@@ -248,7 +248,16 @@ const server = http.createServer((req, res) => {
     await page.locator('#mvivo .mitem').first().waitFor();
     assert.equal(await escaner.isVisible(), false);
     assert.equal(await page.locator('#q').inputValue(), '7441029556735');
+    // Solo se ven los productos con sus precios; el detalle de la búsqueda queda detrás del botón «!»
+    assert.deepEqual([await page.locator('#infopanel').isVisible(), await page.locator('#estvb').isVisible(), await page.locator('#seccat').isVisible()], [false, false, false]);
+    await page.getByRole('button', { name: 'Detalles de la búsqueda' }).click();
+    assert.equal(await page.getByRole('button', { name: 'Detalles de la búsqueda' }).getAttribute('aria-expanded'), 'true');
     assert.match(await page.locator('#estv').innerText(), /^Código 7441029556735: Leche entera Salud 1 L\./);
+    const info = await page.getByRole('button', { name: 'Detalles de la búsqueda' }).boundingBox();
+    assert.ok(info.height >= 44 && info.x + info.width <= 390, JSON.stringify(info));
+    if (process.env.CANASTA_CAPTURAS) await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'codigo-detalle.png') });
+    await page.getByRole('button', { name: 'Detalles de la búsqueda' }).click();
+    assert.equal(await page.locator('#infopanel').isVisible(), false);
     assert.match(await page.locator('#mvivo').innerText(), /Mismo código de barras[^]*Walmart\s*\$2\.00[^]*Coincide por nombre y tamaño[^]*Super Selectos\s*\$1\.75/);
     if (process.env.CANASTA_CAPTURAS) await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'codigo-movil.png') });
     // Con cámara (simulada, como en Chrome de Android): lee el código, cierra la cámara y busca

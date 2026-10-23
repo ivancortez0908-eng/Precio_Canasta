@@ -262,6 +262,8 @@ function render() {
   // Con la búsqueda vacía se ven las mayores diferencias del catálogo
   $("cattit").textContent = q ? "En el catálogo guardado" : $("ord").value === "dif" ? "Mayores diferencias entre tiendas" : "Todo el catálogo";
   $("count").textContent = r.length ? `${r.length} producto(s)` : "";
+  // Si ya se buscó en las tiendas y el catálogo no tiene nada, la sección vacía no se muestra
+  $("seccat").hidden = !r.length && !$("secvivo").hidden;
   let h = `<thead><tr><th>Producto</th>${S.map(s => `<th>${esc(s)}</th>`).join("")}<th>Por unidad</th><th>Fav.</th></tr></thead><tbody>`;
   const vacio = `No hay resultados en el catálogo guardado.${q.length > 1 ? " Usa «Buscar en las tiendas» para consultarlo en el momento." : ""}`;
   if (!r.length) h += `<tr><td colspan="${S.length + 3}">${vacio}</td></tr>`;
@@ -324,12 +326,18 @@ function pintarVivo() {
     `<span class="mprecios">${chip(x.tienda, x.precio, x.precio === min && r.length > 1, leerPromo(x.promo) ? "<i>oferta</i>" : "", x.url)}</span>` +
     `<span class="mpu">${x.pu > 0 ? `<small>${fpu(x.pu)} por ${x.pl}</small>` : ""}${notaOferta({ p: x.precio, ...oferta(x) })}</span></div></article>`).join("");
 }
+// Estado de la búsqueda: el detalle va en el panel «!»; a la vista solo lo que pide hacer algo (buscando, error, sin resultados)
+function estadoVivo(detalle, breve = "") {
+  $("estv").textContent = detalle;
+  $("estvb").textContent = breve; $("estvb").hidden = !breve;
+}
+const panelVivo = abrir => { $("infopanel").hidden = !abrir; $("infov").setAttribute("aria-expanded", abrir); };
 async function vivo(q) {
-  $("secvivo").hidden = false;
-  if (!window.API_VIVO) { $("estv").textContent = "La búsqueda en vivo aún no está configurada. Mira el README, sección “Búsqueda en vivo”."; return; }
+  $("secvivo").hidden = false; render();
+  if (!window.API_VIVO) { const t = "La búsqueda en vivo aún no está configurada. Mira el README, sección “Búsqueda en vivo”."; estadoVivo(t, t); return; }
   ctl?.abort(); ctl = new AbortController();
   RV = [];
-  $("estv").textContent = `Buscando “${q}” en las tiendas…`; $("tv").innerHTML = "";
+  estadoVivo(`Buscando “${q}” en las tiendas…`, `Buscando “${q}” en las tiendas…`); $("tv").innerHTML = ""; $("mvivo").innerHTML = "";
   try {
     // Un código de barras se busca por código; las demás tiendas, con el nombre que encuentre
     const cod = codigoDe(q);
@@ -348,11 +356,14 @@ async function vivo(q) {
     const est = Object.entries(d.tiendas).map(([t, v]) => v.ok ? `${t}: ${RV.filter(x => x.tienda === t && x.coincide).length} resultado(s)` : `${t}: no respondió`).join(" · ");
     const n = RV.filter(x => x.coincide).length;
     const hora = `Consultado ${new Date(d.generado).toLocaleTimeString("es-SV", { hour: "2-digit", minute: "2-digit" })}`.replace(/\.?$/, ".");
-    $("estv").textContent = cod && !ref ? `No encontramos el código ${q} en Walmart, Despensa de Don Juan ni Maxi Despensa (las tiendas que publican códigos de barras). Busca el producto por su nombre.`
-      : cod ? `Código ${q}: ${ref.nombre}. ${est}. ${hora}`
-      : n ? `${est}. ${hora}` : `Sin resultados que coincidan con “${q}”. ${est}. Prueba con otras palabras${RV.length ? " o usa «Mostrar todos»" : ""}.`;
+    if (cod && !ref) { const t = `No encontramos el código ${q} en Walmart, Despensa de Don Juan ni Maxi Despensa (las tiendas que publican códigos de barras). Busca el producto por su nombre.`; estadoVivo(`${t} ${est}. ${hora}`, t); }
+    else if (cod) estadoVivo(`Código ${q}: ${ref.nombre}. ${est}. ${hora}`);
+    else if (n) estadoVivo(`${est}. ${hora}`);
+    else {
+      estadoVivo(`Sin resultados que coincidan con “${q}”. ${est}. ${hora}`, `Sin resultados que coincidan con “${q}”. Prueba con otras palabras${RV.length ? " o abre «!» y usa «Mostrar todos»" : ""}.`);
+    }
     pintarVivo();
-  } catch (e) { if (e.name !== "AbortError") $("estv").textContent = "No se pudo consultar: " + e.message; }
+  } catch (e) { if (e.name !== "AbortError") { const t = "No se pudo consultar: " + e.message + ". Puedes reintentar."; estadoVivo(t, t); } }
 }
 
 // ---------- Cuadro «Guardar en una lista» (se abre con la ☆) ----------
@@ -603,6 +614,7 @@ $("fbuscar").onsubmit = e => { e.preventDefault(); const q = $("q").value.trim()
 $("ordv").onchange = pintarVivo;
 $("mvivo").onclick = e => $("tv").onclick(e);
 $("vertodos").onclick = () => { verTodos = !verTodos; pintarVivo(); };
+$("infov").onclick = () => panelVivo($("infopanel").hidden);
 $("tv").onclick = e => {
   const b = e.target.closest(".star"), x = b && RV.find(r => r.id === b.dataset.id);
   if (x) abrirListas({ tipo: "vivo", x });

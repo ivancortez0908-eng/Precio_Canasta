@@ -1,3 +1,13 @@
+# Bitácora — 23 de octubre de 2026 (resultados de las tiendas sin texto de más)
+
+## Cambios
+- «En las tiendas ahora»: el detalle de la búsqueda («Código …», resultados por tienda, hora, «Se ocultaron N… · Mostrar todos» y el aviso de verificar la presentación) pasa a un panel que se abre con el botón «!» junto al título. A la vista quedan los productos con sus precios por supermercado.
+- Solo se muestran fuera del panel los mensajes que piden hacer algo (`#estvb`, con `aria-live`): «Buscando…», un error («Puedes reintentar»), sin resultados o código no encontrado.
+- Si ya se buscó en las tiendas y el catálogo no tiene resultados, la sección del catálogo se oculta (sin «No hay resultados en el catálogo guardado…»).
+
+## Validación
+- 39 pruebas aprobadas; `node tests/interfaz.cjs` aprobado con comprobaciones nuevas (panel cerrado al buscar un código, sin mensajes ni catálogo vacío a la vista, «!» abre y cierra el detalle, botón de 44 px). Capturas revisadas a 390 px.
+
 # Bitácora — 23 de octubre de 2026 (códigos de barras)
 
 ## Evaluación
