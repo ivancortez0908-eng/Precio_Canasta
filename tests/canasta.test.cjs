@@ -478,3 +478,21 @@ test('las consultas no redibujan con un selector de «Cambiar producto» en uso,
   ui.run('alternar(p);');
   assert.match(ui.el('tfav').innerHTML, /Leche entera Salud/);
 });
+test('un producto elegido con «Cambiar producto» no se confunde con el favorito ni le pasa sus precios', async () => {
+  const datos = { supers: ['Walmart', 'Despensa'], actualizado: '2026-10-21', items: [
+    { n: 'Pan Blanco Bimbo mediano - 450 g', m: 'Bimbo', q: 450, u: 'g', t: [[0, 1.5, 'https://t.test/w-mediano'], [1, 1.5, 'https://t.test/d-mediano']] },
+    { n: 'Pan Bimbo Para Sandwich - 560 g', m: 'Bimbo', q: 560, u: 'g', t: [[0, 1.8, 'https://t.test/w-sandwich'], [1, 1.8, 'https://t.test/d-sandwich']] }] };
+  const ui = interfaz({ datos }); await terminar();
+  ui.run('alternar(favDeItem(D.items[0]));'); await terminar();
+  // en Despensa la persona elige el de sándwich desde la tabla
+  ui.run('$("tfav").onchange({target:{matches:()=>true,dataset:{fav:FAV[0].id,store:"Despensa"},value:"v:Despensa:https://t.test/d-sandwich"}})');
+  assert.equal(ui.saved()[0].t.Despensa.url, 'https://t.test/d-sandwich');
+  // el pan de sándwich no aparece como guardado, y marcarlo lo agrega sin quitar el mediano
+  assert.equal(ui.run('!!favoritoItem(D.items[1])'), false);
+  ui.run('alternar(favDeItem(D.items[1]));'); await terminar();
+  assert.deepEqual(ui.saved().map(f => f.n), ['Pan Blanco Bimbo mediano - 450 g', 'Pan Bimbo Para Sandwich - 560 g']);
+  // un catálogo nuevo solo actualiza el precio elegido; no pasa el precio del de sándwich a Walmart
+  ui.run('D.items[1].t[1][1] = 1.95; D.items[0].t[0][1] = 1.55; D.actualizado = "2026-10-25"; refrescarFavs();');
+  const mediano = ui.saved()[0];
+  assert.deepEqual([mediano.t.Walmart.p, mediano.t.Despensa.p, mediano.t.Despensa.manual], [1.55, 1.95, true]);
+});

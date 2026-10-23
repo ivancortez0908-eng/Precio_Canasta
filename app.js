@@ -52,10 +52,11 @@ const fecha = f => (f ? f.slice(8, 10) + "/" + f.slice(5, 7) : "");
 const idGrupo = it => "g:" + norm(it.n) + "|" + (it.q || "") + (it.u || "");
 const idVivo = x => x.ref || (String(x.id || "").startsWith("v:") ? x.id : "v:" + x.tienda + ":" + (x.id || x.url));
 const pidDe = x => String(x.pid ?? (String(x.id || "").startsWith("v:") ? "" : x.id || ""));
+// Un producto elegido a mano en la tabla (cambio) puede ser otra presentación: no identifica al favorito
 const favoritoVivo = (x, items = todos()) => items.find(f => f.id === idVivo(x) || Object.entries(f.t).some(([s, v]) =>
-  s === x.tienda && (v.ref === idVivo(x) || (v.url === x.url && !/[?&]q=/.test(x.url || "")))));
+  s === x.tienda && !v.cambio && (v.ref === idVivo(x) || (v.url === x.url && !/[?&]q=/.test(x.url || "")))));
 const favoritoItem = (it, items = todos()) => items.find(f => f.id === it.fid || it.t.some(e =>
-  Object.values(f.t).some(v => v.url && v.url === e[2] && !/[?&]q=/.test(v.url))));
+  Object.values(f.t).some(v => !v.cambio && v.url && v.url === e[2] && !/[?&]q=/.test(v.url))));
 function cancelar(f) { pendientes.get(f)?.abort(); pendientes.delete(f); }
 const favDeItem = it => ({ id: it.fid, n: it.n, m: it.m, q: it.q, u: it.u, pl: it.pl,
   t: Object.fromEntries(it.t.map(e => [D.supers[e[0]], { p: e[1], url: e[2], nom: e[4] || it.n, id: e[7] || "", f: D.actualizado, src: "cat" }])) });
@@ -83,8 +84,15 @@ function alternar(f, lista = ACTIVA) {
 function mezclarCatalogo(f) {
   if (!D) return;
   for (const it of D.items) {
-    const enlazado = it.fid === f.id || it.t.some(e => Object.values(f.t).some(v => v.url && v.url === e[2] && !/[?&]q=/.test(v.url)));
-    if (!enlazado && !equivalente(f, it)) continue;
+    const enlazado = it.fid === f.id || it.t.some(e => Object.values(f.t).some(v => !v.cambio && v.url && v.url === e[2] && !/[?&]q=/.test(v.url)));
+    if (!enlazado && !equivalente(f, it)) {
+      // Lo elegido a mano en la tabla solo actualiza su propio precio, sin llenar las demás tiendas
+      for (const e of it.t) {
+        const s = D.supers[e[0]], v = f.t[s];
+        if (v?.cambio && v.url === e[2] && precioValido(e[1]) && (D.actualizado || "") > (v.f || "")) f.t[s] = { ...v, p: e[1], f: D.actualizado, promo: null, antes: null };
+      }
+      continue;
+    }
     for (const e of it.t) {
       const s = D.supers[e[0]], previo = f.t[s];
       if (f.sin?.[s] || (previo?.manual && previo.url !== e[2])) continue;
