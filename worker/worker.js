@@ -1,9 +1,9 @@
 // Canasta SV · búsqueda en vivo (Cloudflare Worker)
-// Recibe ?q=producto, consulta ESA búsqueda en cada tienda (una petición por tienda, sin descargar catálogos)
+// Recibe ?q=producto (o ?ean=código de barras), consulta ESA búsqueda en cada tienda (una petición por tienda, sin descargar catálogos)
 // y devuelve los resultados en JSON. Guarda cada consulta 10 minutos en caché para no repetir peticiones.
 const UA = "CanastaSV/1.0 (comparador de precios sin fines de lucro)";
 const MAX = 12; // resultados por tienda
-const VERSION = "2026-10-22-a"; // aparece en cada respuesta: sirve para saber qué código está desplegado
+const VERSION = "2026-10-23-a"; // aparece en cada respuesta: sirve para saber qué código está desplegado
 
 // ---- tamaños (misma lógica que scraper/normalizar.mjs) ----
 const RE = /(?<![\d.,])(?:(\d+)\s*[x×]\s*)?(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|mg|lbs?|libras?|floz|onzas?|oz|ml|lts?|litros?|l|gal(?:on(?:es)?)?)(?![a-z])/i;
@@ -79,6 +79,16 @@ function promoVtex(t, hoy) {
   return `${n} x $${(Math.round(+m[1] * n * 100) / 100).toFixed(2)}`;
 }
 
+// Código de barras (EAN/UPC/GTIN): misma regla que scraper/emparejar.mjs y comparador.js. Dígito de control correcto
+// y al menos 8 cifras significativas; se devuelve con 14 cifras para comparar sin importar los ceros a la izquierda.
+const gtin = s => {
+  const d = String(s || "").replace(/\D/g, "");
+  if (!/^(?:\d{8}|\d{12,14})$/.test(d) || d.replace(/^0+/, "").length < 8) return "";
+  let suma = 0;
+  for (let i = d.length - 2, w = 3; i >= 0; i--, w = 4 - w) suma += +d[i] * w;
+  return (10 - suma % 10) % 10 === +d.at(-1) ? d.padStart(14, "0") : "";
+};
+
 async function pedir(url, accept, init = {}) {
   const c = new AbortController(), t = setTimeout(() => c.abort(), 8000);
   try {
@@ -89,18 +99,20 @@ async function pedir(url, accept, init = {}) {
 }
 
 // ---- tiendas: cada una recibe el texto buscado y devuelve [{id,nombre,marca,precio,url}] ----
-const vtex = base => async q => {
-  const r = await pedir(`${base}/api/catalog_system/pub/products/search?ft=${encodeURIComponent(sinTilde(q))}&_from=0&_to=${MAX - 1}`, "application/json");
+// Las tiendas VTEX (Walmart, Despensa de Don Juan, Maxi) publican el código de barras: con «ean» buscan por código.
+const vtex = base => Object.assign(async (q, env, ean) => {
+  const filtro = ean ? `fq=alternateIds_Ean:${encodeURIComponent(ean)}` : `ft=${encodeURIComponent(sinTilde(q))}`;
+  const r = await pedir(`${base}/api/catalog_system/pub/products/search?${filtro}&_from=0&_to=${MAX - 1}`, "application/json");
   const out = [], hoy = new Date(Date.now() - 6 * 36e5).toISOString().slice(0, 10);   // fecha de El Salvador (UTC−6)
   for (const it of await r.json()) {
     const o = it.items?.[0]?.sellers?.[0]?.commertialOffer;
     if (!o || !(o.Price > 0) || !(o.AvailableQuantity > 0)) continue;
     const promo = [...(o.PromotionTeasers || []), ...(o.Teasers || [])].map(t => promoVtex(t || {}, hoy)).find(Boolean) || null;
     out.push({ id: String(it.productId), nombre: it.productName, marca: it.brand || "", precio: o.Price, url: it.link || `${base}/${it.linkText}/p`,
-      promo, antes: o.ListPrice > o.Price ? o.ListPrice : null });
+      promo, antes: o.ListPrice > o.Price ? o.ListPrice : null, ...(gtin(it.items?.[0]?.ean) ? { ean: gtin(it.items[0].ean) } : {}) });
   }
   return out;
-};
+}, { porCodigo: true });
 
 // Selectos marca muchas ofertas con una imagen tipoPromoMM/<código>.png. Significado tomado de los filtros
 // oficiales de /special-deals (verificado el 2026-10-21): el orden de los números no es siempre el mismo.
@@ -230,28 +242,48 @@ export default {
     if (permitido !== "*" && origen && origen !== permitido) return salida({ error: "Origen no permitido" }, 403);
     if (req.method === "POST") return aporte(req, env, ctx, salida);
 
-    const q = (new URL(req.url).searchParams.get("q") || "").replace(/\s+/g, " ").trim();
-    if (q.length < 2 || q.length > 60) return salida({ error: "Escribe entre 2 y 60 caracteres." }, 400);
+    const params = new URL(req.url).searchParams;
+    const crudo = (params.get("ean") || "").replace(/\D/g, ""), ean = params.has("ean") ? gtin(crudo) : "";
+    if (params.has("ean") && !ean) return salida({ error: "El código de barras no es válido: revisa los números." }, 400);
+    let q = (params.get("q") || "").replace(/\s+/g, " ").trim();
+    if (!ean && (q.length < 2 || q.length > 60)) return salida({ error: "Escribe entre 2 y 60 caracteres." }, 400);
 
-    const solo = (new URL(req.url).searchParams.get("tiendas") || "").split(",").map(x => x.trim()).filter(Boolean);
+    const solo = (params.get("tiendas") || "").split(",").map(x => x.trim()).filter(Boolean);
     const nombres = Object.keys(TIENDAS).filter(n => (!solo.length || solo.includes(n)) && (n !== "PriceSmart" || env.PRICESMART_KEY));
-    const fresco = new URL(req.url).searchParams.has("fresh");   // ?fresh=1 salta la caché (para diagnosticar)
+    const fresco = params.has("fresh");   // ?fresh=1 salta la caché (para diagnosticar)
     const hayCache = typeof caches !== "undefined";
-    const llave = new Request("https://canasta.cache/" + encodeURIComponent(sinAcento(q)) + "/" + nombres.join(","));
+    const llave = new Request("https://canasta.cache/" + (ean ? "ean/" + ean : encodeURIComponent(sinAcento(q))) + "/" + nombres.join(","));
     if (hayCache && !fresco) { const hit = await caches.default.match(llave); if (hit) return salida(await hit.json(), 200, { "x-cache": "HIT" }); }
 
-    const res = await Promise.allSettled(nombres.map(async n => {
-      const t0 = Date.now();
-      try { return { v: await TIENDAS[n](q, env), ms: Date.now() - t0 }; }
-      catch (e) { e.ms = Date.now() - t0; throw e; }
-    }));
+    // Consulta varias tiendas a la vez; una que falla no detiene a las demás
     const tiendas = {}, resultados = [];
-    res.forEach((r, i) => {
-      if (r.status === "fulfilled") { tiendas[nombres[i]] = { ok: true, n: r.value.v.length, ms: r.value.ms }; r.value.v.forEach(x => resultados.push(fila(nombres[i], x))); }
-      else tiendas[nombres[i]] = { ok: false, error: String(r.reason?.message || r.reason).slice(0, 80), ms: r.reason?.ms };
+    const correr = async (lista, f, extra = {}) => (await Promise.allSettled(lista.map(async n => {
+      const t0 = Date.now();
+      try { return { v: await f(n), ms: Date.now() - t0 }; }
+      catch (e) { e.ms = Date.now() - t0; throw e; }
+    }))).forEach((r, i) => {
+      if (r.status === "fulfilled") { tiendas[lista[i]] = { ok: true, n: r.value.v.length, ms: r.value.ms }; r.value.v.forEach(x => resultados.push({ ...fila(lista[i], x), ...extra })); }
+      else tiendas[lista[i]] = { ok: false, error: String(r.reason?.message || r.reason).slice(0, 80), ms: r.reason?.ms };
     });
+    let nombre = null;
+    if (ean) {
+      // 1) Por código en las tiendas que lo publican (con 13 cifras si se escaneó un UPC de 12)
+      const conCodigo = nombres.filter(n => TIENDAS[n].porCodigo);
+      await correr(conCodigo, async n => {
+        const v = await TIENDAS[n]("", env, crudo);
+        return v.length || crudo.length >= 13 ? v : TIENDAS[n]("", env, crudo.padStart(13, "0"));
+      }, { porCodigo: true });
+      nombre = resultados[0]?.nombre || null;
+      // 2) Con el nombre encontrado, en las demás tiendas y en las que no tenían el código
+      q = nombre ? sinTilde(nombre).replace(/\s+/g, " ").trim().slice(0, 60) : crudo;
+      const resto = nombres.filter(n => !resultados.some(x => x.tienda === n));
+      if (nombre && resto.length) {
+        resto.forEach(n => delete tiendas[n]);
+        await correr(resto, n => TIENDAS[n](q, env));
+      }
+    } else await correr(nombres, n => TIENDAS[n](q, env));
     const omitidas = Object.keys(TIENDAS).filter(n => !nombres.includes(n) && !solo.length).map(n => n + (n === "PriceSmart" ? " (falta la variable PRICESMART_KEY)" : ""));
-    const cuerpo = { version: VERSION, q, generado: new Date().toISOString(), tiendas, omitidas, resultados };
+    const cuerpo = { version: VERSION, q, ...(ean ? { ean, nombre } : {}), generado: new Date().toISOString(), tiendas, omitidas, resultados };
     // Solo se guarda en caché si TODAS las tiendas respondieron: un fallo pasajero no debe repetirse 10 minutos
     if (hayCache && resultados.length && Object.values(tiendas).every(t => t.ok)) ctx.waitUntil(caches.default.put(llave,
       new Response(JSON.stringify(cuerpo), { headers: { "content-type": "application/json", "cache-control": "max-age=600" } })));

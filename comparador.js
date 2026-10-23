@@ -84,6 +84,15 @@
     const ok = qs.filter(t => ws.some(w => igual(t, w)) || (t.length >= 4 && junto.includes(t)));
     return ok.length >= Math.min(2, qs.length);
   }
+  // Código de barras (EAN/UPC/GTIN): misma regla que scraper/emparejar.mjs y el Worker. Dígito de control correcto y
+  // al menos 8 cifras significativas; se devuelve con 14 cifras para comparar sin importar los ceros a la izquierda.
+  function gtin(s) {
+    const d = String(s || "").replace(/\D/g, "");
+    if (!/^(?:\d{8}|\d{12,14})$/.test(d) || d.replace(/^0+/, "").length < 8) return "";
+    let suma = 0;
+    for (let i = d.length - 2, w = 3; i >= 0; i--, w = 4 - w) suma += +d[i] * w;
+    return (10 - suma % 10) % 10 === +d.at(-1) ? d.padStart(14, "0") : "";
+  }
   // Día (AAAA-MM-DD) de una fecha guardada. Las consultas guardan hora UTC: se pasan a la hora del dispositivo
   // para que una consulta de las 7 p. m. en El Salvador no aparezca con la fecha del día siguiente.
   function dia(f) {
@@ -92,7 +101,7 @@
     if (!d || isNaN(d)) return f.slice(0, 10);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   }
-  const api = { equivalente, precioValido, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda, dia };
+  const api = { equivalente, precioValido, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda, dia, gtin };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.Canasta = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

@@ -287,7 +287,8 @@ async function worker(respuestas) {
     return new Response(typeof cuerpo === 'string' ? cuerpo : JSON.stringify(cuerpo)); };
   try {
     const w = (await import(pathToFileURL(tmp).href)).default;
-    return { pedidas, consultar: async q => (await w.fetch(new Request('https://w.test/?fresh=1&q=' + encodeURIComponent(q)), {}, { waitUntil() {} })).json() };
+    const pedir = async qs => { const r = await w.fetch(new Request('https://w.test/?fresh=1&' + qs), {}, { waitUntil() {} }); return { status: r.status, ...(await r.json()) }; };
+    return { pedidas, consultar: async q => pedir('q=' + encodeURIComponent(q)), porCodigo: async c => pedir('ean=' + encodeURIComponent(c)) };
   } finally { fs.rmSync(tmp); setImmediate(() => { globalThis.fetch = original; }); }
 }
 test('Worker: quita tildes y lee las ofertas internas de VTEX (vigentes y que cuadran) y las de Selectos', async () => {
@@ -518,4 +519,49 @@ test('las fechas usan la hora del dispositivo: una consulta de la noche en El Sa
     assert.equal(dia('2026-10-22'), '2026-10-22');            // fecha del catálogo, sin hora
     assert.equal(dia(''), '');
   } finally { if (tz === undefined) delete process.env.TZ; else process.env.TZ = tz; }
+});
+
+test('código de barras: mismo dígito de control que el catálogo y el Worker', () => {
+  const { gtin } = require('../comparador.js');
+  assert.equal(gtin('7441029556735'), '07441029556735');
+  assert.equal(gtin('7441029556736'), '');            // dígito de control incorrecto
+  assert.equal(gtin('00000123'), '');                 // menos de 8 cifras significativas
+  assert.equal(gtin('036000291452'), '00036000291452'); // UPC-A de 12 cifras
+});
+test('Worker: busca por código en las tiendas VTEX y, con el nombre encontrado, en las demás', async () => {
+  const vtex = (id, nombre, ean) => ({ productId: id, productName: nombre, brand: 'Bimbo', link: 'https://w.test/' + id + '/p',
+    items: [{ ean, sellers: [{ commertialOffer: { Price: 1.8, AvailableQuantity: 5 } }] }] });
+  const w = await worker({
+    'walmart.com.sv/api/catalog_system/pub/products/search?fq=alternateIds_Ean:7441029556735': [vtex('4054725', 'Pan Bimbo Para Sandwich - 560 g', '7441029556735')],
+    'algolia.net': { hits: [{ id: 552, name: 'Pan Bimbo Sandwich 560g', slug: 'pan-bimbo-sandwich', brand_name: 'Bimbo', final_price: 1.95, is_always_available: 1 }] }
+  });
+  const d = await w.porCodigo('7441029556735');
+  assert.equal(d.ean, '07441029556735');
+  assert.equal(d.nombre, 'Pan Bimbo Para Sandwich - 560 g');
+  const walmart = d.resultados.find(x => x.tienda === 'Walmart');
+  assert.deepEqual([walmart.porCodigo, walmart.ean], [true, '07441029556735']);
+  assert.ok(d.resultados.some(x => x.tienda === 'Superea' && !x.porCodigo));
+  // las tiendas sin el código se consultan con el nombre, sin tildes
+  assert.ok(w.pedidas.some(u => u.includes('algolia.net') && u.includes('Pan+Bimbo+Para+Sandwich')));
+  assert.ok(w.pedidas.some(u => u.includes('maxidespensa.com.sv') && u.includes('ft=Pan')));
+  assert.equal((await w.porCodigo('7441029556736')).status, 400);
+});
+test('código de barras en la página: el catálogo lo encuentra y la búsqueda muestra el mismo producto y sus equivalentes', async () => {
+  const pan = { n: 'Pan Bimbo Para Sandwich - 560 g', m: 'Bimbo', q: 560, u: 'g', b: ['07441029556735'], t: [[0, 1.8, 'https://t.test/pan', 1.46, 'Pan Bimbo Para Sandwich - 560 g', 'Bimbo', '', '4054725']] };
+  const otro = { n: 'Pan Blanco Bimbo mediano - 450 g', m: 'Bimbo', q: 450, u: 'g', t: [[0, 1.5, 'https://t.test/mediano', 1.5, 'Pan Blanco Bimbo mediano - 450 g', 'Bimbo', '', '1']] };
+  const fila = (tienda, id, nombre, precio, extra = {}) => ({ tienda, id, nombre, marca: 'Bimbo', precio, url: 'https://t.test/' + id, q: 560, u: 'g', ...extra });
+  const ui = interfaz({ datos: { supers: ['Walmart'], actualizado: '2026-10-22', items: [pan, otro] },
+    resultados: [fila('Walmart', 'w1', 'Pan Bimbo Para Sandwich - 560 g', 1.8, { porCodigo: true, ean: '07441029556735' }),
+      fila('Superea', 's1', 'Pan Bimbo Para Sandwich 560 g', 1.95), fila('Superea', 's2', 'Pan Bimbo Integral 630 g', 2.6, { q: 630 })] });
+  await terminar();
+  ui.run('$("q").value = "7441029556735"; render();');
+  assert.match(ui.el('tabla').innerHTML, /Pan Bimbo Para Sandwich - 560 g/);
+  assert.doesNotMatch(ui.el('tabla').innerHTML, /mediano/);
+  await ui.run('vivo("7441029556735")');
+  assert.equal(ui.consultas.at(-1), '');   // se pidió por ?ean=, no por ?q=
+  assert.match(ui.el('estv').textContent, /^Código 7441029556735: Pan Bimbo Para Sandwich - 560 g\./);
+  const tv = ui.el('tv').innerHTML;
+  assert.match(tv, /Mismo código de barras[^]*Coincide por nombre y tamaño/);
+  assert.doesNotMatch(tv, /Integral/);   // otro producto: queda oculto
+  assert.equal(ui.run('busquedaRV'), 'Pan Bimbo Para Sandwich - 560 g');
 });
