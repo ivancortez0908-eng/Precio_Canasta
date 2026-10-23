@@ -5,7 +5,7 @@ Comparar listas de productos entre supermercados de El Salvador. Al agregar un f
 
 ## Estructura
 - `index.html`: diseño adaptable, pestañas y contenedores de la interfaz. Sin JavaScript incrustado: carga `config.js`, `comparador.js`, `exportar.js` y `app.js`.
-- `app.js`: catálogo, búsqueda en vivo, listas de favoritos, consultas, selección de equivalencias, descargas y aportes.
+- `app.js`: catálogo, búsqueda en vivo, listas de favoritos, consultas, selección de equivalencias, descargas, aportes y la guía de uso («Cómo funciona»), que simula la búsqueda y el cuadro de listas sin cambiar los datos guardados.
 - `exportar.js`: tabla de una lista para PDF (impresión del navegador) y archivo `.xlsx` generado sin librerías; sin dependencias.
 - `comparador.js`: reglas conservadoras de equivalencia y totales en centavos; sin dependencias.
 - `worker/worker.js`: API de búsqueda en Cloudflare; devuelve `version`, `resultados`, `tiendas`, `omitidas` y `generado`. Por POST recibe aportes y crea una issue.

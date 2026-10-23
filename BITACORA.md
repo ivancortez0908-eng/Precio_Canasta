@@ -1,3 +1,13 @@
+# Bitácora — 23 de octubre de 2026 (guía de uso)
+
+## Cambios
+- `index.html`: botón «Cómo funciona» arriba a la derecha (en celular «Guía», 44 px) y `dialog#guia`: fondo opaco (`--velo`, 60 %) con un hueco que resalta el elemento del paso y una ventanita con flecha que lo señala; sin elemento visible va al centro. Respeta «reducir movimiento».
+- `app.js`: 14 pasos (`GUIA`): bienvenida → buscador (escribe una búsqueda de ejemplo del catálogo) → «Buscar en las tiendas» → resultados → ☆ → cuadro de listas (lo abre) → crear lista (escribe «Compras del mes» sin crearla) → «Listo» → pestaña Mi lista → administrar listas → actualizar y descargar → cantidades y precios por tienda → comparación de la compra → botón de la guía. «Anterior», «Siguiente», «Salir de la guía» y Esc. Con la lista vacía, los pasos de Mi lista explican qué se verá.
+- La guía no cambia nada guardado: no marca casillas ni crea listas; al salir restaura búsqueda, pestaña y desplazamiento.
+
+## Validación
+- `tests/interfaz.cjs`: recorre los 14 pasos (resaltado alrededor del elemento, ventanita dentro de la pantalla, búsqueda de ejemplo, cuadro de listas abierto) y comprueba que las listas guardadas no cambian y que todo se restaura; Esc sale. Recorrido revisado en capturas a 1280 px y en Pixel 7 (con y sin productos). 34 pruebas aprobadas.
+
 # Bitácora — 23 de octubre de 2026 (agregar de nuevo un producto quitado)
 
 ## Evaluación

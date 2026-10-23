@@ -28,6 +28,7 @@ Usa siempre las variables de `:root`; nunca colores sueltos (salvo el amarillo d
 | `--warn` | acciones que borran y avisos (`#b01433`, ≥ 4.5:1 también sobre botones grises) |
 | `--v` `--a` `--r` | semáforo: verde, amarillo, rojo (decorativos: siempre acompañados de texto) |
 | `--sh` | sombra de tarjetas |
+| `--velo` | fondo opaco de la guía de uso (alrededor del elemento resaltado) |
 
 - Todo texto nuevo debe tener contraste ≥ 4.5:1 con su fondo; compruébalo antes de elegir un color.
 - Paleta propia de comparador (verde = ahorro), neutral frente a las tiendas: no uses el rojo de Selectos ni el azul y amarillo de Walmart como color de marca. El verde de marca va en navegación y botones; el verde claro `--best` con ✓ queda solo para el precio más barato.
@@ -40,7 +41,7 @@ Usa siempre las variables de `:root`; nunca colores sueltos (salvo el amarillo d
 header.top (fija, 56 px; 52 px en celular)
  ├─ h1.brand  logo (canasta en SVG) + «Canasta SV» (único h1)
  ├─ nav.tabs  [ícono] Buscar | [ícono] Mi lista [.badge n]   ← centradas; en celular, barra fija abajo
- └─ .sp  espacio que equilibra el logo (se oculta en móvil)
+ └─ .sp > button#guiabtn.guiabtn  «Cómo funciona» (en celular «Guía»), arriba a la derecha
 main (todo el ancho, 16 px de margen lateral)
  ├─ p.msg.intro   una línea que explica el sitio
  ├─ #p1 Buscar (página principal):
@@ -53,6 +54,7 @@ main (todo el ancho, 16 px de margen lateral)
 section#ayuda.ayuda   pregunta de aportes, al pie, solo cuando aplica
 footer#foot           fecha y origen de los datos
 dialog#dlista         «Guardar en una lista»
+dialog#guia.guia      guía de uso por pasos (pantalla completa, encima de todo)
 section#imprimir      hoja para PDF; solo visible al imprimir
 ```
 
@@ -97,6 +99,7 @@ Siempre de arriba abajo: **controles → estado → tabla → resumen**.
 | semáforo | `.totals > .tot.v|.a|.r` con `.dot`, `.tn`, `b`, `.tl` y la `.leyenda` |
 | cuadro emergente | `<dialog>` con `h2`, contenido y botón «Listo» al final; `showModal()` |
 | texto plegable | `details > summary` |
+| guía de uso | `GUIA` en `app.js`: cada paso con título `t`, texto `x`, elemento `el()` y estado (`tab`, `q` búsqueda de ejemplo, `dlg` cuadro de listas, `nombre`). `dialog#guia` con `.guia-luz` (hueco con sombra `--velo` sobre el elemento) y `.guia-tarjeta` con `.guia-flecha` que lo señala; sin elemento visible, al centro. «Salir de la guía · Anterior · Siguiente/Terminar»; Esc sale. La guía solo muestra: no marca casillas ni crea listas, y al salir deja la búsqueda, la pestaña y el desplazamiento como estaban. Si agregas una parte importante a la página, agrega su paso |
 | aviso al pie | `section.ayuda` (borde izquierdo verde) con botones «Sí / No» |
 
 ## 5. Textos
@@ -120,7 +123,7 @@ Siempre de arriba abajo: **controles → estado → tabla → resumen**.
 
 
 - Sin desplazamiento horizontal de la página: las tablas se desplazan dentro de `.wrap`; mantén `min-width:0` en los hijos de `main` y de los paneles.
-- En menos de 700 px también se oculta `.sp`, y el botón de búsqueda se acorta a «Buscar».
+- En menos de 700 px el botón de búsqueda se acorta a «Buscar» y «Cómo funciona» a «Guía» (`.larga` / `.corta`, con `aria-label` completo).
 - Botones de al menos ~32 px de alto; nada que dependa solo del color (el semáforo también dice el texto).
 - Todo campo o botón de solo ícono lleva `aria-label`; las pestañas, `role="tab"` y `aria-selected`; mensajes que cambian solos (`#count`, `#estv`, `#favest`, `#favresumen`), `aria-live="polite"`.
 - Respeta `:focus-visible` (contorno verde de marca); no lo quites.

@@ -595,6 +595,117 @@ $("lborrar").onclick = () => {
 $("favclear").onclick = () => { if (confirm(`¿Vaciar la lista «${ACTIVA.nombre}»?`)) { FAV.forEach(cancelar); FAV.length = 0; guardar(); pintarFav(); pintarVivo(); render(); } };
 $("favrefresh").onclick = () => actualizarItems([...FAV]);
 
+// ---------- Guía de uso: pasos con el elemento resaltado; simula la búsqueda y el cuadro de listas sin cambiar las listas ----------
+const visible = el => !!el && el.getClientRects().length > 0;
+const primero = (...sel) => sel.map(x => document.querySelector(x)).find(visible) || null;
+const conLista = (si, no) => () => FAV.length ? si : no;
+const GUIA = [
+  { t: "Así funciona Canasta SV", tab: 1, x: "Compara los precios de los supermercados de El Salvador. En unos pasos verás cómo buscar un producto, guardarlo en una lista y comparar tu compra. La guía no cambia tus listas." },
+  { t: "Busca un producto", tab: 1, q: true, escribir: true, el: () => $("q"), x: "Escribe un producto o una marca. Los resultados del catálogo aparecen mientras escribes." },
+  { t: "Consulta las tiendas en el momento", tab: 1, q: true, el: () => $("fbuscar").querySelector("button"), x: "Si no lo encuentras o quieres el precio de hoy, toca «Buscar en las tiendas»: se consulta cada supermercado al instante." },
+  { t: "Compara los precios", tab: 1, q: true, el: () => primero("#tabla tbody tr", "#mcat .mitem"), x: "Cada producto muestra su precio en cada tienda. El más barato lleva ✓ y fondo verde; también ves el precio por libra, litro o unidad." },
+  { t: "Guárdalo en una lista", tab: 1, q: true, el: () => primero("#tabla tbody .star", "#mcat .star"), x: "Toca la ☆ del producto para guardarlo como favorito." },
+  { t: "Elige la lista", tab: 1, q: true, dlg: true, el: () => $("dlopts"), x: "Marca una o varias listas. Cada lista guarda su propia cantidad y tus elecciones." },
+  { t: "O crea una lista nueva", tab: 1, q: true, dlg: true, nombre: true, el: () => $("dlnueva"), x: "Escribe un nombre, por ejemplo «Compras del mes», y toca «Crear y agregar»." },
+  { t: "Termina con «Listo»", tab: 1, q: true, dlg: true, el: () => $("dlcerrar"), x: "Al guardar un producto, la página lo busca en las demás tiendas para compararlo." },
+  { t: "Abre tus listas", tab: 1, q: true, el: () => $("tab2"), x: "Aquí ves tus listas. El número indica cuántos productos tiene la lista que estás viendo." },
+  { t: "Cambia o administra tus listas", tab: 2, el: () => $("lsel").closest(".controls"), x: "Elige la lista que quieres ver, crea una nueva, cámbiale el nombre o elimínala." },
+  { t: "Actualiza y descarga", tab: 2, el: () => document.querySelector(".acciones"),
+    x: conLista("«Actualizar precios» vuelve a consultar las tiendas. Descarga la lista en PDF o Excel, o vacíala.", "Cuando tengas productos, aquí podrás actualizar los precios, descargar la lista en PDF o Excel y vaciarla.") },
+  { t: "Cantidades y precios por tienda", tab: 2, el: () => primero("#tfav tbody tr", "#mfav .mitem"),
+    x: conLista("Ajusta la cantidad con − y +. Cada tienda muestra su precio y su fecha; con «Cambiar producto» eliges otra presentación si no es la correcta.", "Cuando agregues productos, cada uno mostrará su cantidad (− y +) y el precio de cada tienda con su fecha. Con «Cambiar producto» eliges otra presentación si no es la correcta.") },
+  { t: "Compara tu compra", tab: 2, el: () => primero("#favtot"),
+    x: conLista("Verde: la tienda más barata para toda la lista (o hasta 2 % más). Amarillo: hasta 10 % más cara. Rojo: más cara o le faltan productos. También ves cuánto pagas combinando tiendas.", "Con productos en la lista verás el total en cada tienda: verde la más barata, amarillo hasta 10 % más cara y rojo más cara o con productos faltantes.") },
+  { t: "¡Listo!", el: () => $("guiabtn"), x: "Vuelve a ver esta guía cuando quieras con este botón." }
+];
+let guiaPaso = 0, guiaPrevio = null, guiaTimer = null, guiaDemo = "";
+const lento = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+function guiaBuscar(q, escribir) {
+  clearInterval(guiaTimer);
+  if ($("q").value === q) return;
+  const poner = v => { $("q").value = v; limite = 60; render(); guiaColocar(); };
+  if (!escribir || !lento()) { poner(q); return; }
+  let i = 0; poner("");
+  guiaTimer = setInterval(() => { poner(q.slice(0, ++i)); if (i >= q.length) clearInterval(guiaTimer); }, 90);
+}
+function guiaEstado(p) {
+  if (p.tab && $("p" + p.tab).hidden) pestana(p.tab);
+  if (p.tab) guiaBuscar(p.q ? guiaDemo : guiaPrevio.q, p.escribir);
+  $("dlnombre").value = p.nombre ? "Compras del mes" : "";
+  if (!p.dlg && $("dlista").open) $("dlista").close();
+  const item = D && (filtrar()[0] || D.items[0]);
+  if (p.dlg && !$("dlista").open && item) {
+    abrirListas({ tipo: "item", x: item });
+    // el cuadro de listas se abrió encima: la guía vuelve al frente
+    $("guia").close(); $("guia").showModal();
+  }
+}
+function guiaIr(n) {
+  guiaPaso = Math.max(0, Math.min(GUIA.length - 1, n));
+  const p = GUIA[guiaPaso];
+  guiaEstado(p);
+  $("guiapaso").textContent = `Paso ${guiaPaso + 1} de ${GUIA.length}`;
+  $("guiatit").textContent = p.t;
+  $("guiatxt").textContent = typeof p.x === "function" ? p.x() : p.x;
+  $("guiaant").hidden = guiaPaso === 0;
+  $("guiasig").textContent = guiaPaso === GUIA.length - 1 ? "Terminar" : "Siguiente";
+  const el = p.el?.();
+  if (visible(el)) el.scrollIntoView({ block: "center", inline: "nearest" });
+  guiaColocar();
+  $("guiasig").focus();
+}
+// Resalta el elemento del paso y pone la ventanita debajo (o encima) señalándolo; sin elemento, al centro
+function guiaColocar() {
+  if (!guiaPrevio) return;
+  const el = GUIA[guiaPaso].el?.(), luz = $("guialuz"), card = $("guiacard"), fl = $("guiaflecha");
+  const W = innerWidth, H = innerHeight, m = 16, w = card.offsetWidth, h = card.offsetHeight;
+  const px = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, Math.round(v) + "px"]));
+  if (!visible(el)) {
+    Object.assign(luz.style, px({ left: W / 2, top: H / 2, width: 0, height: 0 }));
+    luz.classList.add("centro"); fl.hidden = true;
+    Object.assign(card.style, px({ left: (W - w) / 2, top: Math.max(m, (H - h) / 2) }));
+    return;
+  }
+  const r = el.getBoundingClientRect(), L = Math.max(4, r.left - 6), T = Math.max(4, r.top - 6), R = Math.min(W - 4, r.right + 6), B = Math.min(H - 4, r.bottom + 6);
+  Object.assign(luz.style, px({ left: L, top: T, width: R - L, height: B - T }));
+  luz.classList.remove("centro");
+  let top, lado = "arriba";
+  if (B + 14 + h <= H - 8) top = B + 14;
+  else if (T - 14 - h >= 8) { top = T - 14 - h; lado = "abajo"; }
+  else { top = H - h - m; lado = ""; }
+  const left = Math.min(Math.max(m, (L + R) / 2 - w / 2), W - w - m);
+  Object.assign(card.style, px({ left, top }));
+  fl.hidden = !lado; fl.className = "guia-flecha " + lado;
+  fl.style.left = Math.round(Math.min(Math.max(14, (L + R) / 2 - left - 7), w - 28)) + "px";
+}
+function guiaFin() {
+  if (!guiaPrevio) return;
+  const prev = guiaPrevio; guiaPrevio = null;
+  clearInterval(guiaTimer);
+  window.removeEventListener("resize", guiaColocar); window.removeEventListener("scroll", guiaColocar, true);
+  if ($("guia").open) $("guia").close();
+  if ($("dlista").open) $("dlista").close();
+  $("dlnombre").value = "";
+  if ($("q").value !== prev.q) { $("q").value = prev.q; limite = 60; render(); }
+  if ($("p" + prev.tab).hidden) pestana(prev.tab);
+  window.scrollTo(0, prev.y);
+  $("guiabtn").focus();
+}
+$("guiabtn").onclick = () => {
+  if (guiaPrevio) return;
+  guiaPrevio = { q: $("q").value, tab: $("p1").hidden ? 2 : 1, y: window.scrollY };
+  guiaDemo = ["leche", "arroz", "frijol", "huevos"].find(w => D?.items.some(it => it.s.includes(w))) || "leche";
+  window.addEventListener("resize", guiaColocar); window.addEventListener("scroll", guiaColocar, true);
+  $("guia").showModal();
+  guiaIr(0);
+};
+$("guiasig").onclick = () => guiaPaso === GUIA.length - 1 ? guiaFin() : guiaIr(guiaPaso + 1);
+$("guiaant").onclick = () => guiaIr(guiaPaso - 1);
+$("guiasalir").onclick = guiaFin;
+$("guia").oncancel = e => { e.preventDefault(); guiaFin(); };
+// Al volver la guía al frente se cierra y se abre de nuevo: solo termina si de verdad quedó cerrada
+$("guia").onclose = () => { if (!$("guia").open) guiaFin(); };
+
 contar();
 pintarFav();
 fetch("data/productos.json").then(r => { if (!r.ok) throw 0; return r.json(); }).then(d => {
