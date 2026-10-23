@@ -1,3 +1,20 @@
+# Bitácora — 23 de octubre de 2026 (fechas de los precios después de «Actualizar precios»)
+
+## Evaluación
+- Reporte: después de «Actualizar precios» y recargar, el Excel seguía mostrando el mismo rango en «Precio consultado».
+- Una tienda solo cambia de precio y fecha si la consulta devuelve el mismo producto; si no lo encuentra o no responde, conserva el precio anterior (p. ej. el del catálogo, 22/10). El rango «más viejo a más nuevo» no decía qué tienda tenía la fecha vieja.
+- `coincideCon` reconocía el producto guardado solo por referencia o enlace; un precio tomado del catálogo no tiene referencia, así que si la tienda cambiaba el enlace no se actualizaba aunque tuviera el mismo ID.
+- Las fechas de las consultas se guardan en UTC y se mostraban así: después de las 6 p. m. en El Salvador aparecía el día siguiente.
+- No se pudo consultar el Worker real desde este entorno (el proxy bloquea el dominio): no se confirmó qué tiendas quedan sin reconfirmar en la lista del usuario.
+
+## Cambios
+- `app.js`: `coincideCon` también reconoce el producto por el ID de la tienda.
+- `comparador.js`: `dia(f)` da el día en la hora del dispositivo; lo usan `hoy`, `fecha`, la actualización diaria y las descargas.
+- `exportar.js`: la columna pasa a «Fecha del precio»: la fecha más reciente y, aparte, las tiendas con un precio de un día anterior («2026-10-23 · Superea: 2026-10-22»).
+
+## Validación
+- 36 pruebas aprobadas (nuevas: producto reconocido por ID con otro enlace; fechas en hora de El Salvador; columna de fechas del Excel). `node tests/interfaz.cjs` aprobado.
+
 # Bitácora — 23 de octubre de 2026 (página principal con menos texto)
 
 ## Cambios
