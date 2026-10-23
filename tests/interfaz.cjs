@@ -129,11 +129,26 @@ const server = http.createServer((req, res) => {
     assert.ok(ancho >= 1440 - 32 - 20, `la tabla mide ${ancho}px`);
     if (process.env.CANASTA_CAPTURAS) await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'favoritos-escritorio.png'), fullPage: true });
     // Descargas: Excel como archivo .xlsx y PDF con la impresión del navegador
-    const [descarga] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Descargar Excel' }).click()]);
+    // Menú «⋯»: acciones de la lista agrupadas, las que borran al final; teclado, Esc y tocar fuera lo cierran
+    const menu = page.getByRole('button', { name: 'Más opciones de la lista' });
+    await menu.click();
+    assert.equal(await menu.getAttribute('aria-expanded'), 'true');
+    assert.deepEqual(await page.getByRole('menuitem').allInnerTexts(), ['Nueva lista', 'Renombrar lista', 'Descargar PDF', 'Descargar Excel', 'Vaciar lista', 'Eliminar lista']);
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'lnueva');
+    await page.keyboard.press('ArrowDown'); await page.keyboard.press('ArrowUp'); await page.keyboard.press('ArrowUp');
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'lborrar');
+    await page.keyboard.press('Escape');
+    assert.deepEqual([await page.locator('#lacciones').isVisible(), await page.evaluate(() => document.activeElement.id)], [false, 'lmenu']);
+    await menu.click(); await page.locator('#favmsg').click();
+    assert.equal(await page.locator('#lacciones').isVisible(), false);
+    await menu.click();
+    const [descarga] = await Promise.all([page.waitForEvent('download'), page.getByRole('menuitem', { name: 'Descargar Excel' }).click()]);
+    assert.equal(await page.locator('#lacciones').isVisible(), false);
     assert.match(descarga.suggestedFilename(), /^mi-lista-\d{4}-\d{2}-\d{2}\.xlsx$/);
     const libro = fs.readFileSync(await descarga.path());
     assert.equal(libro.readUInt32LE(0), 0x04034b50);
-    await page.getByRole('button', { name: 'Descargar PDF' }).click();
+    await menu.click();
+    await page.getByRole('menuitem', { name: 'Descargar PDF' }).click();
     assert.equal(await page.evaluate(() => window.impreso), 1);
     await page.emulateMedia({ media: 'print' });
     assert.equal(await page.locator('#imprimir table').isVisible(), true);
@@ -151,8 +166,14 @@ const server = http.createServer((req, res) => {
     // misma fila = centros verticales a menos de 6 px entre sí
     const filas = async ids => { const c = await Promise.all(ids.map(id => page.locator(id).evaluate(b => { const r = b.getBoundingClientRect(); return r.top + r.height / 2; })));
       return Math.max(...c) - Math.min(...c) < 6 ? 1 : 2; };
-    assert.equal(await filas(['#lsel', '#lnueva', '#lrenombrar', '#lborrar']), 1);
-    assert.equal(await filas(['#favrefresh', '#favpdf', '#favxlsx', '#favclear']), 1);
+    assert.equal(await filas(['#lsel', '#favrefresh', '#lmenu']), 1);
+    // El menú abierto cabe en la pantalla y sus opciones miden al menos 44 px
+    await page.getByRole('button', { name: 'Más opciones de la lista' }).click();
+    const caja = await page.locator('#lacciones').boundingBox();
+    assert.ok(caja.x >= 0 && caja.x + caja.width <= 390, JSON.stringify(caja));
+    assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('#lacciones button')].filter(b => b.getBoundingClientRect().height && b.getBoundingClientRect().height < 44).map(b => b.id)), []);
+    if (process.env.CANASTA_CAPTURAS) await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'menu-movil.png') });
+    await page.keyboard.press('Escape');
     // Lista compacta: nombre y precios con su supermercado (el más barato primero); el detalle se abre al tocar
     assert.equal(await page.locator('#tfav').isVisible(), false);
     const producto = page.locator('#mfav .mcab').first();
@@ -186,6 +207,12 @@ const server = http.createServer((req, res) => {
     assert.equal(await page.locator('.tabs').evaluate(n => Math.round(n.getBoundingClientRect().bottom) === innerHeight), true);
     const filtros = await page.evaluate(() => [document.querySelector('#comp').parentElement, document.querySelector('#ord')].map(e => e.getBoundingClientRect()));
     assert.ok(Math.abs(filtros[0].top - filtros[1].top) < 6 && filtros[1].right <= 390 - 16 && filtros[1].width < 250, JSON.stringify(filtros));
+    // También en un teléfono de 360 px (Android)
+    await page.setViewportSize({ width: 360, height: 800 });
+    const f360 = await page.evaluate(() => [document.querySelector('#comp').parentElement, document.querySelector('#ord')].map(e => e.getBoundingClientRect()));
+    assert.ok(Math.abs(f360[0].top - f360[1].top) < 6 && f360[1].right <= 360 - 16, JSON.stringify(f360));
+    if (process.env.CANASTA_CAPTURAS) await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'catalogo-360.png') });
+    await page.setViewportSize({ width: 390, height: 844 });
     assert.equal(await page.locator('#tabla').isVisible(), false);
     assert.match(await page.locator('#mcat .mitem').first().innerText(), /Arroz Blanco Precisa 1 lb[^]*✓\s*Super Selectos\s*\$0\.85[^]*Walmart\s*\$0\.89[^]*\$0\.85 por lb/);
     if (process.env.CANASTA_CAPTURAS) await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'catalogo-movil.png') });
