@@ -1,3 +1,21 @@
+# Bitácora — 24 de octubre de 2026 (equivalencias aprobadas unidas al código de barras)
+
+## Evaluación
+- Una equivalencia aprobada solo se aplicaba si el producto de Selectos estaba en las ~871 que descarga el catálogo (46 términos y 4 categorías). De las 3 aprobadas, solo «Leche en Polvo Australian 350 g» quedó unida (con su código 07402000016495); el néctar Del Monte y la salsa Jalisco no estaban en el catálogo y se perdían.
+- Al escanear, el Worker buscaba en Selectos solo por nombre: no usaba las equivalencias aprobadas.
+
+## Cambios
+- `scraper/tiendas.mjs`: `paginasSelectos()` agrega la búsqueda de cada producto de Selectos de una equivalencia aprobada (con su palabra clave guardada o su nombre; siempre en superselectos.com) y `terminosSuperea()` el nombre de cada producto de Superea. Con las 3 actuales: 53 páginas de Selectos en lugar de 50.
+- `worker/worker.js` (versión `2026-10-24-a`): con `?ean=`, si el producto encontrado por código pertenece a una equivalencia aprobada, busca en cada otra tienda el producto confirmado y devuelve solo ese, con `porEquivalencia`. Las equivalencias se leen de GitHub (raw) y se guardan 10 minutos; si fallan, se sigue sin ellas. Las tiendas que no quedan cubiertas se buscan por nombre como antes.
+- `app.js`: esos resultados se muestran después del mismo código, con «Equivalencia verificada».
+
+## Validación
+- 42 pruebas aprobadas (nuevas: páginas de Selectos por equivalencia; Worker trae solo el producto confirmado de Selectos; etiqueta y orden en la página). `node tests/interfaz.cjs` aprobado.
+
+## Límites
+- La descarga real de Selectos no se probó desde este entorno (sin red a las tiendas): se verá en la próxima ejecución de «Actualizar precios».
+- Si el producto confirmado ya no aparece en la búsqueda de la tienda (agotado o retirado), esa tienda se busca por nombre.
+
 # Bitácora — 23 de octubre de 2026 (resultados de las tiendas sin texto de más)
 
 ## Cambios

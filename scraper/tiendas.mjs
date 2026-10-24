@@ -5,6 +5,9 @@ import { parseTamano } from "./normalizar.mjs";
 const UA = "CanastaSV/1.0 (comparador de precios sin fines de lucro)";
 const CANASTA = JSON.parse(await readFile(new URL("./canasta.json", import.meta.url), "utf8"));
 const CONFIG_JS = await readFile(new URL("../config.js", import.meta.url), "utf8").catch(() => "");
+// Equivalencias aprobadas: sus productos se piden aparte por si no salen en las búsquedas de canasta.json
+const EQUIV = JSON.parse(await readFile(new URL("./equivalencias.json", import.meta.url), "utf8").catch(() => "[]"));
+const deEquivalencias = tienda => (Array.isArray(EQUIV) ? EQUIV.flat() : []).filter(x => x && x.tienda === tienda);
 let avisos = 0;
 const esp = ms => new Promise(r => setTimeout(r, ms));
 // Selectos y Maxi no encuentran nada con acentos («atún» → 0, «atun» → resultados). Se quitan tildes y se conserva la ñ.
@@ -165,13 +168,25 @@ export function extraerMarcas(html) {
       !/^(marcas|close|filter_list|filtros|mas filtros|ofertas.*|rango.*|categor.*)$/i.test(x));
 }
 
+// Páginas de Selectos: términos y categorías de canasta.json, y la búsqueda de cada producto de una equivalencia aprobada
+// (con su palabra clave guardada o su nombre; siempre en superselectos.com, nunca un enlace tomado tal cual de una issue)
+export function paginasSelectos() {
+  const clave = x => { try { return new URL(x.url).searchParams.get("keyword") || ""; } catch { return ""; } };
+  const paginas = [
+    ...CANASTA.terminos.map(t => ({ cat: t, url: `${SS}/products?keyword=${encodeURIComponent(sinTilde(t))}` })),
+    ...CANASTA.categorias_selectos.map(c => ({ cat: c.nombre, url: `${SS}/products?category=${c.id}` })),
+    ...deEquivalencias("Super Selectos").map(x => clave(x) || x.nombre).filter(Boolean)
+      .map(k => ({ cat: "equivalencia aprobada", url: `${SS}/products?keyword=${encodeURIComponent(sinTilde(k).slice(0, 80))}` }))
+  ];
+  return paginas.filter((p, i) => paginas.findIndex(o => o.url === p.url) === i);
+}
+// Búsquedas de Superea: términos de canasta.json y el nombre de cada producto de una equivalencia aprobada
+export const terminosSuperea = () => [...new Set([...CANASTA.terminos, ...deEquivalencias("Superea").map(x => x.nombre).filter(Boolean)])];
+
 function selectos() {
   return async function* () {
     const vistos = new Set();
-    const paginas = [
-      ...CANASTA.terminos.map(t => ({ cat: t, url: `${SS}/products?keyword=${encodeURIComponent(sinTilde(t))}` })),
-      ...CANASTA.categorias_selectos.map(c => ({ cat: c.nombre, url: `${SS}/products?category=${c.id}` }))
-    ];
+    const paginas = paginasSelectos();
     const descargadas = [], marcas = new Set(CANASTA.marcas);
     for (const p of paginas) {
       const html = await getHtml(p.url);
@@ -198,7 +213,8 @@ function superea() {
   return async function* () {
     const vistos = new Set();
     let n = 0;
-    for (const t of CANASTA.terminos) {
+    const terminos = terminosSuperea();
+    for (const t of terminos) {
       const p = new URLSearchParams({ query: t, hitsPerPage: "100", filters: "visible_in_wh_ids:1",
         attributesToRetrieve: "id,name,slug,brand_name,description,final_price,available_balance,is_always_available,grammage",
         "x-algolia-application-id": app, "x-algolia-api-key": clave });
@@ -214,7 +230,7 @@ function superea() {
           precio: Number(h.final_price), url: `https://superea.sv/productos/${encodeURIComponent(h.slug)}`, cat: t };
       }
     }
-    console.log(`[Superea] ${n} productos en ${CANASTA.terminos.length} búsquedas`);
+    console.log(`[Superea] ${n} productos en ${terminos.length} búsquedas`);
   };
 }
 

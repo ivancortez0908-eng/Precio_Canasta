@@ -3,7 +3,7 @@
 // y devuelve los resultados en JSON. Guarda cada consulta 10 minutos en caché para no repetir peticiones.
 const UA = "CanastaSV/1.0 (comparador de precios sin fines de lucro)";
 const MAX = 12; // resultados por tienda
-const VERSION = "2026-10-23-a"; // aparece en cada respuesta: sirve para saber qué código está desplegado
+const VERSION = "2026-10-24-a"; // aparece en cada respuesta: sirve para saber qué código está desplegado
 
 // ---- tamaños (misma lógica que scraper/normalizar.mjs) ----
 const RE = /(?<![\d.,])(?:(\d+)\s*[x×]\s*)?(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|mg|lbs?|libras?|floz|onzas?|oz|ml|lts?|litros?|l|gal(?:on(?:es)?)?)(?![a-z])/i;
@@ -92,7 +92,7 @@ const gtin = s => {
 async function pedir(url, accept, init = {}) {
   const c = new AbortController(), t = setTimeout(() => c.abort(), 8000);
   try {
-    const r = await fetch(url, { method: init.method, body: init.body, headers: { "user-agent": UA, accept, ...(init.headers || {}) }, signal: c.signal });
+    const r = await fetch(url, { method: init.method, body: init.body, headers: { "user-agent": UA, accept, ...(init.headers || {}) }, signal: c.signal, ...(init.cf ? { cf: init.cf } : {}) });
     if (!r.ok) throw new Error("HTTP " + r.status);
     return r;
   } finally { clearTimeout(t); }
@@ -180,6 +180,20 @@ async function superea(q) {
     .map(h => ({ id: String(h.id ?? h.objectID), nombre: !tamano(h.name) && h.grammage ? `${h.name} ${h.grammage}` : h.name,
       marca: h.brand_name || "", precio: Number(h.final_price), url: `https://superea.sv/productos/${encodeURIComponent(h.slug)}` }));
 }
+
+// Equivalencias aprobadas (scraper/equivalencias.json en GitHub): al buscar por código, el producto exacto de cada tienda
+// que la persona confirmó. Se guardan 10 minutos; si no se pueden leer, se sigue sin ellas.
+const EQUIVALENCIAS = "https://raw.githubusercontent.com/ivancortez0908-eng/Precio_Canasta/main/scraper/equivalencias.json";
+async function equivalencias(env) {
+  try {
+    const r = await pedir(env.EQUIVALENCIAS_URL || EQUIVALENCIAS, "application/json", { cf: { cacheTtl: 600 } });
+    const j = await r.json();
+    return Array.isArray(j) ? j.filter(g => Array.isArray(g)) : [];
+  } catch { return []; }
+}
+// Selectos cambia el ?keyword= según la búsqueda: se compara por productId; en las demás, el enlace sin parámetros
+const normUrl = u => { const m = String(u || "").match(/productId=(\d+)/); return m ? "id:" + m[1] : String(u || "").split("?")[0].replace(/\/+$/, "").toLowerCase(); };
+const mismoProducto = (m, x) => (!!m.id && String(m.id) === String(x.id)) || (!!m.url && normUrl(m.url) === normUrl(x.url));
 
 // Para agregar una farmacia u otra tienda: escribe una función igual a las de arriba y agrégala aquí.
 const TIENDAS = { "Walmart": vtex("https://www.walmart.com.sv"), "Despensa de Don Juan": vtex("https://www.ladespensadedonjuan.com.sv"),
@@ -274,7 +288,23 @@ export default {
         return v.length || crudo.length >= 13 ? v : TIENDAS[n]("", env, crudo.padStart(13, "0"));
       }, { porCodigo: true });
       nombre = resultados[0]?.nombre || null;
-      // 2) Con el nombre encontrado, en las demás tiendas y en las que no tenían el código
+      // 2) Equivalencias aprobadas de ese producto: en cada tienda se busca el producto exacto que la persona confirmó
+      const porCodigo = resultados.filter(x => x.porCodigo);
+      const confirmados = (porCodigo.length ? await equivalencias(env) : [])
+        .filter(g => g.some(m => porCodigo.some(x => x.tienda === m.tienda && mismoProducto(m, x)))).flat()
+        .filter(m => m && nombres.includes(m.tienda) && !resultados.some(x => x.tienda === m.tienda));
+      const conEquiv = [...new Set(confirmados.map(m => m.tienda))];
+      if (conEquiv.length) await correr(conEquiv, async n => {
+        const out = [];
+        for (const m of confirmados.filter(m => m.tienda === n)) {
+          let clave = ""; try { clave = new URL(m.url).searchParams.get("keyword") || ""; } catch {}
+          const busca = sinTilde(clave || m.nombre || "").replace(/\s+/g, " ").trim().slice(0, 60);
+          const x = busca.length >= 2 ? (await TIENDAS[n](busca, env)).find(x => mismoProducto(m, x)) : null;
+          if (x && !out.some(o => o.id === x.id)) out.push(x);
+        }
+        return out;
+      }, { porEquivalencia: true });
+      // 3) Con el nombre encontrado, en las demás tiendas y en las que no tenían el código ni una equivalencia
       q = nombre ? sinTilde(nombre).replace(/\s+/g, " ").trim().slice(0, 60) : crudo;
       const resto = nombres.filter(n => !resultados.some(x => x.tienda === n));
       if (nombre && resto.length) {
