@@ -172,5 +172,31 @@
    "url": "https://www.superselectos.com/products?keyword=Salsa%20Picante%20Jalisco%20Mccormick%20-%2060%20ml&productId=3227",
    "nombre": "Salsa Jalisco Picante 60 ml Frasco"
   }
+ ],
+ [
+  {
+   "tienda": "Despensa de Don Juan",
+   "id": "4059431",
+   "url": "https://www.ladespensadedonjuan.com.sv/crema-dental-colgate-triple-accion-75ml/p",
+   "nombre": "Pasta Dental Colgate Triple Acción - 75 ml"
+  },
+  {
+   "tienda": "Super Selectos",
+   "id": "6449",
+   "url": "https://www.superselectos.com/products?keyword=Pasta%20Dental%20Colgate%20Triple%20Accion%20-%2075%20ml&productId=6449",
+   "nombre": "Pasta Dental Colgate Triple Acción 75 mL"
+  },
+  {
+   "tienda": "Walmart",
+   "id": "4059431",
+   "url": "https://www.walmart.com.sv/crema-dental-colgate-triple-accion-75ml/p",
+   "nombre": "Pasta Dental Colgate Triple Acción - 75 ml"
+  },
+  {
+   "tienda": "Superea",
+   "id": "1197",
+   "url": "https://superea.sv/productos/crema-dental-triple-accion-colgate-caja-75ml",
+   "nombre": "Crema Dental Triple Acción Colgate Caja 75ml"
+  }
  ]
 ]
