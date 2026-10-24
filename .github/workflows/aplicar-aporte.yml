@@ -13,7 +13,8 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with: { node-version: 22 }
-      - name: Aplicar equivalencias
+      - name: Aplicar equivalencias (solo las comparaciones cuya tabla sigue en la issue)
+        id: aplicar
         run: node scraper/aplicar-aporte.mjs
         env:
           CUERPO: ${{ github.event.issue.body }}
@@ -21,9 +22,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           NUM: ${{ github.event.issue.number }}
+          RESUMEN: ${{ steps.aplicar.outputs.resumen }}
         run: |
           git config user.name "canasta-bot"
           git config user.email "canasta-bot@users.noreply.github.com"
           git add scraper/equivalencias.json
           git diff --cached --quiet || (git commit -m "Aplicar aporte #$NUM" && git push)
-          gh issue close "$NUM" --comment "Aporte aplicado a scraper/equivalencias.json. Se verá en el catálogo tras la próxima actualización de precios."
+          gh issue close "$NUM" --comment "$RESUMEN"

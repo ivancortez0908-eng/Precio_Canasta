@@ -594,3 +594,33 @@ test('página: un resultado de una equivalencia aprobada se muestra con «Equiva
   await ui.run('vivo("7441029556735")');
   assert.match(ui.el('tv').innerHTML, /Mismo código de barras[^]*Pan Blanco Sandwich Bimbo[^]*Equivalencia verificada/);
 });
+test('aportes: solo se aplican las comparaciones cuya tabla sigue en la issue', async () => {
+  const { execFileSync } = require('node:child_process');
+  const g = (a, b) => [{ tienda: 'Walmart', id: a, url: '', nombre: 'P' + a }, { tienda: 'Super Selectos', id: b, url: '', nombre: 'Q' + b }];
+  const json = '```json\n' + JSON.stringify([g('1', '11'), g('2', '22'), g('3', '33')], null, 1) + '\n```';
+  const correr = cuerpo => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aporte-')); fs.mkdirSync(path.join(dir, 'scraper'));
+    fs.writeFileSync(path.join(dir, 'scraper', 'equivalencias.json'), JSON.stringify([g('2', '22')]));
+    const out = path.join(dir, 'salida.txt');
+    execFileSync(process.execPath, [path.join(__dirname, '..', 'scraper', 'aplicar-aporte.mjs')], { cwd: dir, env: { ...process.env, CUERPO: cuerpo, GITHUB_OUTPUT: out } });
+    const r = { base: JSON.parse(fs.readFileSync(path.join(dir, 'scraper', 'equivalencias.json'), 'utf8')).map(x => x[0].id), salida: fs.readFileSync(out, 'utf8') };
+    fs.rmSync(dir, { recursive: true }); return r;
+  };
+  // La comparación 1 se borró de la issue; la 2 ya estaba en la base; la 3 entra
+  let r = correr('### Comparación 2\n\n| tabla |\n\n### Comparación 3\n\n| tabla |\n\n<details>\n\n' + json + '\n\n</details>');
+  assert.deepEqual(r.base, ['2', '3']);
+  assert.match(r.salida, /resumen=Se aplicaron 1 comparación\(es\) \(3\)[^\n]*Se omitieron 1 porque su tabla se borró[^\n]*Ya estaban en la base: 2\./);
+  // Issue antigua, sin secciones: se aplica todo
+  r = correr('Aporte enviado desde el sitio.\n\n' + json);
+  assert.deepEqual(r.base, ['2', '1', '3']);
+  // Todas borradas: no se aplica nada
+  r = correr('### Comparaciones descartadas\n\n' + json.replace(/^/, ''));
+  assert.deepEqual(r.base, ['2']);
+  assert.match(r.salida, /No se aplicó ninguna comparación\. Se omitieron 1, 2 y 3/);
+  assert.match(r.salida, /aplicados=0/);
+});
+test('aportes: la issue que crea el Worker explica cómo descartar y numera cada comparación', async () => {
+  const fuente = fs.readFileSync(path.join(__dirname, '..', 'worker', 'worker.js'), 'utf8');
+  assert.match(fuente, /Para descartar una comparación:\*\* antes de poner la etiqueta, edita la issue y borra su sección completa/);
+  assert.match(fuente, /`### Comparación \$\{i \+ 1\}`/);
+});
