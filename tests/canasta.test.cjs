@@ -565,3 +565,32 @@ test('código de barras en la página: el catálogo lo encuentra y la búsqueda 
   assert.doesNotMatch(tv, /Integral/);   // otro producto: queda oculto
   assert.equal(ui.run('busquedaRV'), 'Pan Bimbo Para Sandwich - 560 g');
 });
+test('catálogo: los productos de Selectos de las equivalencias aprobadas se buscan aparte, siempre en superselectos.com', async () => {
+  const { paginasSelectos } = await import(pathToFileURL(path.join(__dirname, '..', 'scraper', 'tiendas.mjs')).href);
+  const eq = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'scraper', 'equivalencias.json'), 'utf8')).flat().filter(x => x.tienda === 'Super Selectos');
+  const extra = paginasSelectos().filter(p => p.cat === 'equivalencia aprobada');
+  assert.equal(extra.length, new Set(eq.map(x => new URL(x.url).searchParams.get('keyword'))).size);
+  assert.ok(extra.every(p => p.url.startsWith('https://www.superselectos.com/products?keyword=')));
+});
+test('Worker: al buscar por código usa las equivalencias aprobadas para traer el producto exacto de Selectos', async () => {
+  const vtex = (id, nombre) => ({ productId: id, productName: nombre, brand: 'Bimbo', link: 'https://www.walmart.com.sv/pan-bimbo/p',
+    items: [{ ean: '7441029556735', sellers: [{ commertialOffer: { Price: 1.8, AvailableQuantity: 5 } }] }] });
+  const w = await worker({
+    'raw.githubusercontent.com': [[{ tienda: 'Walmart', id: '', url: 'https://www.walmart.com.sv/pan-bimbo/p', nombre: 'Pan Bimbo' },
+      { tienda: 'Super Selectos', id: '', url: 'https://www.superselectos.com/products?keyword=pan%20bimbo%20blanco&productId=89275', nombre: 'Pan Bimbo Selectos' }]],
+    'walmart.com.sv/api/catalog_system/pub/products/search?fq=alternateIds_Ean:7441029556735': [vtex('4054725', 'Pan Bimbo Para Sandwich - 560 g')],
+    'superselectos.com': fs.readFileSync(path.join(__dirname, 'datos', 'selectos-busqueda.html'), 'utf8')
+  });
+  const d = await w.porCodigo('7441029556735');
+  const sel = d.resultados.filter(x => x.tienda === 'Super Selectos');
+  assert.deepEqual(sel.map(x => [x.id, x.porEquivalencia]), [['89275', true]]);   // solo el producto confirmado, no toda la búsqueda
+  assert.ok(w.pedidas.some(u => u.includes('superselectos.com/products?keyword=pan%20bimbo%20blanco')));
+});
+test('página: un resultado de una equivalencia aprobada se muestra con «Equivalencia verificada» después del mismo código', async () => {
+  const fila = (tienda, id, nombre, precio, extra = {}) => ({ tienda, id, nombre, marca: 'Bimbo', precio, url: 'https://t.test/' + id, q: 560, u: 'g', ...extra });
+  const ui = interfaz({ resultados: [fila('Super Selectos', 's9', 'Pan Blanco Sandwich Bimbo', 1.7, { q: null, porEquivalencia: true }),
+    fila('Walmart', 'w1', 'Pan Bimbo Para Sandwich - 560 g', 1.8, { porCodigo: true })] });
+  await terminar();
+  await ui.run('vivo("7441029556735")');
+  assert.match(ui.el('tv').innerHTML, /Mismo código de barras[^]*Pan Blanco Sandwich Bimbo[^]*Equivalencia verificada/);
+});

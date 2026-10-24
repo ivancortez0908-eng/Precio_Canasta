@@ -309,8 +309,10 @@ function pintarVivo() {
   const motivo = codigoRV ? "no son el mismo producto ni uno equivalente" : "no coinciden con 2 palabras de tu búsqueda";
   $("ocultostxt").textContent = verTodos ? `Se muestran también ${ocultos} resultado(s) que ${motivo}. ` : `Se ocultaron ${ocultos} resultado(s) de otros productos (${motivo}). `;
   $("vertodos").textContent = verTodos ? "Ocultar los que no coinciden" : "Mostrar todos";
-  r.sort((a, b) => (b.porCodigo ? 1 : 0) - (a.porCodigo ? 1 : 0) || (o === "pu" ? puDe(a) - puDe(b) : a.precio - b.precio));
-  const etq = x => x.porCodigo ? `<span class="tag">${TAG.ean}</span>` : codigoRV && x.coincide ? `<span class="tag">${TAG.nombre}</span>` : "";
+  // Con código: primero el mismo producto, luego las equivalencias aprobadas y después las de nombre y tamaño
+  const rango = x => x.porCodigo ? 2 : x.porEquivalencia ? 1 : 0;
+  r.sort((a, b) => rango(b) - rango(a) || (o === "pu" ? puDe(a) - puDe(b) : a.precio - b.precio));
+  const etq = x => x.porCodigo ? `<span class="tag">${TAG.ean}</span>` : x.porEquivalencia ? `<span class="tag">${TAG.manual}</span>` : codigoRV && x.coincide ? `<span class="tag">${TAG.nombre}</span>` : "";
   const min = r.length ? Math.min(...r.map(x => x.precio)) : 0;
   $("tv").innerHTML = r.length
     ? `<thead><tr><th>Producto</th><th>Tienda</th><th>Precio</th><th>Por unidad</th><th>Fav.</th></tr></thead><tbody>` + r.map(x => `<tr>
@@ -347,7 +349,7 @@ async function vivo(q) {
     const ref = cod && d.resultados.find(x => x.porCodigo);
     // Con código: se muestran el mismo producto (mismo código) y sus equivalentes por marca, nombre y tamaño
     RV = d.resultados.map(x => ({ ...x, pid: String(x.id ?? ""), id: idVivo(x),
-      coincide: cod ? !!x.porCodigo || (!!ref && equivalente(ref, x)) : coincideBusqueda(q, `${x.nombre} ${x.marca || ""}`) }));
+      coincide: cod ? !!x.porCodigo || !!x.porEquivalencia || (!!ref && equivalente(ref, x)) : coincideBusqueda(q, `${x.nombre} ${x.marca || ""}`) }));
     verTodos = false;
     fechaRV = d.generado;
     busquedaRV = ref ? ref.nombre : q;
