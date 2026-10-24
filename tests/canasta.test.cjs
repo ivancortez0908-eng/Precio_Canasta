@@ -666,3 +666,9 @@ test('aportes: la issue que crea el Worker explica cómo descartar y numera cada
   assert.match(fuente, /Para descartar una comparación:\*\* antes de poner la etiqueta, edita la issue y borra su sección completa/);
   assert.match(fuente, /`### Comparación \$\{i \+ 1\}`/);
 });
+test('los scripts de index.html llevan la misma versión (?v=) para no mezclar archivos guardados', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const v = [...html.matchAll(/<script src="(config|comparador|exportar|app)\.js\?v=([\w-]+)"/g)].map(m => m[2]);
+  assert.equal(v.length, 4);
+  assert.equal(new Set(v).size, 1);
+});
