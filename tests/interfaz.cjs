@@ -57,11 +57,13 @@ const server = http.createServer((req, res) => {
     for (let i = 0; i < pasos; i++) {
       const p = await page.evaluate(() => { const el = GUIA[guiaPaso].el?.(), l = $('guialuz').style, c = $('guiacard').getBoundingClientRect();
         const e = visible(el) ? el.getBoundingClientRect() : null;
-        return { t: GUIA[guiaPaso].t, q: $('q').value, dlista: $('dlista').open, centro: !e,
+        return { t: GUIA[guiaPaso].t, id: el?.id, q: $('q').value, dlista: $('dlista').open, centro: !e,
           rodea: !e || (parseFloat(l.left) <= Math.max(4, e.left) && parseFloat(l.top) <= Math.max(4, e.top) && parseFloat(l.left) + parseFloat(l.width) >= Math.min(innerWidth - 4, e.right)),
           dentro: c.left >= 0 && c.top >= 0 && c.right <= innerWidth && c.bottom <= innerHeight }; });
       assert.ok(p.rodea && p.dentro, JSON.stringify(p));
       if (p.t === 'Busca un producto') assert.equal(p.q, 'arroz');
+      if (p.t === 'Consulta las tiendas en el momento') assert.equal(p.id, 'buscarbtn');   // el botón «Buscar», no el del escáner
+      if (p.t === 'O escanea el código de barras') assert.equal(p.id, 'escanear');
       if (p.t === 'Elige la lista') assert.equal(p.dlista, true);
       if (p.t === 'Cantidades y precios por tienda') assert.equal(p.centro, true);   // lista vacía: explica al centro
       if (i === 1 && process.env.CANASTA_CAPTURAS) await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'guia-escritorio.png') });

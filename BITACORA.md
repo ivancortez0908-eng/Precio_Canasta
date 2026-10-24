@@ -1,4 +1,17 @@
-# Bitácora — 24 de octubre de 2026 (equivalencias por código en Mi lista, «Cancelar» y título discreto)
+# Bitácora — 24 de octubre de 2026 (guía: paso de buscar y escáner)
+
+## Problema
+En la guía, el paso «Consulta las tiendas en el momento» resaltaba el botón del escáner (era el primer botón del formulario) y el paso siguiente volvía a resaltarlo: parecía que «Buscar» y el escáner eran lo mismo.
+
+## Cambios
+- `index.html`: el botón «Buscar» tiene `id="buscarbtn"`.
+- `app.js`: el paso 3 señala `#buscarbtn` y habla del botón verde «Buscar»; el paso 4 se llama «O escanea el código de barras» y describe el botón con rayas junto al buscador.
+- `tests/interfaz.cjs`: comprueba qué botón resalta cada uno de esos pasos.
+
+## Validación
+- `node --test tests/canasta.test.cjs`: 46 pasan. `node tests/interfaz.cjs` pasa; capturas de los pasos 3 y 4 en celular revisadas.
+
+# Bitácora anterior (equivalencias por código en Mi lista, «Cancelar» y título discreto)
 
 ## Problema
 - Al buscar la pasta Colgate 75 ml por código, Superea salía con «Equivalencia verificada», pero al guardarla en una lista su precio no aparecía en el comparativo: la lista solo aceptaba coincidencias por marca, nombre y tamaño, y «Crema Dental … Caja 75ml» no coincide por nombre con «Pasta Dental … 75 ml». Además, al actualizar, la lista consultaba solo por nombre, sin las marcas de código o equivalencia.

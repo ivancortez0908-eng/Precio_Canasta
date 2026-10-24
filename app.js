@@ -711,8 +711,8 @@ const conLista = (si, no) => () => FAV.length ? si : no;
 const GUIA = [
   { t: "Así funciona Canasta SV", tab: 1, x: "Compara los precios de los supermercados de El Salvador. En unos pasos verás cómo buscar un producto, guardarlo en una lista y comparar tu compra. La guía no cambia tus listas." },
   { t: "Busca un producto", tab: 1, q: true, escribir: true, el: () => $("q"), x: "Escribe un producto o una marca. Los resultados del catálogo aparecen mientras escribes." },
-  { t: "Consulta las tiendas en el momento", tab: 1, q: true, el: () => $("fbuscar").querySelector("button"), x: "Si no lo encuentras o quieres el precio de hoy, toca «Buscar en las tiendas»: se consulta cada supermercado al instante." },
-  { t: "Escanea un código de barras", tab: 1, q: true, el: () => $("escanear"), x: "Con la cámara lees el código de un producto (o escribes sus números) y ves sus precios en cada tienda, con sus equivalentes." },
+  { t: "Consulta las tiendas en el momento", tab: 1, q: true, el: () => $("buscarbtn"), x: "Si no lo encuentras o quieres el precio de hoy, toca el botón verde «Buscar»: se consulta cada supermercado al instante." },
+  { t: "O escanea el código de barras", tab: 1, q: true, el: () => $("escanear"), x: "El botón con rayas, junto al buscador, abre la cámara para leer el código del producto (o escribes sus números). Verás el mismo producto en cada tienda y sus equivalentes." },
   { t: "Compara los precios", tab: 1, q: true, el: () => primero("#tabla tbody tr", "#mcat .mitem"), x: "Cada producto muestra su precio en cada tienda. El más barato lleva ✓ y fondo verde; también ves el precio por libra, litro o unidad." },
   { t: "Guárdalo en una lista", tab: 1, q: true, el: () => primero("#tabla tbody .star", "#mcat .star"), x: "Toca la ☆ del producto para guardarlo como favorito." },
   { t: "Elige la lista", tab: 1, q: true, dlg: true, el: () => $("dlopts"), x: "Marca una o varias listas. Cada lista guarda su propia cantidad y tus elecciones." },

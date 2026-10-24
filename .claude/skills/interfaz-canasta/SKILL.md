@@ -45,7 +45,7 @@ header.top (fija, 56 px; 52 px en celular)
 main (todo el ancho, 16 px de margen lateral)
  ├─ p.msg.intro   una línea que explica el sitio
  ├─ #p1 Buscar (página principal):
- │    form#fbuscar.controls (#q · button#escanear.scanbtn (código de barras) · «Buscar en las tiendas» .pri) → #fecha («Catálogo actualizado al 22 de octubre.», nada más)
+ │    form#fbuscar.controls (#q · button#escanear.scanbtn (código de barras) · «Buscar en las tiendas» button#buscarbtn.pri) → #fecha («Catálogo actualizado al 22 de octubre.», nada más)
  │    → section#secvivo, tras buscar en las tiendas: .subbarra (.titulo: h2 «En las tiendas ahora» + button#infov.infobtn «!» · #ordv) → #estvb (solo buscando, error o sin resultados)
  │         → #infopanel plegable (#estv con tiendas, resultados y hora · #ocultos con «Mostrar todos» · aviso) → .wrap>table#tv / #mvivo
  │    → section#seccat: .subbarra (h2#cattit · .filtros: casilla #comp «2 o más tiendas» / «2+ tiendas» en celular · #ord, por defecto «Mayor diferencia») → #count → .wrap>table#tabla / #mcat → «Mostrar más»
