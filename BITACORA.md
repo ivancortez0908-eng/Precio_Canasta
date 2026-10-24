@@ -5,7 +5,7 @@ En el aporte #31 se borraron de la issue las tablas de las comparaciones 4, 5, 6
 
 ## Cambios
 - `scraper/equivalencias.json`: se quitaron esos 4 grupos (13 → 9), identificados por tienda e ID; aún no habían llegado al catálogo publicado.
-- `scraper/aplicar-aporte.mjs`: aplica solo las comparaciones cuya sección «### Comparación N» sigue en la issue (N = posición en el JSON). Issues antiguas sin secciones: todo. Escribe un resumen (aplicadas, omitidas, ya existentes) que `aplicar-aporte.yml` usa como comentario de cierre.
+- `scraper/aplicar-aporte.mjs`: aplica solo las comparaciones cuya sección «### Comparación N» sigue en la issue (N = posición en el JSON). Issues antiguas sin secciones: todo. Escribe un resumen (aplicadas, omitidas, ya existentes) que `aplicar-aporte.yml` publica como comentario (aparte del cierre, para que salga aunque la issue ya se haya cerrado a mano).
 - `worker/worker.js` (versión `2026-10-24-b`): el texto de cada aporte explica cómo descartar una comparación.
 - README y AGENTS actualizados.
 
