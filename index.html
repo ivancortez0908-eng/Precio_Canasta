@@ -105,7 +105,9 @@ dialog.guia::backdrop{background:transparent}
 .guia-acc{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:12px}.guia-acc .salir{margin-right:auto;padding-left:4px;background:none;color:var(--mute)}
 /* «Espere…» al centro de la pantalla mientras carga el catálogo (no bloquea la página) */
 .cargando{position:fixed;top:50%;left:50%;z-index:40;transform:translate(-50%,-50%);display:flex;align-items:center;gap:12px;max-width:calc(100vw - 32px);padding:16px 22px;border-radius:12px;background:var(--surf);box-shadow:var(--sh),0 8px 24px rgba(0,0,0,.12);color:var(--ink);font-weight:600;pointer-events:none}
-.cargando[hidden]{display:none}.cargando small{display:block;color:var(--mute);font-weight:400;white-space:nowrap}
+.cargando[hidden]{display:none}
+/* Respaldo: en cuanto hay fecha del catálogo (cargó o falló) el aviso se oculta, aunque el navegador use un app.js anterior */
+body:has(#fecha:not(:empty)) .cargando{display:none}.cargando small{display:block;color:var(--mute);font-weight:400;white-space:nowrap}
 .giro{flex:none;width:26px;height:26px;border:3px solid var(--borde);border-top-color:var(--marca);border-radius:50%;animation:giro .8s linear infinite}
 @keyframes giro{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.guia-luz{transition:none}.giro{animation:none}}
@@ -326,9 +328,10 @@ a.chip{text-decoration:none}
 </dialog>
 <section id="imprimir" aria-hidden="true"></section>
 
-<script src="config.js"></script>
-<script src="comparador.js"></script>
-<script src="exportar.js"></script>
-<script src="app.js"></script>
+<!-- ?v= obliga al navegador a descargar los archivos nuevos junto con esta página: súbelo al cambiar cualquiera de ellos -->
+<script src="config.js?v=2026-10-24c"></script>
+<script src="comparador.js?v=2026-10-24c"></script>
+<script src="exportar.js?v=2026-10-24c"></script>
+<script src="app.js?v=2026-10-24c"></script>
 </body>
 </html>

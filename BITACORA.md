@@ -1,4 +1,17 @@
-# Bitácora — 24 de octubre de 2026 (aviso «Espere…» al cargar el catálogo)
+# Bitácora — 24 de octubre de 2026 (el «Espere…» se quedaba en pantalla)
+
+## Problema
+Tras publicar el aviso, el celular mostraba los productos pero el «Espere…» no se quitaba. GitHub Pages deja que el navegador guarde los archivos 10 minutos: la página nueva (con el aviso) se combinó con un `app.js` anterior, que no sabe ocultarlo. Se reprodujo en Chromium sirviendo el `app.js` anterior: 60 productos y el aviso visible.
+
+## Cambios
+- `index.html`: respaldo en CSS: si `#fecha` tiene texto (el catálogo cargó o falló, con cualquier versión de `app.js`) el aviso se oculta.
+- `index.html`: los cuatro `<script>` llevan `?v=2026-10-24c`; al cambiar cualquiera se sube ese valor para que el navegador descargue los nuevos junto con la página (regla en AGENTS).
+- Prueba: los cuatro scripts tienen la misma versión.
+
+## Validación
+- `node --test tests/canasta.test.cjs`: 47 pasan. `node tests/interfaz.cjs` pasa. Con el `app.js` anterior, el aviso ahora se oculta al cargar el catálogo.
+
+# Bitácora anterior (aviso «Espere…» al cargar el catálogo)
 
 ## Cambios
 - `index.html`: `div#cargando` fijo al centro de la pantalla con un círculo giratorio, «Espere…» y «Cargando el catálogo» (`role="status"`). No bloquea la página; con movimiento reducido el círculo no gira. El texto «Cargando el catálogo…» bajo el buscador se quitó para no repetirlo.

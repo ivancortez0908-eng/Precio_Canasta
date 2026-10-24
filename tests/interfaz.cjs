@@ -14,6 +14,7 @@ const respuesta = { generado: '2026-10-17T12:00:00Z', tiendas: { Walmart: { ok: 
 const respuestaCodigo = { generado: '2026-10-17T12:00:00Z', ean: '07441029556735', nombre: 'Leche entera Salud 1 L', tiendas: { Walmart: { ok: true, n: 1 }, 'Super Selectos': { ok: true, n: 1 } },
   resultados: [fila('Walmart', '1', 2, { porCodigo: true, ean: '07441029556735' }), fila('Super Selectos', '2', 1.75)] };
 const server = http.createServer((req, res) => {
+  req.url = req.url.split('?')[0];   // los scripts llevan ?v= de versión
   const archivos = { '/': 'index.html', '/app.js': 'app.js', '/comparador.js': 'comparador.js', '/exportar.js': 'exportar.js' };
   if (req.url === '/config.js') { res.setHeader('Content-Type', 'text/javascript'); res.end('window.API_VIVO="https://worker.test";'); return; }
   if (req.url === '/data/productos.json') { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ supers: ['Walmart', 'Super Selectos'], actualizado: '2026-10-17', items: [{ n: 'Arroz Blanco Precisa 1 lb', m: 'Precisa', q: 454, u: 'g', pl: 'lb', pu: .85, k: 'ean',
