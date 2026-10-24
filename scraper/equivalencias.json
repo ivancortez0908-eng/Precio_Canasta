@@ -109,60 +109,6 @@
  ],
  [
   {
-   "tienda": "Super Selectos",
-   "id": "3226",
-   "url": "https://www.superselectos.com/products?keyword=Salsa%20Picante%20Mccormick%20Jalisco%20Chilero%20150%20ml%20Frasco&productId=3226",
-   "nombre": "Salsa Picante Jalisco 148 ml Frasco"
-  },
-  {
-   "tienda": "Maxi Despensa",
-   "id": "4052327",
-   "url": "https://www.maxidespensa.com.sv/salsa-picante-jalisco-mccormick-148-ml-1/p",
-   "nombre": "Salsa Picante Jalisco Mccormick - 148 ml"
-  },
-  {
-   "tienda": "Superea",
-   "id": "4942",
-   "url": "https://superea.sv/productos/salsa-china-mccormick-vidrio-148ml",
-   "nombre": "Salsa China McCormick Vidrio 148ml"
-  }
- ],
- [
-  {
-   "tienda": "Super Selectos",
-   "id": "5885",
-   "url": "https://www.superselectos.com/products?keyword=Muslo%20Pierna%20De%20Pollo%20Americano%20lb%2F454%20g&productId=5885",
-   "nombre": "Muslo Pierna De Pollo Indio lb/454 g"
-  },
-  {
-   "tienda": "Maxi Despensa",
-   "id": "4060573",
-   "url": "https://www.maxidespensa.com.sv/muslo-pollo-indio-pierna-de-pollo-precio-indicado-por-libra-454-g/p",
-   "nombre": "Muslo Pollo Indio Pierna De Pollo - Precio Indicado Por Libra (454 g)"
-  }
- ],
- [
-  {
-   "tienda": "Super Selectos",
-   "id": "",
-   "url": "https://www.superselectos.com/products?keyword=Angelina&productId=5045",
-   "nombre": "Angelina lb/454 g"
-  },
-  {
-   "tienda": "Despensa de Don Juan",
-   "id": "4056085",
-   "url": "https://www.ladespensadedonjuan.com.sv/bistec-de-res-don-cristobal-angelina-lb/p",
-   "nombre": "Bistec De Res Don Cristóbal Angelina - Precio Indicado Por Libra (454 g)"
-  },
-  {
-   "tienda": "Maxi Despensa",
-   "id": "4056085",
-   "url": "https://www.maxidespensa.com.sv/bistec-de-res-don-cristobal-angelina-lb/p",
-   "nombre": "Bistec De Res Don Cristóbal Angelina - Precio Indicado Por Libra (454 g)"
-  }
- ],
- [
-  {
    "tienda": "Walmart",
    "id": "4051439",
    "url": "https://www.walmart.com.sv/cafe-coscafe-display-100-g/p",
@@ -179,26 +125,6 @@
    "id": "4051439",
    "url": "https://www.ladespensadedonjuan.com.sv/cafe-coscafe-display-100-g/p",
    "nombre": "Café Coscafé Display, 50 Sobres - 100 g"
-  }
- ],
- [
-  {
-   "tienda": "Walmart",
-   "id": "4054725",
-   "url": "https://www.walmart.com.sv/pan-bimbo-para-sandwich-560-g-7/p",
-   "nombre": "Pan Bimbo Para Sandwich - 560 g"
-  },
-  {
-   "tienda": "Despensa de Don Juan",
-   "id": "4054725",
-   "url": "https://www.ladespensadedonjuan.com.sv/pan-bimbo-para-sandwich-560-g-7/p",
-   "nombre": "Pan Bimbo Para Sandwich - 560 g"
-  },
-  {
-   "tienda": "Super Selectos",
-   "id": "121419",
-   "url": "https://www.superselectos.com/products?keyword=Pan%20bimbo&productId=121419",
-   "nombre": "PAN DE CAJA BIMBO BLANCO NATURAL 580 g"
   }
  ],
  [

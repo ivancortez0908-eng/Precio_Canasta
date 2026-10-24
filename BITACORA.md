@@ -1,3 +1,18 @@
+# Bitácora — 24 de octubre de 2026 (aportes: descartar comparaciones)
+
+## Problema
+En el aporte #31 se borraron de la issue las tablas de las comparaciones 4, 5, 6 y 8 para descartarlas, pero la automatización leía solo el bloque JSON y aplicó las 10. Entraron a la base: Salsa Jalisco 148 ml unida con Salsa China McCormick (Superea), Pan Bimbo 560 g con Pan de caja Bimbo 580 g (Selectos), muslo de pollo Indio y bistec Angelina.
+
+## Cambios
+- `scraper/equivalencias.json`: se quitaron esos 4 grupos (13 → 9), identificados por tienda e ID; aún no habían llegado al catálogo publicado.
+- `scraper/aplicar-aporte.mjs`: aplica solo las comparaciones cuya sección «### Comparación N» sigue en la issue (N = posición en el JSON). Issues antiguas sin secciones: todo. Escribe un resumen (aplicadas, omitidas, ya existentes) que `aplicar-aporte.yml` usa como comentario de cierre.
+- `worker/worker.js` (versión `2026-10-24-b`): el texto de cada aporte explica cómo descartar una comparación.
+- README y AGENTS actualizados.
+
+## Validación
+- El script nuevo con el texto real de la issue #31 sobre la base anterior: aplica 1, 2, 3, 7, 9 y 10, omite 4, 5, 6 y 8, y deja exactamente la base corregida.
+- Pruebas nuevas (comparación borrada, issue antigua, todas borradas, texto del Worker): 44 aprobadas; `node tests/interfaz.cjs` aprobado.
+
 # Bitácora — 24 de octubre de 2026 (equivalencias aprobadas unidas al código de barras)
 
 ## Evaluación

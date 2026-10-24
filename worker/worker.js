@@ -3,7 +3,7 @@
 // y devuelve los resultados en JSON. Guarda cada consulta 10 minutos en caché para no repetir peticiones.
 const UA = "CanastaSV/1.0 (comparador de precios sin fines de lucro)";
 const MAX = 12; // resultados por tienda
-const VERSION = "2026-10-24-a"; // aparece en cada respuesta: sirve para saber qué código está desplegado
+const VERSION = "2026-10-24-b"; // aparece en cada respuesta: sirve para saber qué código está desplegado
 
 // ---- tamaños (misma lógica que scraper/normalizar.mjs) ----
 const RE = /(?<![\d.,])(?:(\d+)\s*[x×]\s*)?(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|mg|lbs?|libras?|floz|onzas?|oz|ml|lts?|litros?|l|gal(?:on(?:es)?)?)(?![a-z])/i;
@@ -230,7 +230,9 @@ async function aporte(req, env, ctx, salida) {
   const tabla = (g, i) => [`### Comparación ${i + 1}`, "", "| Tienda | Producto | Enlace |", "|---|---|---|",
     ...g.map(x => `| ${x.tienda} | ${x.nombre || x.id} | ${x.url ? `[ver producto](${x.url})` : "—"} |`), ""].join("\n");
   const cuerpo = ["Aporte enviado desde el sitio.", "",
-    "**Para aplicarlo a la base:** revisa que cada tabla sea el mismo producto y agrega la etiqueta `aprobado`. **Para rechazarlo:** ciérralo como *not planned*.", "",
+    "**Para aplicarlo a la base:** revisa que cada tabla sea el mismo producto y agrega la etiqueta `aprobado`.",
+    "**Para descartar una comparación:** antes de poner la etiqueta, edita la issue y borra su sección completa (el título «Comparación N» y su tabla). Solo se aplican las que sigan en la issue; el JSON del final no se toca.",
+    "**Para rechazarlo todo:** ciérralo como *not planned*.", "",
     ...grupos.map(tabla), "<details><summary>JSON (lo usa la automatización)</summary>", "", "```json", JSON.stringify(grupos, null, 1), "```", "", "</details>"].join("\n");
   const r = await fetch(`https://api.github.com/repos/${env.GITHUB_REPO || "ivancortez0908-eng/Precio_Canasta"}/issues`, {
     method: "POST",
