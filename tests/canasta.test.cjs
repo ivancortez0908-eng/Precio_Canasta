@@ -127,8 +127,10 @@ test('catálogo antiguo no reemplaza un precio en vivo más reciente', async () 
   const ui = interfaz({ guardados: [favorito], datos: { supers: ['Walmart'], actualizado: '2026-10-15', items: [
     { n: base.nombre, m: 'Salud', q: 1000, u: 'ml', t: [[0, 1.5, 'https://tienda.test/Walmart/1']] }
   ] } });
+  assert.equal(ui.el('cargando').hidden, false);
   await terminar();
   assert.equal(ui.saved()[0].t.Walmart.p, 2);
+  assert.equal(ui.el('cargando').hidden, true);   // el «Espere…» se quita al cargar el catálogo
 });
 test('reutilizar una búsqueda antigua no rebaja la fecha ni reemplaza precios recientes', async () => {
   const ui = interfaz(); await terminar();
