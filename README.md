@@ -30,10 +30,11 @@ Se configuran en `scraper/tiendas.mjs`.
 Para ampliar la cobertura, agrega términos a `scraper/canasta.json`. Revisa términos de uso y `robots.txt` antes de activar cada tienda.
 
 ## Listas de favoritos
-Marca la ☆ en un producto del catálogo o de la búsqueda en vivo: se abre **Guardar en una lista**, donde marcas en qué listas va o creas una nueva. Un producto puede estar en varias listas y cada una guarda su propia cantidad y sus elecciones.
+Marca la ☆ en un producto del catálogo o de la búsqueda en vivo: se abre **Guardar en una lista**, donde marcas en qué listas va o creas una nueva y confirmas con **Guardar** (**Cancelar** cierra sin cambiar nada). Un producto puede estar en varias listas y cada una guarda su propia cantidad y sus elecciones.
 
 En la pestaña **Favoritos** eliges la lista que quieres ver y puedes crear otra, renombrarla o eliminarla. Para cada producto la página lo busca en todas las tiendas (usa el Worker de la búsqueda en vivo) y arma el comparativo: precio por tienda, cantidad (1 a 99) y total de la compra en cada tienda.
 - Solo se asigna un producto automáticamente si coinciden marca, nombre/variante y presentación, y hay una sola opción en esa tienda. Si hay varias o ninguna segura, la celda ofrece **Elegir coincidencia**; con **Cambiar producto** eliges otra presentación o indicas que **no está en esta tienda** (ya no se vuelve a llenar sola).
+- Si guardaste el producto desde una búsqueda por código de barras (o el producto del catálogo tiene código), al actualizar se consulta primero por código: las tiendas con una **equivalencia aprobada** (por ejemplo Superea o Selectos, que no publican códigos) se llenan aunque su nombre sea distinto.
 - Si la primera búsqueda no encuentra el producto, se prueba con la marca y las palabras clave del nombre.
 - **Ofertas por cantidad:** si una tienda publica una oferta clara («2 x $2.20», «Seleccione 2X$0.90», «2x1», «Paga 2 y lleva 3», «Segundo al 50%»), se muestra en su celda y se aplica **solo en esa tienda** al llevar la cantidad necesaria, por grupos completos (3 unidades con «2 x $2.20» = 2 en oferta + 1 a precio normal). Los descuentos no se acumulan y los textos que no siguen ese formato no se interpretan. También se muestra el precio anterior cuando la tienda lo publica. La tienda más barata de cada producto se elige según la cantidad pedida.
 - Una tienda sin coincidencia o que no respondió no cuenta como $0: su total sale como **parcial** y no puede ganar la comparación.

@@ -98,7 +98,7 @@ const server = http.createServer((req, res) => {
       fs.mkdirSync(process.env.CANASTA_CAPTURAS, { recursive: true });
       await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'guardar-en-lista.png') });
     }
-    await cuadro.getByRole('button', { name: 'Listo' }).click();
+    await cuadro.getByRole('button', { name: 'Guardar' }).click();
     await page.getByRole('tab', { name: /Mi lista/ }).click();
     assert.match(await page.getByRole('combobox', { name: 'Lista' }).innerText(), /Mi lista \(1\)[^]*Mensual \(1\)/);
     await page.getByRole('button', { name: 'Actualizar precios', exact: true }).waitFor();
