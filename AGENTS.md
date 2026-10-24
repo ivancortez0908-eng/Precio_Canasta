@@ -25,7 +25,8 @@ No crear copias de estos archivos en la raíz: los workflows y el sitio solo usa
 El usuario informa que GitHub y el Worker de Cloudflare ya están conectados y funcionan. Mantener esa integración. La URL se lee de `window.API_VIVO`, definida en `config.js`; no inventar una URL ni sobrescribir la configuración existente. El Worker se publica solo: al unir a `main` un cambio en `worker/worker.js` o `worker/wrangler.toml`, `.github/workflows/publicar-worker.yml` corre las pruebas, lo publica con wrangler (secretos `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID`) y comprueba que el campo `version` publicado coincida. Sube `VERSION` en cada cambio del Worker. `worker/wrangler.toml` usa `keep_vars = true` para no borrar las variables del panel.
 
 ## Reglas del producto
-- Hay varias listas de favoritos; la ☆ abre un cuadro para elegir o crear listas. Cada lista guarda su propia copia del producto (cantidad y elecciones).
+- Hay varias listas de favoritos; la ☆ abre un cuadro para elegir o crear listas. Los cambios del cuadro quedan pendientes hasta «Guardar»; «Cancelar» o Esc cierran sin cambiar nada. Cada lista guarda su propia copia del producto (cantidad y elecciones).
+- Un favorito guarda en `ean` el código de barras con que se encontró (búsqueda por código o `b` del catálogo). Al consultarlo se pide primero `?ean=`; solo los resultados `porCodigo`/`porEquivalencia` de ese mismo código cuentan como coincidencia segura aunque el nombre difiera (`marcarSeguros` en `app.js`).
 - Un favorito agrupa precios de varias tiendas. Detectar el producto por tienda e ID; usar URL de producto como compatibilidad con favoritos anteriores.
 - No usar una URL de búsqueda como identificador único: PriceSmart puede compartirla entre productos.
 - Emparejar automáticamente solo con marca, nombre/variante y presentación compatibles. Mantener concentración, sabor y número de envases en la comparación. Las coincidencias ambiguas se eligen manualmente.

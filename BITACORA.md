@@ -1,4 +1,22 @@
-# Bitácora — 24 de octubre de 2026 (aportes: descartar comparaciones)
+# Bitácora — 24 de octubre de 2026 (equivalencias por código en Mi lista, «Cancelar» y título discreto)
+
+## Problema
+- Al buscar la pasta Colgate 75 ml por código, Superea salía con «Equivalencia verificada», pero al guardarla en una lista su precio no aparecía en el comparativo: la lista solo aceptaba coincidencias por marca, nombre y tamaño, y «Crema Dental … Caja 75ml» no coincide por nombre con «Pasta Dental … 75 ml». Además, al actualizar, la lista consultaba solo por nombre, sin las marcas de código o equivalencia.
+- El cuadro «Guardar en una lista» aplicaba cada casilla al instante y no tenía forma de cancelar.
+- «En las tiendas ahora !» se veía más grande que «Canasta SV» en el celular.
+
+## Cambios
+- `app.js`: el favorito guarda `ean` (el código con que se buscó, o el primero de `b` en el catálogo). Al consultarlo pide primero `?ean=` y luego por nombre. Los resultados `porCodigo`/`porEquivalencia` de ese mismo código cuentan como coincidencia segura (`marcarSeguros`); los de otro código o de una búsqueda por nombre, no.
+- Cuadro de listas: las casillas y las listas nuevas quedan pendientes; «Guardar» las aplica y «Cancelar» (o Esc) cierra sin cambios. «Crear y agregar» deja de ser botón principal. La guía de uso termina con «Guardar».
+- `index.html`: los títulos de sección (`.subbarra h2`) pasan a 1rem seminegrita y el «!» a un círculo fino de 24 px (44 px de área táctil en celular).
+- Guía de diseño, README y AGENTS actualizados.
+- Los favoritos ya guardados sin código no cambian: hay que quitarlos y volver a guardarlos desde la búsqueda por código, o esperar a que el catálogo incluya la equivalencia.
+
+## Validación
+- `node --test tests/canasta.test.cjs`: 46 pasan (nuevas: equivalencia por código llena Superea y se conserva al actualizar; por nombre no se une; «Cancelar» no guarda nada).
+- `node tests/interfaz.cjs` en Chromium (escritorio y móvil) pasa con «Guardar».
+
+# Bitácora anterior (aportes: descartar comparaciones)
 
 ## Problema
 En el aporte #31 se borraron de la issue las tablas de las comparaciones 4, 5, 6 y 8 para descartarlas, pero la automatización leía solo el bloque JSON y aplicó las 10. Entraron a la base: Salsa Jalisco 148 ml unida con Salsa China McCormick (Superea), Pan Bimbo 560 g con Pan de caja Bimbo 580 g (Selectos), muslo de pollo Indio y bistec Angelina.

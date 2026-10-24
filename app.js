@@ -61,10 +61,12 @@ const favoritoVivo = (x, items = todos()) => items.find(f => f.id === idVivo(x) 
 const favoritoItem = (it, items = todos()) => items.find(f => f.id === it.fid || it.t.some(e =>
   Object.values(f.t).some(v => !v.cambio && v.url && v.url === e[2] && !/[?&]q=/.test(v.url))));
 function cancelar(f) { pendientes.get(f)?.abort(); pendientes.delete(f); }
-const favDeItem = it => ({ id: it.fid, n: it.n, m: it.m, q: it.q, u: it.u, pl: it.pl,
+// ean: código de barras del producto; al actualizar se consulta también por código para traer las equivalencias aprobadas
+const favDeItem = it => ({ id: it.fid, n: it.n, m: it.m, q: it.q, u: it.u, pl: it.pl, ean: it.b?.[0],
   t: Object.fromEntries(it.t.map(e => [D.supers[e[0]], { p: e[1], url: e[2], nom: e[4] || it.n, id: e[7] || "", f: D.actualizado, src: "cat" }])) });
 // El producto marcado en la búsqueda en vivo lo eligió la persona: queda como elección manual
 const favDeVivo = x => ({ id: x.id, n: x.nombre, m: x.marca, q: x.q, u: x.u, pl: x.pl, busqueda: busquedaRV,
+  ean: codigoRV && (x.porCodigo || x.porEquivalencia) ? codigoRV : undefined,
   t: { [x.tienda]: { p: x.precio, url: x.url, nom: x.nombre, ref: idVivo(x), id: pidDe(x), f: fechaRV || hoy(), manual: true, ...oferta(x) } } });
 // El precio más barato no se indica solo con color: ✓ visible y texto para lectores de pantalla
 const barato = html => `<span class="ok" aria-hidden="true">✓</span>${html}<span class="vh"> (más barato)</span>`;
@@ -105,6 +107,9 @@ function mezclarCatalogo(f) {
   }
 }
 // El mismo producto de la tienda: por referencia, por ID de la tienda o por enlace (no de búsqueda)
+// Mismo código de barras o equivalencia aprobada: seguros solo si la consulta fue por el código del favorito
+const marcarSeguros = (f, lista, cod) => cod && cod === f.ean ? lista.map(x => x.porCodigo || x.porEquivalencia ? { ...x, seguro: true } : x) : lista;
+const confiable = (f, x) => x.seguro || equivalente(f, x);
 const coincideCon = (previo, x) => previo && (previo.ref === idVivo(x) || (!!previo.id && String(previo.id) === pidDe(x)) || (previo.url === x.url && !/[?&]q=/.test(x.url || "")));
 function aplicarResultados(f, resultados, generado) {
   const porTienda = new Map();
@@ -116,7 +121,7 @@ function aplicarResultados(f, resultados, generado) {
   for (const [s, opciones] of porTienda) {
     const previo = f.t[s];
     const exacto = opciones.find(x => coincideCon(previo, x));
-    const seguros = opciones.filter(x => equivalente(f, x));
+    const seguros = opciones.some(x => x.seguro) ? opciones.filter(x => x.seguro) : opciones.filter(x => equivalente(f, x));
     // Varias coincidencias en una tienda requieren revisión; una tienda descartada no se vuelve a llenar sola.
     const elegido = exacto || (!previo && !f.sin?.[s] && seguros.length === 1 ? seguros[0] : null);
     if (elegido && (!previo || (generado || hoy()) >= (previo.f || ""))) f.t[s] = { p: elegido.precio, url: elegido.url, nom: elegido.nombre,
@@ -125,7 +130,7 @@ function aplicarResultados(f, resultados, generado) {
   }
   // Opciones para elegir a mano: se guardan con el favorito (sobreviven al recargar) y las nuevas van primero
   for (const [s, opciones] of porTienda) {
-    const nuevas = opciones.filter(x => equivalente(f, x) || coincideBusqueda(f.n, `${x.nombre} ${x.marca || ""}`))
+    const nuevas = opciones.filter(x => confiable(f, x) || coincideBusqueda(f.n, `${x.nombre} ${x.marca || ""}`))
       .map(x => ({ k: idVivo(x), tienda: s, nombre: x.nombre, marca: x.marca || "", precio: x.precio, url: x.url, id: pidDe(x), q: x.q, u: x.u, promo: x.promo || null, antes: x.antes || null }));
     if (!nuevas.length) continue;
     const ks = new Set(nuevas.map(x => x.k));
@@ -166,7 +171,7 @@ function consultas(f) {
 async function completarFavorito(f, completo = false) {
   if (!f || pendientes.has(f)) return;
   mezclarCatalogo(f);
-  aplicarResultados(f, RV, fechaRV);
+  aplicarResultados(f, marcarSeguros(f, RV, codigoRV), fechaRV);
   if (!window.API_VIVO) {
     f.estado = "Sin conexión configurada para consultar las demás tiendas.";
     guardar(); pintarFav(true); return;
@@ -180,10 +185,11 @@ async function completarFavorito(f, completo = false) {
   try {
     const tiendas = {}, resultados = [], vistos = new Set();
     let generado = "", error;
-    for (const q of consultas(f)) {
+    // Con código de barras, primero por código (trae las equivalencias aprobadas) y luego por nombre
+    for (const [tipo, q] of [...(f.ean ? [["ean", f.ean]] : []), ...consultas(f).map(q => ["q", q])]) {
       let d;
       try {
-        const r = await fetch(`${window.API_VIVO}?q=${encodeURIComponent(q)}`, { signal: control.signal });
+        const r = await fetch(`${window.API_VIVO}?${tipo}=${encodeURIComponent(q)}`, { signal: control.signal });
         d = await r.json();
         if (!r.ok) throw new Error(d.error || "Error " + r.status);
         if (!Array.isArray(d.resultados) || !d.tiendas) throw new Error("Respuesta inválida del buscador");
@@ -194,10 +200,10 @@ async function completarFavorito(f, completo = false) {
       if (!sigue()) return;
       generado = generado || d.generado;
       for (const [s, v] of Object.entries(d.tiendas)) if (!tiendas[s]?.ok) tiendas[s] = v;
-      for (const x of d.resultados) if (!vistos.has(idVivo(x))) { vistos.add(idVivo(x)); resultados.push(x); }
+      for (const x of tipo === "ean" ? marcarSeguros(f, d.resultados, f.ean) : d.resultados) if (!vistos.has(idVivo(x))) { vistos.add(idVivo(x)); resultados.push(x); }
       // Basta con que cada tienda que respondió tenga una coincidencia segura o el producto ya guardado
       const listas = Object.entries(tiendas).filter(([, v]) => v.ok).map(([s]) => s);
-      if (!completo && listas.every(s => resultados.some(x => x.tienda === s && (coincideCon(f.t[s], x) || equivalente(f, x))))) break;
+      if (!completo && listas.every(s => resultados.some(x => x.tienda === s && (coincideCon(f.t[s], x) || confiable(f, x))))) break;
     }
     if (!sigue()) return;
     if (!Object.keys(tiendas).length) throw error || new Error("Sin respuesta del buscador");
@@ -369,35 +375,47 @@ async function vivo(q) {
 }
 
 // ---------- Cuadro «Guardar en una lista» (se abre con la ☆) ----------
+// Las casillas y las listas nuevas quedan pendientes: «Guardar» las aplica; «Cancelar» o Esc cierran sin cambiar nada.
 const buscarEn = (lista, o) => o.tipo === "item" ? favoritoItem(o.x, lista.items) : favoritoVivo(o.x, lista.items);
 const nuevoDe = o => o.tipo === "item" ? favDeItem(o.x) : favDeVivo(o.x);
+let elegidas = new Map(), nuevas = [];   // id de lista → marcada; listas por crear { id, nombre, on }
 function pintarDialogo() {
   const o = porGuardar; if (!o) return;
   $("dlprod").textContent = o.tipo === "item" ? o.x.n : `${o.x.nombre} · ${o.x.tienda}`;
-  $("dlopts").innerHTML = LISTAS.map(l => `<label><input type="checkbox" data-l="${esc(l.id)}"${buscarEn(l, o) ? " checked" : ""}><span>${esc(l.nombre)} <small>(${l.items.length})</small></span></label>`).join("");
+  const casilla = (id, nombre, n, on) => `<label><input type="checkbox" data-l="${esc(id)}"${on ? " checked" : ""}><span>${esc(nombre)} <small>(${n})</small></span></label>`;
+  $("dlopts").innerHTML = LISTAS.map(l => casilla(l.id, l.nombre, l.items.length, elegidas.has(l.id) ? elegidas.get(l.id) : !!buscarEn(l, o))).join("") +
+    nuevas.map(n => casilla(n.id, n.nombre, "nueva", n.on)).join("");
 }
 function abrirListas(o) {
-  porGuardar = o; pintarDialogo();
+  porGuardar = o; elegidas = new Map(); nuevas = []; pintarDialogo();
   const d = $("dlista");
   if (d.showModal) { if (!d.open) d.showModal(); } else d.setAttribute("open", "");
   $("dlopts").querySelector("input")?.focus();
 }
 const trasCambio = () => { pintarDialogo(); render(); pintarVivo(); };
 $("dlopts").onchange = e => {
-  const l = LISTAS.find(x => x.id === e.target.dataset.l); if (!l || !porGuardar) return;
-  const ya = buscarEn(l, porGuardar);
-  if (!!ya !== e.target.checked) alternar(ya || nuevoDe(porGuardar), l);
-  trasCambio();
+  const id = e.target.dataset.l, n = nuevas.find(x => x.id === id);
+  if (n) n.on = e.target.checked; else if (LISTAS.some(l => l.id === id)) elegidas.set(id, e.target.checked);
 };
 $("dlnueva").onsubmit = e => {
   e.preventDefault();
   const nombre = $("dlnombre").value.trim(); if (!nombre || !porGuardar) return;
   $("dlnombre").value = "";
-  alternar(nuevoDe(porGuardar), crearLista(nombre));
-  trasCambio();
+  nuevas.push({ id: "n" + nuevas.length, nombre: nombre.slice(0, 40), on: true });
+  pintarDialogo();
 };
-$("dlcerrar").onclick = () => $("dlista").close?.();
-$("dlista").onclose = () => { porGuardar = null; };
+$("dlguardar").onclick = () => {
+  const o = porGuardar; if (!o) return;
+  for (const l of [...LISTAS]) {
+    const ya = buscarEn(l, o);
+    if (elegidas.has(l.id) && !!ya !== elegidas.get(l.id)) alternar(ya || nuevoDe(o), l);
+  }
+  for (const n of nuevas) if (n.on) alternar(nuevoDe(o), crearLista(n.nombre));
+  cerrarListas(); render(); pintarVivo();
+};
+function cerrarListas() { porGuardar = null; elegidas = new Map(); nuevas = []; $("dlista").close?.(); }
+$("dlcancelar").onclick = cerrarListas;
+$("dlista").onclose = () => { porGuardar = null; elegidas = new Map(); nuevas = []; };
 
 // ---------- Vista de favoritos: listas, cantidades, quitar y comparación de la compra ----------
 const tiendasFav = () => [...new Set([...(D ? D.supers : []), ...tiendasConocidas, ...FAV.flatMap(f => [...Object.keys(f.t), ...(f.tiendas || [])])])];
@@ -699,7 +717,7 @@ const GUIA = [
   { t: "Guárdalo en una lista", tab: 1, q: true, el: () => primero("#tabla tbody .star", "#mcat .star"), x: "Toca la ☆ del producto para guardarlo como favorito." },
   { t: "Elige la lista", tab: 1, q: true, dlg: true, el: () => $("dlopts"), x: "Marca una o varias listas. Cada lista guarda su propia cantidad y tus elecciones." },
   { t: "O crea una lista nueva", tab: 1, q: true, dlg: true, nombre: true, el: () => $("dlnueva"), x: "Escribe un nombre, por ejemplo «Compras del mes», y toca «Crear y agregar»." },
-  { t: "Termina con «Listo»", tab: 1, q: true, dlg: true, el: () => $("dlcerrar"), x: "Al guardar un producto, la página lo busca en las demás tiendas para compararlo." },
+  { t: "Termina con «Guardar»", tab: 1, q: true, dlg: true, el: () => $("dlguardar"), x: "«Guardar» aplica lo que marcaste y la página busca el producto en las demás tiendas para compararlo. «Cancelar» cierra sin cambiar nada." },
   { t: "Abre tus listas", tab: 1, q: true, el: () => $("tab2"), x: "Aquí ves tus listas. El número indica cuántos productos tiene la lista que estás viendo." },
   { t: "Elige la lista y actualiza", tab: 2, el: () => $("lsel").closest(".controls"),
     x: conLista("Elige la lista que quieres ver. «Actualizar precios» vuelve a consultar las tiendas.", "Elige la lista que quieres ver. Cuando tenga productos, «Actualizar precios» volverá a consultar las tiendas.") },

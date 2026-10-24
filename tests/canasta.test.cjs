@@ -191,18 +191,58 @@ test('un producto puede estar en varias listas, cada una con su cantidad', async
   ui.run('abrirListas({ tipo: "vivo", x: RV[0] })');
   assert.match(ui.el('dlopts').innerHTML, /Mi lista/);
   ui.run('$("dlopts").onchange({ target: { dataset: { l: "l1" }, checked: true } })'); await terminar();
-  ui.run('$("dlnombre").value = "Mensual"; $("dlnueva").onsubmit({ preventDefault() {} })'); await terminar();
+  ui.run('$("dlnombre").value = "Mensual"; $("dlnueva").onsubmit({ preventDefault() {} })');
+  assert.match(ui.el('dlopts').innerHTML, /Mensual/);
+  assert.equal(ui.listas(), null);   // nada se guarda hasta «Guardar»
+  ui.run('$("dlguardar").onclick()'); await terminar();
   const d = ui.listas();
   assert.deepEqual(d.listas.map(l => [l.nombre, l.items.length]), [['Mi lista', 1], ['Mensual', 1]]);
   assert.equal(d.activa, 'l1');
+  ui.run('abrirListas({ tipo: "vivo", x: RV[0] })');
   assert.match(ui.el('dlopts').innerHTML, /checked[^]*checked/);
   ui.run('FAV[0].cant = 4; guardar();');
   assert.deepEqual(ui.listas().listas.map(l => l.items[0].cant), [4, 1]);
   // Quitarlo de una lista no lo quita de la otra
   const mensual = d.listas[1].id;
   ui.run(`$("dlopts").onchange({ target: { dataset: { l: "${mensual}" }, checked: false } })`);
+  ui.run('$("dlguardar").onclick()');
   assert.deepEqual(ui.listas().listas.map(l => l.items.length), [1, 0]);
   assert.equal(ui.run('!!favoritoVivo(RV[0])'), true);
+});
+test('«Cancelar» cierra el cuadro de listas sin agregar ni crear nada', async () => {
+  const ui = interfaz({ resultados: [producto('Walmart', 2)] });
+  await ui.run('vivo("leche salud")');
+  ui.run('abrirListas({ tipo: "vivo", x: RV[0] })');
+  ui.run('$("dlopts").onchange({ target: { dataset: { l: "l1" }, checked: true } })');
+  ui.run('$("dlnombre").value = "Fiesta"; $("dlnueva").onsubmit({ preventDefault() {} })');
+  ui.run('$("dlcancelar").onclick()'); await terminar();
+  assert.equal(ui.run('LISTAS.length + ":" + LISTAS[0].items.length'), '1:0');
+  assert.equal(ui.run('porGuardar'), null);
+});
+test('con código de barras, una equivalencia aprobada llena la tienda aunque el nombre sea distinto', async () => {
+  const pasta = { nombre: 'Pasta Dental Colgate Triple Acción - 75 ml', marca: 'Colgate', q: 75, u: 'ml' };
+  const wal = { ...pasta, tienda: 'Walmart', id: '4059431', precio: 1.27, url: 'https://tienda.test/Walmart/4059431', porCodigo: true };
+  const sup = { tienda: 'Superea', id: '1197', nombre: 'Crema Dental Triple Acción Colgate Caja 75ml', marca: 'Colgate', q: 75, u: 'ml', precio: 1.5, url: 'https://tienda.test/Superea/1197', porEquivalencia: true };
+  const sinMarcas = ({ porCodigo, porEquivalencia, ...x }) => x;
+  // Por nombre llegan los mismos productos, pero sin la marca de código o de equivalencia
+  const ui = interfaz({ porConsulta: q => q === '' ? [wal, sup] : [sinMarcas(wal), sinMarcas(sup)] });
+  assert.equal(equivalente(pasta, sup), false);
+  await ui.run('vivo("7509546000985")');
+  ui.run('alternar(favDeVivo(RV.find(x => x.tienda === "Walmart")))'); await terminar(); await terminar();
+  let f = ui.saved()[0];
+  assert.equal(f.ean, '07509546000985');
+  assert.equal(f.t.Superea.p, 1.5);
+  // Al actualizar después, consulta primero por código y conserva Superea
+  const antes = ui.consultas.length;
+  ui.run('delete FAV[0].t.Superea; codigoRV = ""; completarFavorito(FAV[0])'); await terminar(); await terminar();
+  f = ui.saved()[0];
+  assert.equal(ui.consultas[antes], '');   // la primera consulta es por código
+  assert.equal(f.t.Superea.p, 1.5);
+  // Una búsqueda por nombre no basta para unir productos de nombre distinto
+  const ui2 = interfaz({ resultados: [sinMarcas(wal), sinMarcas(sup)] });
+  await ui2.run('vivo("pasta colgate triple")');
+  ui2.run('alternar(favDeVivo(RV.find(x => x.tienda === "Walmart")))'); await terminar(); await terminar();
+  assert.equal(ui2.saved()[0].t.Superea, undefined);
 });
 test('cambiar de lista muestra sus productos y eliminarla cancela sus consultas', async () => {
   const ui = interfaz(); await terminar();

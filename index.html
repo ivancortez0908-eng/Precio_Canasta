@@ -43,7 +43,7 @@ button.pri{background:var(--marca);color:#fff}button.pri:hover{background:var(--
 .tabs button{display:inline-flex;align-items:center;gap:8px}.tabs svg{width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .badge{display:inline-block;min-width:22px;padding:1px 7px;border-radius:999px;background:var(--marca);color:#fff;font-size:.75rem;line-height:1.4;text-align:center}
 /* Buscar: un solo buscador */
-.subbarra{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:4px 4px 0}.subbarra h2{flex:1;margin:0;font-size:1.15rem;min-width:200px}
+.subbarra{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:4px 4px 0}.subbarra h2{flex:1;margin:0;font-size:1rem;font-weight:600;min-width:200px}
 /* filtros compactos de una sección: casilla y orden como etiquetas redondas */
 .subbarra select,.subbarra label.chk{padding:5px 12px;border:1px solid var(--borde);border-radius:999px;background:var(--surf);font-size:.88rem}.subbarra select{width:auto;padding-right:8px}
 .subbarra label.chk{gap:6px;cursor:pointer;white-space:nowrap}.subbarra label.chk input{margin:0;accent-color:var(--marca)}
@@ -92,7 +92,7 @@ dialog{border:0;border-radius:8px;padding:16px 18px;width:min(420px,calc(100vw -
 dialog::backdrop{background:rgba(0,0,0,.45)}dialog h2{margin:0 0 4px;font-size:1.15rem}
 .dlopts{display:grid;gap:6px;margin:12px 0;max-height:40vh;overflow:auto}
 .dlopts label{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:6px;background:var(--bg);cursor:pointer}
-.dlopts input{width:18px;height:18px}.dlopts small{color:var(--mute)}
+.dlacc{justify-content:flex-end}.dlopts input{width:18px;height:18px}.dlopts small{color:var(--mute)}
 .dlnueva{display:flex;gap:8px;flex-wrap:wrap}.dlnueva input{flex:1;min-width:150px;font:inherit;padding:8px 12px;border:1px solid var(--borde);border-radius:6px;background:var(--surf);color:var(--ink)}
 /* hoja para imprimir o guardar como PDF */
 /* guía de uso: fondo opaco con el elemento del paso resaltado y una ventanita que lo señala */
@@ -128,7 +128,8 @@ footer{padding:0 16px 40px;color:var(--mute);font-size:.85rem}
 .filtros{display:flex;align-items:center;gap:8px;min-width:0}
 /* detalles de la búsqueda en las tiendas: botón «!» junto al título y panel plegable */
 .subbarra .titulo{display:flex;align-items:center;gap:8px;flex:1;min-width:200px}.subbarra .titulo h2{flex:0 1 auto;min-width:0}
-.infobtn{display:inline-grid;place-items:center;width:30px;height:30px;padding:0;border:2px solid var(--marca);border-radius:50%;background:none;color:var(--marca);font-weight:800;line-height:1}
+/* «!» discreto: círculo de 24 px; en celular el borde transparente amplía el área táctil a 44 px */
+.infobtn{display:inline-grid;place-items:center;width:24px;height:24px;padding:0;border:0 solid transparent;border-radius:50%;background:none;background-clip:padding-box;box-shadow:inset 0 0 0 1.5px var(--marca);color:var(--marca);font-size:.8rem;font-weight:700;line-height:1}
 .infobtn[aria-expanded=true]{background:var(--marca);color:#fff}
 .infopanel{display:grid;gap:8px;padding:10px 14px;border-radius:8px;background:var(--surf);box-shadow:var(--sh);font-size:.9rem}.infopanel .msg{margin:0}
 /* código de barras: botón junto al buscador y vista de la cámara */
@@ -172,7 +173,7 @@ a.chip{text-decoration:none}
   .tabs button[aria-selected=true]{border-top-color:var(--marca)}.tabs button:hover{background:none}/* en pantallas táctiles el :hover se queda pegado */
   .tabs button{position:relative}.tabs button .badge{position:absolute;top:5px;left:calc(50% + 6px);font-size:.7rem}
   body{padding-bottom:calc(60px + env(safe-area-inset-bottom))}
-  .subbarra>h2,.subbarra .titulo{min-width:100%}.subbarra .titulo h2{min-width:0}.infobtn{flex:none;width:44px;height:44px}.subbarra select,.subbarra label.chk{min-height:44px}.subbarra select{max-width:100%}
+  .subbarra>h2,.subbarra .titulo{min-width:100%}.subbarra .titulo h2{min-width:0}.infobtn{flex:none;width:44px;height:44px;border-width:10px}.subbarra select,.subbarra label.chk{min-height:44px}.subbarra select{max-width:100%}
   #fbuscar{flex-wrap:nowrap}#fbuscar input{min-width:0}.scanbtn{flex:none;width:44px;padding:0}
   /* zonas táctiles de 44 px en celular */
   main button,main select,main input[type=search],.qty,dialog button,.ayuda button{min-height:44px}
@@ -293,9 +294,9 @@ a.chip{text-decoration:none}
   <div class="dlopts" id="dlopts"></div>
   <form class="dlnueva" id="dlnueva">
     <input id="dlnombre" maxlength="40" placeholder="Nombre de la nueva lista" aria-label="Nombre de la nueva lista">
-    <button type="submit" class="pri">Crear y agregar</button>
+    <button type="submit">Crear y agregar</button>
   </form>
-  <div class="acc"><button id="dlcerrar">Listo</button></div>
+  <div class="acc dlacc"><button id="dlcancelar" type="button">Cancelar</button><button id="dlguardar" type="button" class="pri">Guardar</button></div>
 </dialog>
 <dialog id="dscan" aria-labelledby="scantit">
   <h2 id="scantit">Escanear código de barras</h2>
