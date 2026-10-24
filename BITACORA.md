@@ -1,4 +1,14 @@
-# Bitácora — 24 de octubre de 2026 (guía: paso de buscar y escáner)
+# Bitácora — 24 de octubre de 2026 (aviso «Espere…» al cargar el catálogo)
+
+## Cambios
+- `index.html`: `div#cargando` fijo al centro de la pantalla con un círculo giratorio, «Espere…» y «Cargando el catálogo» (`role="status"`). No bloquea la página; con movimiento reducido el círculo no gira. El texto «Cargando el catálogo…» bajo el buscador se quitó para no repetirlo.
+- `app.js`: se oculta cuando el catálogo carga o falla (`finally`).
+- Pruebas: el aviso se ve antes de cargar y se oculta después (unitaria y en Chromium). Guía de diseño actualizada.
+
+## Validación
+- `node --test tests/canasta.test.cjs`: 46 pasan. `node tests/interfaz.cjs` pasa. Capturas con carga lenta (3 s) en celular y escritorio revisadas.
+
+# Bitácora anterior (guía: paso de buscar y escáner)
 
 ## Problema
 En la guía, el paso «Consulta las tiendas en el momento» resaltaba el botón del escáner (era el primer botón del formulario) y el paso siguiente volvía a resaltarlo: parecía que «Buscar» y el escáner eran lo mismo.

@@ -36,6 +36,8 @@ const server = http.createServer((req, res) => {
     // La impresión real abriría un cuadro del sistema; se registra la llamada
     await page.addInitScript(() => { window.print = () => { window.impreso = (window.impreso || 0) + 1; }; });
     await page.goto(url);
+    // «Espere…» al centro mientras carga el catálogo; se quita al terminar
+    await page.locator('#cargando').waitFor({ state: 'hidden' });
     // Accesibilidad: título principal, pestañas ligadas a sus paneles y solo la activa en el orden de Tab; catálogo por «Mayor diferencia»
     assert.equal(await page.getByRole('heading', { level: 1, name: 'Canasta SV', exact: true }).count(), 1);
     assert.deepEqual(await page.evaluate(() => [1, 2].map(i => [document.querySelector('#tab' + i).getAttribute('aria-controls'), document.querySelector('#tab' + i).tabIndex,

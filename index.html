@@ -103,7 +103,12 @@ dialog.guia::backdrop{background:transparent}
 .guia-tarjeta h2{margin:0 0 4px;font-size:1.1rem}.guia-tarjeta p{margin:0}.guia-tarjeta .guia-paso{margin-bottom:2px;color:var(--mute);font-size:.8rem}
 .guia-flecha{position:absolute;width:14px;height:14px;background:var(--surf);transform:rotate(45deg)}.guia-flecha.arriba{top:-7px}.guia-flecha.abajo{bottom:-7px}
 .guia-acc{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:12px}.guia-acc .salir{margin-right:auto;padding-left:4px;background:none;color:var(--mute)}
-@media (prefers-reduced-motion:reduce){.guia-luz{transition:none}}
+/* «Espere…» al centro de la pantalla mientras carga el catálogo (no bloquea la página) */
+.cargando{position:fixed;top:50%;left:50%;z-index:40;transform:translate(-50%,-50%);display:flex;align-items:center;gap:12px;max-width:calc(100vw - 32px);padding:16px 22px;border-radius:12px;background:var(--surf);box-shadow:var(--sh),0 8px 24px rgba(0,0,0,.12);color:var(--ink);font-weight:600;pointer-events:none}
+.cargando[hidden]{display:none}.cargando small{display:block;color:var(--mute);font-weight:400;white-space:nowrap}
+.giro{flex:none;width:26px;height:26px;border:3px solid var(--borde);border-top-color:var(--marca);border-radius:50%;animation:giro .8s linear infinite}
+@keyframes giro{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.guia-luz{transition:none}.giro{animation:none}}
 #imprimir{display:none}
 @media print{
   @page{size:landscape;margin:12mm}
@@ -214,7 +219,7 @@ a.chip{text-decoration:none}
       <button type="button" id="escanear" class="scanbtn" aria-label="Escanear código de barras"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7V4h3M18 4h3v3M21 17v3h-3M6 20H3v-3"/><path d="M7 8v8M10 8v8M13 8v8M16 8v8"/></svg></button>
       <button type="submit" id="buscarbtn" class="pri" aria-label="Buscar en las tiendas">Buscar<span class="larga"> en las tiendas</span></button>
     </form>
-    <p class="msg" id="fecha">Cargando el catálogo…</p>
+    <p class="msg" id="fecha"></p>
     <section class="seccion" id="secvivo" hidden>
       <div class="subbarra"><div class="titulo"><h2>En las tiendas ahora</h2><button id="infov" class="infobtn" aria-expanded="false" aria-controls="infopanel" aria-label="Detalles de la búsqueda">!</button></div>
         <select id="ordv" aria-label="Ordenar resultados de las tiendas">
@@ -288,6 +293,7 @@ a.chip{text-decoration:none}
   </div>
 </section>
 <footer id="foot"></footer>
+<div class="cargando" id="cargando" role="status"><span class="giro" aria-hidden="true"></span><span>Espere…<small>Cargando el catálogo</small></span></div>
 <dialog id="dlista" aria-labelledby="dltit">
   <h2 id="dltit">Guardar en una lista</h2>
   <p class="msg" id="dlprod"></p>

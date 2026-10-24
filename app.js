@@ -821,6 +821,7 @@ $("guia").onclose = () => { if (!$("guia").open) guiaFin(); };
 
 contar();
 pintarFav();
+// «Espere…» al centro (está en index.html) hasta que el catálogo carga o falla
 fetch("data/productos.json").then(r => { if (!r.ok) throw 0; return r.json(); }).then(d => {
   D = d;
   D.items.forEach((it, i) => { it.i = i; it.fid = idGrupo(it); it.s = norm(it.n + " " + it.m + " " + it.t.map(e => (e[4] || "") + " " + (e[5] || "")).join(" ")); });
@@ -831,4 +832,4 @@ fetch("data/productos.json").then(r => { if (!r.ok) throw 0; return r.json(); })
     : `Precios en USD tomados de las tiendas en línea. Actualizado: ${D.actualizado}. Pueden diferir de los precios en sala.`;
   if (D.supers.length < 2) { $("comp").checked = false; $("comp").disabled = true; $("comp").parentElement.title = "Se activa cuando haya 2 o más tiendas con datos"; }
   render(); pintarFav();
-}).catch(() => { $("fecha").textContent = "No se pudo cargar el catálogo."; $("tabla").innerHTML = "<tr><td>No se pudieron cargar los precios. Si abriste el archivo directo, usa GitHub Pages o un servidor local (python3 -m http.server).</td></tr>"; pintarFav(); });
+}).catch(() => { $("fecha").textContent = "No se pudo cargar el catálogo."; $("tabla").innerHTML = "<tr><td>No se pudieron cargar los precios. Si abriste el archivo directo, usa GitHub Pages o un servidor local (python3 -m http.server).</td></tr>"; pintarFav(); }).finally(() => { $("cargando").hidden = true; });
