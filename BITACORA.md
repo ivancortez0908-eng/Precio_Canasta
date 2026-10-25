@@ -1,4 +1,17 @@
-# Bitácora — 24 de octubre de 2026 (el «Espere…» se quedaba en pantalla)
+# Bitácora — 25 de octubre de 2026 (fecha del pie de página)
+
+## Problema
+Tras «Actualizar precios» en Mi lista, el pie decía «Actualizado: 2026-10-22», aunque el catálogo publicado es del 24. El pie muestra la fecha del catálogo (no la de la consulta de Mi lista) y el navegador del celular seguía usando un `data/productos.json` guardado.
+
+## Cambios
+- `app.js`: el catálogo se pide con `cache: "no-cache"`: el navegador confirma con GitHub Pages si hay uno más nuevo cada vez que se abre la página.
+- `app.js`: el pie dice «Catálogo del 24 de octubre. En Mi lista, cada precio lleva la fecha en que se consultó. …».
+- `index.html`: scripts con `?v=2026-10-25`.
+
+## Validación
+- `node --test tests/canasta.test.cjs` y `node tests/interfaz.cjs` pasan.
+
+# Bitácora anterior (el «Espere…» se quedaba en pantalla)
 
 ## Problema
 Tras publicar el aviso, el celular mostraba los productos pero el «Espere…» no se quitaba. GitHub Pages deja que el navegador guarde los archivos 10 minutos: la página nueva (con el aviso) se combinó con un `app.js` anterior, que no sabe ocultarlo. Se reprodujo en Chromium sirviendo el `app.js` anterior: 60 productos y el aviso visible.
