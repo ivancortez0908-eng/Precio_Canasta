@@ -6,7 +6,10 @@
 <meta name="color-scheme" content="light">
 <title>Canasta SV · Compara precios de supermercados</title>
 <style>
-:root{color-scheme:light;--bg:#f4f6f5;--surf:#fff;--ink:#1a1f1c;--mute:#5c6660;--line:#d3d8d5;--marca:#0a6e37;--marcaHov:#085a2d;--borde:#7c8480;--btn:#e2e6e4;--hov:#d6dbd8;--best:#e3f6e8;--bestInk:#14632b;--warn:#b01433;--v:#31a24c;--a:#f7b928;--r:#e02849;--sh:0 1px 2px rgba(0,0,0,.2);--velo:rgba(0,0,0,.6)}
+:root{color-scheme:light;--bg:#f4f6f5;--surf:#fff;--ink:#1a1f1c;--mute:#5c6660;--line:#d3d8d5;--marca:#0a6e37;--marcaHov:#085a2d;--borde:#7c8480;--btn:#e2e6e4;--hov:#d6dbd8;--best:#e3f6e8;--bestInk:#14632b;--warn:#b01433;--v:#31a24c;--a:#f7b928;--r:#e02849;--sh:0 1px 2px rgba(0,0,0,.2);--velo:rgba(0,0,0,.6);
+  /* Categorías: fondo suave y texto oscuro (contraste ≥ 5.7:1); el color siempre va con el nombre */
+  --cCarnes:#fde8e8;--cCarnesT:#8a1c1c;--cLacteos:#e8f1fd;--cLacteosT:#1c4a8a;--cFrutas:#e9f5e4;--cFrutasT:#2f6b1f;--cPan:#f6ece2;--cPanT:#6e4321;--cBasicos:#fbf1dc;--cBasicosT:#7a5212;
+  --cBebidas:#e6f6f4;--cBebidasT:#14625a;--cLimpieza:#efeafb;--cLimpiezaT:#4b2f8a;--cPersonal:#fbe9f3;--cPersonalT:#86214f;--cBebe:#fff5d6;--cBebeT:#6b5300;--cOtros:#eef0f2;--cOtrosT:#3d4650}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,"Segoe UI",Helvetica,Arial,sans-serif}
@@ -64,6 +67,16 @@ td small.f{font-size:.72rem;white-space:normal;max-width:220px;margin-left:auto}
 td.best small{color:var(--bestInk)}
 td .marca{font-weight:600;color:var(--marca)}
 .tag{display:inline-block;font-size:.75rem;padding:0 8px;border-radius:999px;background:var(--btn);color:var(--mute);margin-left:4px}
+/* Categorías: fila de etiquetas para filtrar (#cats) y etiqueta .cat en cada producto, con el tono de su categoría */
+[data-c=carnes]{--cf:var(--cCarnes);--ct:var(--cCarnesT)}[data-c=lacteos]{--cf:var(--cLacteos);--ct:var(--cLacteosT)}[data-c=frutas]{--cf:var(--cFrutas);--ct:var(--cFrutasT)}
+[data-c=panaderia]{--cf:var(--cPan);--ct:var(--cPanT)}[data-c=basicos]{--cf:var(--cBasicos);--ct:var(--cBasicosT)}[data-c=bebidas]{--cf:var(--cBebidas);--ct:var(--cBebidasT)}
+[data-c=limpieza]{--cf:var(--cLimpieza);--ct:var(--cLimpiezaT)}[data-c=personal]{--cf:var(--cPersonal);--ct:var(--cPersonalT)}[data-c=bebe]{--cf:var(--cBebe);--ct:var(--cBebeT)}[data-c=otros]{--cf:var(--cOtros);--ct:var(--cOtrosT)}
+.cat{display:inline-block;font-size:.75rem;padding:0 8px;border-radius:999px;background:var(--cf);color:var(--ct);margin-left:4px;font-weight:600}
+.cats{display:flex;flex-wrap:wrap;gap:6px;margin:6px 4px 10px}
+.cats button{min-height:32px;padding:4px 12px;border:1px solid transparent;border-radius:999px;background:var(--cf,var(--surf));color:var(--ct,var(--ink));font-weight:600;font-size:.85rem;white-space:nowrap}
+.cats button[data-c=""]{border-color:var(--borde)}.cats button:hover{filter:brightness(.96)}
+.cats button[aria-pressed=true]{border:2px solid var(--ct,var(--marca));padding:3px 11px;box-shadow:var(--sh)}
+.cats button[aria-pressed=true]::before{content:"✓ "}
 .store{display:inline-block;font-size:.8rem;padding:1px 10px;border-radius:999px;background:var(--btn);font-weight:600}
 .star{background:none;font-size:1.4rem;line-height:1;padding:2px 8px;color:var(--mute)}.star:hover{background:var(--btn)}.star[aria-pressed=true]{color:#e0a100}
 .stp{display:inline-flex;align-items:center;gap:4px}.stp button{padding:2px 10px;font-size:1.1rem;line-height:1.2}
@@ -173,6 +186,7 @@ a.chip{text-decoration:none}
 .mtienda.best{background:var(--best);color:var(--bestInk)}.mtienda.best small{color:var(--bestInk)}.mtienda.na{color:var(--mute);font-size:.85rem}
 .mtienda a{color:inherit;font-weight:700}.mtienda small.promo{display:inline-block}.mtienda small.f,.mtienda small.product-source{font-size:.72rem}
 @media (max-width:700px){
+  .cats{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:4px 0 10px;padding:2px}.cats::-webkit-scrollbar{display:none}.cats button{min-height:44px;font-size:.95rem}
   .sp{min-width:0;margin-left:auto}.corta{display:inline}.guiabtn{min-height:44px}header.top{height:52px}.brand{font-size:1.15rem}.logo{width:34px;height:34px}
   /* pestañas abajo, al alcance del pulgar */
   .tabs{position:fixed;left:0;right:0;bottom:0;height:calc(60px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);gap:0;background:var(--surf);box-shadow:0 -1px 3px rgba(0,0,0,.18)}
@@ -222,6 +236,7 @@ a.chip{text-decoration:none}
       <button type="submit" id="buscarbtn" class="pri" aria-label="Buscar en las tiendas">Buscar<span class="larga"> en las tiendas</span></button>
     </form>
     <p class="msg" id="fecha"></p>
+    <div class="cats" id="cats" role="group" aria-label="Filtrar por categoría" hidden></div>
     <section class="seccion" id="secvivo" hidden>
       <div class="subbarra"><div class="titulo"><h2>En las tiendas ahora</h2><button id="infov" class="infobtn" aria-expanded="false" aria-controls="infopanel" aria-label="Detalles de la búsqueda">!</button></div>
         <select id="ordv" aria-label="Ordenar resultados de las tiendas">
@@ -329,9 +344,9 @@ a.chip{text-decoration:none}
 <section id="imprimir" aria-hidden="true"></section>
 
 <!-- ?v= obliga al navegador a descargar los archivos nuevos junto con esta página: súbelo al cambiar cualquiera de ellos -->
-<script src="config.js?v=2026-10-25"></script>
-<script src="comparador.js?v=2026-10-25"></script>
-<script src="exportar.js?v=2026-10-25"></script>
-<script src="app.js?v=2026-10-25"></script>
+<script src="config.js?v=2026-10-29"></script>
+<script src="comparador.js?v=2026-10-29"></script>
+<script src="exportar.js?v=2026-10-29"></script>
+<script src="app.js?v=2026-10-29"></script>
 </body>
 </html>

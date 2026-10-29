@@ -28,6 +28,7 @@ Usa siempre las variables de `:root`; nunca colores sueltos (salvo el amarillo d
 | `--warn` | acciones que borran y avisos (`#b01433`, ≥ 4.5:1 también sobre botones grises) |
 | `--v` `--a` `--r` | semáforo: verde, amarillo, rojo (decorativos: siempre acompañados de texto) |
 | `--sh` | sombra de tarjetas |
+| `--cCarnes`/`--cCarnesT` … `--cOtros`/`--cOtrosT` | categorías: fondo suave y texto oscuro (contraste ≥ 5.7:1). Se usan con `data-c="<categoría>"`, que define `--cf`/`--ct` |
 | `--velo` | fondo opaco de la guía de uso (alrededor del elemento resaltado) |
 
 - Todo texto nuevo debe tener contraste ≥ 4.5:1 con su fondo; compruébalo antes de elegir un color.
@@ -46,6 +47,7 @@ main (todo el ancho, 16 px de margen lateral)
  ├─ p.msg.intro   una línea que explica el sitio
  ├─ #p1 Buscar (página principal):
  │    form#fbuscar.controls (#q · button#escanear.scanbtn (código de barras) · «Buscar en las tiendas» button#buscarbtn.pri) → #fecha («Catálogo actualizado al 22 de octubre.», nada más)
+ │    → div#cats.cats (role=group «Filtrar por categoría»): «Todo» + las categorías con productos; filtra el catálogo y los resultados de las tiendas
  │    → section#secvivo, tras buscar en las tiendas: .subbarra (.titulo: h2 «En las tiendas ahora» + button#infov.infobtn «!» · #ordv) → #estvb (solo buscando, error o sin resultados)
  │         → #infopanel plegable (#estv con tiendas, resultados y hora · #ocultos con «Mostrar todos» · aviso) → .wrap>table#tv / #mvivo
  │    → section#seccat: .subbarra (h2#cattit · .filtros: casilla #comp «2 o más tiendas» / «2+ tiendas» en celular · #ord, por defecto «Mayor diferencia») → #count → .wrap>table#tabla / #mcat → «Mostrar más»
@@ -92,7 +94,8 @@ Siempre de arriba abajo: **controles → estado → tabla → resumen**.
 | cantidad | `span.stp` con `button[data-a=menos]`, `input.qty`, `button[data-a=mas]` (1 a 99) |
 | favorito | `button.star` con `aria-pressed` y ☆/★; abre `dialog#dlista` |
 | contador en pestaña | `span.badge` (verde, texto blanco) |
-| etiqueta pequeña | `.tag` (criterio de unión), `.store` (nombre de tienda), `.marca` (marca, verde) |
+| etiqueta pequeña | `.tag` (criterio de unión), `.store` (nombre de tienda), `.marca` (marca, verde), `.cat[data-c]` (categoría con su tono suave; «Otros» no se marca) |
+| filtro por categoría | `div#cats.cats > button[data-c][aria-pressed]` con el tono de la categoría; la elegida lleva borde del color del texto y «✓» (no solo color). Una a la vez; «Todo» (`data-c=""`) con borde gris. En celular, una fila que se desliza de lado (44 px de alto) |
 | precio más barato | `td.best` con `barato(html)` (✓ visible + «(más barato)» en `.vh`); nunca solo el color verde |
 | sin dato | `td.na` con texto («Sin coincidencia», «Tienda sin respuesta», «Descartado por ti»); nunca cero dólares |
 | oferta | `small.promo` («Oferta 2 x … · lleva 2 para aplicarla»), `small.promo.si` cuando ya se aplica, `small.antes` tachado |
