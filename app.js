@@ -5,11 +5,12 @@ const fmt = n => "$" + n.toFixed(2);
 const fpu = n => "$" + n.toFixed(n < 0.01 ? 4 : n < 0.1 ? 3 : 2);
 const puDe = x => (x.pu > 0 ? x.pu : 1e9);   // para ordenar: sin precio por unidad conocido, al final
 const TAG = { ean: "Mismo código de barras", nombre: "Coincide por nombre y tamaño", manual: "Equivalencia verificada" };
+let CAT = "";   // categoría elegida en #cats ("" = todas)
 let D, limite = 60, RV = [], fechaRV = "", busquedaRV = "", codigoRV = "", ctl, actualizando = false, porGuardar = null, abierto = null, verTodos = false;
 const tiendasConocidas = new Set();
 // Consultas y opciones por favorito (el objeto, porque un producto puede estar en varias listas)
 const pendientes = new Map();
-const { equivalente, precioValido, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda, dia, gtin } = Canasta;
+const { equivalente, precioValido, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda, dia, gtin, categoria, NOMBRES_CATEGORIA } = Canasta;
 // Oferta y precio anterior que reporta cada tienda; solo valen para esa tienda
 const oferta = x => ({ promo: x.promo || null, antes: x.antes > x.precio ? x.antes : null });
 
@@ -254,13 +255,22 @@ function filtrar() {
   const cod = codigoDe($("q").value);
   if (cod) return D.items.filter(it => it.b?.includes(cod));
   const ts = norm($("q").value).split(/\s+/).filter(Boolean), c = $("comp").checked, o = $("ord").value;
-  const r = D.items.filter(it => ts.every(t => it.s.includes(t)) && (!c || it.t.length > 1));
+  const r = D.items.filter(it => ts.every(t => it.s.includes(t)) && (!c || it.t.length > 1) && (!CAT || it.c === CAT));
   if (o === "pu") r.sort((a, b) => puDe(a) - puDe(b));
   if (o === "dif") r.sort((a, b) => dif(b) - dif(a));
   if (o === "n") r.sort((a, b) => a.n.localeCompare(b.n, "es"));
   return r;
 }
 
+// Etiqueta de categoría con su tono suave («Otros» no se marca)
+const etqCat = c => c && c !== "otros" ? `<span class="cat" data-c="${c}">${NOMBRES_CATEGORIA[c]}</span>` : "";
+function pintarCats() {
+  const hay = new Set(D.items.map(it => it.c));
+  const orden = Object.keys(NOMBRES_CATEGORIA).filter(c => hay.has(c));
+  $("cats").innerHTML = [["", "Todo"], ...orden.map(c => [c, NOMBRES_CATEGORIA[c]])]
+    .map(([c, n]) => `<button type="button" data-c="${c}" aria-pressed="${c === CAT}">${n}</button>`).join("");
+  $("cats").hidden = false;
+}
 function render() {
   if (!D) return;
   const r = filtrar(), S = D.supers;
@@ -271,11 +281,12 @@ function render() {
   // Si ya se buscó en las tiendas y el catálogo no tiene nada, la sección vacía no se muestra
   $("seccat").hidden = !r.length && !$("secvivo").hidden;
   let h = `<thead><tr><th>Producto</th>${S.map(s => `<th>${esc(s)}</th>`).join("")}<th>Por unidad</th><th>Fav.</th></tr></thead><tbody>`;
-  const vacio = `No hay resultados en el catálogo guardado.${q.length > 1 ? " Usa «Buscar en las tiendas» para consultarlo en el momento." : ""}`;
+  const vacio = CAT ? `No hay productos de «${NOMBRES_CATEGORIA[CAT]}»${q ? " con esa búsqueda" : ""} en el catálogo guardado. Toca «Todo» para ver las demás categorías.`
+    : `No hay resultados en el catálogo guardado.${q.length > 1 ? " Usa «Buscar en las tiendas» para consultarlo en el momento." : ""}`;
   if (!r.length) h += `<tr><td colspan="${S.length + 3}">${vacio}</td></tr>`;
   for (const it of r.slice(0, limite)) {
     const min = Math.min(...it.t.map(x => x[1]));
-    h += `<tr><td>${esc(it.n)}<small>${it.m ? `<span class="marca">${esc(it.m)}</span>` : "Marca no indicada"}${tam(it) ? " · " + tam(it) : ""}${it.k ? `<span class="tag">${TAG[it.k]}</span>` : ""}</small>${desc(it)}</td>` +
+    h += `<tr><td>${esc(it.n)}<small>${it.m ? `<span class="marca">${esc(it.m)}</span>` : "Marca no indicada"}${tam(it) ? " · " + tam(it) : ""}${etqCat(it.c)}${it.k ? `<span class="tag">${TAG[it.k]}</span>` : ""}</small>${desc(it)}</td>` +
       S.map((_, si) => {
         const e = it.t.find(x => x[0] === si);
         if (!e) return `<td class="na">—</td>`;
@@ -289,7 +300,7 @@ function render() {
   // Celular: nombre, precios con su tienda (el más barato primero), precio por unidad y ☆
   $("mcat").innerHTML = !r.length ? `<p class="msg">${vacio}</p>` : r.slice(0, limite).map(it => {
     const min = Math.min(...it.t.map(x => x[1]));
-    return `<article class="mitem"><div class="mfila"><span class="mnom">${esc(it.n)}<small>${it.m ? `<span class="marca">${esc(it.m)}</span>` : "Marca no indicada"}${tam(it) ? " · " + tam(it) : ""}</small></span>` +
+    return `<article class="mitem"><div class="mfila"><span class="mnom">${esc(it.n)}<small>${it.m ? `<span class="marca">${esc(it.m)}</span>` : "Marca no indicada"}${tam(it) ? " · " + tam(it) : ""}${etqCat(it.c)}</small></span>` +
       estrella(`data-i="${it.i}"`, !!favoritoItem(it)) +
       `<span class="mprecios">${[...it.t].sort((a, b) => a[1] - b[1]).map(e => chip(S[e[0]], e[1], e[1] === min && it.t.length > 1, "", e[2])).join("")}</span>` +
       (it.pu > 0 ? `<small class="mpu">${fpu(it.pu)} por ${it.pl}</small>` : "") + "</div></article>";
@@ -308,9 +319,11 @@ function notaOferta(v, cant) {
 }
 
 // ---------- Búsqueda en vivo ----------
+// Hay resultados, pero ninguno de la categoría elegida
+const sinCat = () => `Ningún resultado de «${NOMBRES_CATEGORIA[CAT]}» en esta búsqueda. Toca «Todo» para verlos todos.`;
 function pintarVivo() {
   // Solo los resultados que contienen al menos 2 palabras de la búsqueda, salvo que la persona pida ver todos
-  const o = $("ordv").value, r = RV.filter(x => verTodos || x.coincide), ocultos = RV.length - RV.filter(x => x.coincide).length;
+  const o = $("ordv").value, visibles = RV.filter(x => verTodos || x.coincide), r = visibles.filter(x => !CAT || x.c === CAT), ocultos = RV.length - RV.filter(x => x.coincide).length;
   $("ocultos").hidden = !ocultos;
   const motivo = codigoRV ? "no son el mismo producto ni uno equivalente" : "no coinciden con 2 palabras de tu búsqueda";
   $("ocultostxt").textContent = verTodos ? `Se muestran también ${ocultos} resultado(s) que ${motivo}. ` : `Se ocultaron ${ocultos} resultado(s) de otros productos (${motivo}). `;
@@ -322,17 +335,17 @@ function pintarVivo() {
   const min = r.length ? Math.min(...r.map(x => x.precio)) : 0;
   $("tv").innerHTML = r.length
     ? `<thead><tr><th>Producto</th><th>Tienda</th><th>Precio</th><th>Por unidad</th><th>Fav.</th></tr></thead><tbody>` + r.map(x => `<tr>
-        <td>${esc(x.nombre)}<small>${x.marca ? `<span class="marca">${esc(x.marca)}</span>` : "Marca no indicada"}${tam(x) ? " · " + tam(x) : ""}${etq(x)}</small></td>
+        <td>${esc(x.nombre)}<small>${x.marca ? `<span class="marca">${esc(x.marca)}</span>` : "Marca no indicada"}${tam(x) ? " · " + tam(x) : ""}${etqCat(x.c)}${etq(x)}</small></td>
         <td><span class="store">${esc(x.tienda)}</span></td>
         <td class="${x.precio === min && r.length > 1 ? "best" : ""}">${(x.precio === min && r.length > 1 ? barato : h => h)(`<a href="${esc(x.url)}" target="_blank" rel="noopener">${fmt(x.precio)}</a>`)}${notaOferta({ p: x.precio, ...oferta(x) })}</td>
         <td>${x.pu > 0 ? `${fpu(x.pu)}<small>por ${x.pl}</small>` : "—"}</td>
         <td>${estrella(`data-id="${esc(x.id)}"`, !!favoritoVivo(x))}</td></tr>`).join("") + "</tbody>"
-    : "";
+    : visibles.length ? `<tbody><tr><td>${sinCat()}</td></tr></tbody>` : "";
   // Celular: un renglón por resultado con su tienda, precio, oferta y ☆
-  $("mvivo").innerHTML = r.map(x => `<article class="mitem"><div class="mfila"><span class="mnom">${esc(x.nombre)}<small>${x.marca ? `<span class="marca">${esc(x.marca)}</span>` : "Marca no indicada"}${tam(x) ? " · " + tam(x) : ""}${etq(x)}</small></span>` +
+  $("mvivo").innerHTML = r.map(x => `<article class="mitem"><div class="mfila"><span class="mnom">${esc(x.nombre)}<small>${x.marca ? `<span class="marca">${esc(x.marca)}</span>` : "Marca no indicada"}${tam(x) ? " · " + tam(x) : ""}${etqCat(x.c)}${etq(x)}</small></span>` +
     estrella(`data-id="${esc(x.id)}"`, !!favoritoVivo(x)) +
     `<span class="mprecios">${chip(x.tienda, x.precio, x.precio === min && r.length > 1, leerPromo(x.promo) ? "<i>oferta</i>" : "", x.url)}</span>` +
-    `<span class="mpu">${x.pu > 0 ? `<small>${fpu(x.pu)} por ${x.pl}</small>` : ""}${notaOferta({ p: x.precio, ...oferta(x) })}</span></div></article>`).join("");
+    `<span class="mpu">${x.pu > 0 ? `<small>${fpu(x.pu)} por ${x.pl}</small>` : ""}${notaOferta({ p: x.precio, ...oferta(x) })}</span></div></article>`).join("") + (!r.length && visibles.length ? `<p class="msg">${sinCat()}</p>` : "");
 }
 // Estado de la búsqueda: el detalle va en el panel «!»; a la vista solo lo que pide hacer algo (buscando, error, sin resultados)
 function estadoVivo(detalle, breve = "") {
@@ -354,7 +367,7 @@ async function vivo(q) {
     if (!r.ok) throw new Error(d.error || "Error " + r.status);
     const ref = cod && d.resultados.find(x => x.porCodigo);
     // Con código: se muestran el mismo producto (mismo código) y sus equivalentes por marca, nombre y tamaño
-    RV = d.resultados.map(x => ({ ...x, pid: String(x.id ?? ""), id: idVivo(x),
+    RV = d.resultados.map(x => ({ ...x, pid: String(x.id ?? ""), id: idVivo(x), c: categoria(x.nombre),
       coincide: cod ? !!x.porCodigo || !!x.porEquivalencia || (!!ref && equivalente(ref, x)) : coincideBusqueda(q, `${x.nombre} ${x.marca || ""}`) }));
     verTodos = false;
     fechaRV = d.generado;
@@ -573,6 +586,13 @@ document.querySelector(".tabs").onkeydown = e => {
   pestana(siguiente); $("tab" + siguiente).focus();
 };
 $("q").oninput = $("comp").onchange = $("ord").onchange = () => { limite = 60; render(); };
+// Categorías: una a la vez; filtra el catálogo y los resultados de las tiendas
+$("cats").onclick = e => {
+  const b = e.target.closest("button[data-c]"); if (!b) return;
+  CAT = b.dataset.c; limite = 60;
+  $("cats").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  render(); pintarVivo();
+};
 $("mas").onclick = () => { limite += 60; render(); };
 $("tabla").onclick = e => {
   const b = e.target.closest(".star");
@@ -711,6 +731,7 @@ const conLista = (si, no) => () => FAV.length ? si : no;
 const GUIA = [
   { t: "Así funciona Canasta SV", tab: 1, x: "Compara los precios de los supermercados de El Salvador. En unos pasos verás cómo buscar un producto, guardarlo en una lista y comparar tu compra. La guía no cambia tus listas." },
   { t: "Busca un producto", tab: 1, q: true, escribir: true, el: () => $("q"), x: "Escribe un producto o una marca. Los resultados del catálogo aparecen mientras escribes." },
+  { t: "Filtra por categoría", tab: 1, q: true, el: () => $("cats"), x: "Toca una categoría, como Carnes o Bebidas, para ver solo esos productos. Cada producto lleva una etiqueta del color de su categoría. «Todo» los muestra de nuevo." },
   { t: "Consulta las tiendas en el momento", tab: 1, q: true, el: () => $("buscarbtn"), x: "Si no lo encuentras o quieres el precio de hoy, toca el botón verde «Buscar»: se consulta cada supermercado al instante." },
   { t: "O escanea el código de barras", tab: 1, q: true, el: () => $("escanear"), x: "El botón con rayas, junto al buscador, abre la cámara para leer el código del producto (o escribes sus números). Verás el mismo producto en cada tienda y sus equivalentes." },
   { t: "Compara los precios", tab: 1, q: true, el: () => primero("#tabla tbody tr", "#mcat .mitem"), x: "Cada producto muestra su precio en cada tienda. El más barato lleva ✓ y fondo verde; también ves el precio por libra, litro o unidad." },
@@ -825,12 +846,12 @@ pintarFav();
 // no-cache: el navegador pregunta siempre si hay un catálogo más nuevo (si no cambió, la respuesta es corta)
 fetch("data/productos.json", { cache: "no-cache" }).then(r => { if (!r.ok) throw 0; return r.json(); }).then(d => {
   D = d;
-  D.items.forEach((it, i) => { it.i = i; it.fid = idGrupo(it); it.s = norm(it.n + " " + it.m + " " + it.t.map(e => (e[4] || "") + " " + (e[5] || "")).join(" ")); });
+  D.items.forEach((it, i) => { it.i = i; it.fid = idGrupo(it); it.c = categoria(it.n); it.s = norm(it.n + " " + it.m + " " + it.t.map(e => (e[4] || "") + " " + (e[5] || "")).join(" ")); });
   refrescarFavs();
   $("fecha").textContent = D.ejemplo ? "Catálogo de ejemplo (no son precios reales)." : `Catálogo actualizado al ${fechaLarga(D.actualizado)}.`;
   $("foot").textContent = D.ejemplo
     ? "Datos de ejemplo (no son precios reales). Ejecuta la acción “Actualizar precios” en GitHub para cargar los reales."
     : `Catálogo del ${fechaLarga(D.actualizado)}. En Mi lista, cada precio lleva la fecha en que se consultó. Precios en USD de las tiendas en línea; pueden diferir de los precios en sala.`;
   if (D.supers.length < 2) { $("comp").checked = false; $("comp").disabled = true; $("comp").parentElement.title = "Se activa cuando haya 2 o más tiendas con datos"; }
-  render(); pintarFav();
+  pintarCats(); render(); pintarFav();
 }).catch(() => { $("fecha").textContent = "No se pudo cargar el catálogo."; $("tabla").innerHTML = "<tr><td>No se pudieron cargar los precios. Si abriste el archivo directo, usa GitHub Pages o un servidor local (python3 -m http.server).</td></tr>"; pintarFav(); }).finally(() => { $("cargando").hidden = true; });

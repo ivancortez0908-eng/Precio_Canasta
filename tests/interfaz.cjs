@@ -49,6 +49,14 @@ const server = http.createServer((req, res) => {
     assert.equal(await page.locator('#sug, #ilista').count(), 0);
     assert.equal(await page.locator('#secvivo').isVisible(), false);
     assert.equal(await page.locator('#cattit').innerText(), 'Mayores diferencias entre tiendas');
+    // Categorías: solo las que tienen productos; filtran el catálogo y cada producto lleva su etiqueta de color
+    assert.deepEqual(await page.locator('#cats button').allInnerTexts(), ['Todo', 'Abarrotes']);
+    assert.equal(await page.locator('#cats button[aria-pressed=true]').innerText(), 'Todo');
+    assert.equal(await page.locator('#tabla .cat').first().innerText(), 'Abarrotes');
+    await page.locator('#cats').getByRole('button', { name: 'Abarrotes' }).click();
+    assert.equal(await page.locator('#cats button[aria-pressed=true]').innerText(), 'Abarrotes');
+    assert.equal(await page.locator('#tabla tbody tr').count(), 1);
+    await page.locator('#cats').getByRole('button', { name: 'Todo' }).click();
     assert.match(await page.locator('#fecha').innerText(), /^Catálogo actualizado al 17 de octubre\.$/);
     if (process.env.CANASTA_CAPTURAS) { fs.mkdirSync(process.env.CANASTA_CAPTURAS, { recursive: true }); await page.screenshot({ path: path.join(process.env.CANASTA_CAPTURAS, 'inicio-escritorio.png') }); }
     // Guía de uso: botón arriba a la derecha; cada paso resalta su elemento y la guía no cambia las listas

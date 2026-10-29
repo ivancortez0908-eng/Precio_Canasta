@@ -1,4 +1,22 @@
-# Bitácora — 25 de octubre de 2026 (fecha del pie de página)
+# Bitácora — 29 de octubre de 2026 (categorías con colores suaves)
+
+## Cambios
+- `comparador.js`: `categoria(nombre)` y `NOMBRES_CATEGORIA`. 10 categorías. Primero frases que mandan (mascotas → Otros, «para adulto» → Cuidado personal, bebé, boquitas, papel higiénico, «crema» según su pista); si no, la palabra de tipo que aparece primero en el nombre («Atún en agua» = Carnes; «Sal con ajo» = Abarrotes). Lo demás, «Otros».
+- `app.js`: cada producto del catálogo y de la búsqueda en las tiendas recibe su categoría al cargarse. Fila `#cats` («Todo» + las categorías con productos) que filtra el catálogo y los resultados de las tiendas; etiqueta `.cat` de color en cada producto («Otros» sin etiqueta). Mensajes cuando la categoría deja la lista vacía. Nuevo paso de la guía «Filtra por categoría».
+- `index.html`: colores de categoría en `:root` (contraste ≥ 5.7:1), estilos `.cats` y `.cat`; en celular la fila se desliza de lado. Scripts con `?v=2026-10-29`.
+- Guía de diseño, README y AGENTS actualizados.
+
+## Revisión con el catálogo real (5,896 productos)
+Abarrotes 1,142 · Bebidas 877 · Panadería 846 · Cuidado personal 551 · Otros 544 · Limpieza 532 · Lácteos 487 · Carnes 393 · Frutas y verduras 298 · Bebé 226. Se revisaron muestras de cada categoría y todos los productos con «crema».
+
+## Límites
+La categoría es una deducción por palabras: algún producto raro (p. ej. un artículo del hogar con el nombre de una fruta) puede quedar mal. No cambia precios ni comparaciones.
+
+## Validación
+- `node --test tests/canasta.test.cjs`: 49 pasan (nuevas: reglas de categoría y filtro).
+- `node tests/interfaz.cjs` pasa (fila de categorías y filtro). Capturas con el catálogo real en celular (390 px) y escritorio (1440 px), sin desplazamiento lateral.
+
+# Bitácora anterior (fecha del pie de página)
 
 ## Problema
 Tras «Actualizar precios» en Mi lista, el pie decía «Actualizado: 2026-10-22», aunque el catálogo publicado es del 24. El pie muestra la fecha del catálogo (no la de la consulta de Mi lista) y el navegador del celular seguía usando un `data/productos.json` guardado.

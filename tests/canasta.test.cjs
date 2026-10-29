@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
-const { equivalente, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda } = require('../comparador.js');
+const { equivalente, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda, categoria } = require('../comparador.js');
 const os = require('node:os');
 const { pathToFileURL } = require('node:url');
 const { tablaLista, xlsx } = require('../exportar.js');
@@ -671,4 +671,28 @@ test('los scripts de index.html llevan la misma versión (?v=) para no mezclar a
   const v = [...html.matchAll(/<script src="(config|comparador|exportar|app)\.js\?v=([\w-]+)"/g)].map(m => m[2]);
   assert.equal(v.length, 4);
   assert.equal(new Set(v).size, 1);
+});
+test('categorías: la palabra de tipo que aparece primero decide, y algunas frases mandan', () => {
+  const casos = {
+    'Atún en Agua Lata 170g': 'carnes', 'Canela Molida McCormick 25g': 'basicos', 'Crema Dental Colgate 75ml': 'personal',
+    'Crema Pasteurizada Salud 680ml': 'lacteos', 'Jugo De Naranja De La Granja': 'bebidas', 'Sal con Ajo McCormick': 'basicos',
+    'Shampoo para Perro Antipulgas': 'otros', 'Pañales Huggies Etapa 1': 'bebe', 'Pañales para Adulto Tena': 'personal',
+    'Papas Pringles Crema Cebolla': 'otros', 'Papel Nevax higiénico 16 rollos': 'limpieza', 'Galleta Marinela Limón': 'panaderia',
+    'Tomate de Cocina lb': 'frutas', 'Detergente en Polvo Dany': 'limpieza', 'Producto Desconocido XYZ': 'otros'
+  };
+  for (const [n, c] of Object.entries(casos)) assert.equal(categoria(n), c, n);
+});
+test('la categoría elegida filtra el catálogo y los resultados de las tiendas', async () => {
+  const ui = interfaz({ resultados: [producto('Walmart', 2)], datos: { supers: ['Walmart'], actualizado: '2026-10-17', items: [
+    { n: 'Leche entera Salud 1 L', m: 'Salud', q: 1000, u: 'ml', t: [[0, 1.5, 'https://tienda.test/Walmart/1']] },
+    { n: 'Arroz Blanco San Pedro 1 lb', m: 'San Pedro', q: 454, u: 'g', t: [[0, .9, 'https://tienda.test/Walmart/2']] }
+  ] } });
+  await terminar();
+  assert.match(ui.el('cats').innerHTML, /Lácteos y huevos[^]*Abarrotes/);
+  ui.run('$("comp").checked = false; CAT = "basicos"; render()');
+  assert.deepEqual(ui.run('filtrar().map(it => it.n)'), ['Arroz Blanco San Pedro 1 lb']);
+  await ui.run('vivo("leche salud")');
+  assert.match(ui.el('mvivo').innerHTML, /Ningún resultado de «Abarrotes»/);
+  ui.run('CAT = ""; pintarVivo()');
+  assert.match(ui.el('mvivo').innerHTML, /class="cat" data-c="lacteos"/);
 });

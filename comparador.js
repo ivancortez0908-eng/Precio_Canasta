@@ -101,7 +101,41 @@
     if (!d || isNaN(d)) return f.slice(0, 10);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   }
-  const api = { equivalente, precioValido, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda, dia, gtin };
+  // Categoría por palabras del nombre; lo que no encaja queda en «otros» (no se adivina).
+  // 1) Frases que mandan aunque estén al final («Shampoo para perro», «Pañales para adulto», «Papas Pringles»).
+  // 2) Si no, gana la palabra de tipo que aparece primero en el nombre: «Atún en agua» es carne y «Sal con ajo», abarrotes.
+  const FRASES = [
+    ["otros", /\b(perros?|gatos?|gatitos?|cachorros?|mascotas?|alimiau|pedigree|dog chow|cat chow|mainstays|adaptador|exprimidor|sillon|bocinas?|color crema)\b/],
+    ["personal", /\b(adultos?|(pasta|crema|gel) dental|cepillos? de dientes|dentales?|nivea|ponds?|eucerin|glicerina|topica|crema (\w+ ){0,2}(corporal|facial|manos|repelente|antiarrugas))\b/],
+    // «Crema» sola es ambigua: es lácteo solo con una pista de leche; de maní o una sopa, abarrotes; si no, cuidado personal
+    ["basicos", /\b(crema (de )?(mani|avellanas?|cacao)|nutella|crema (\w+ ){0,2}(maggi|campbells|knorr|de (tomate|cebolla|hongos|brocoli|esparragos|pollo|elote|ayote)))\b/],
+    ["lacteos", /\b(chantilly|crema (\w+ ){0,3}(batir|batida|lactolac|petacones|villita|oriente|salud|dos pinos|delmy|pasteurizada|acida|light|con sal|especial|mantequilla|lactosa|sula|san julian|para cafe|liviana|dulce|espesa|pura|natural|salvadorena|zamorano))\b/],
+    ["bebe", /\b(bebes?|baby|antipanalitis|rozaduras|panales|toallitas humedas|formula infantil|nutricion infantil|colados?|compotas?|huggies|pampers|biberon(es)?)\b/],
+    ["otros", /\b(pringles|chips|tortichips?|papitas|papas? (\w+ ){0,3}(fritas?|frito|tostadas)|boquitas?|snacks?|nachos|churritos?|frituras|tostones|zambos|tajadas?|palomitas|origenes|lay s|lays|crema y cebolla)\b/],
+    ["limpieza", /\b(papel (\w+ ){0,2}higienico|jabon (lavaplatos|lavatrastes|de lavar|para ropa|en polvo)|lavaplatos?|vanish|det polvo|harpic|inodoros?|destapador)\b/],
+    ["basicos", /\bmantequilla de mani\b/]
+  ];
+  const TIPOS = [
+    ["limpieza", /\b(detergentes?|suavizantes?|lejia|cloro|blanqueador|desinfectantes?|limpiador(es)?|antigrasa|quitamanchas|lavaplatos|lavatrastes|esponjas?|servilletas?|toallas? de papel|bolsas? (para|de) basura|insecticidas?|ambientador(es)?|aromatizantes?|escobas?|trapeador(es)?|abrillantador|fabuloso)\b/],
+    ["personal", /\b(shampoo|champu|acondicionador|desodorantes?|antitranspirantes?|enjuague bucal|toallas? (sanitarias?|femeninas?)|protectores? diarios?|tampones?|afeitar|rasuradoras?|locion|jabon(es)?|gel antibacterial|alcohol en gel|talco|tinte|maquillaje|mascarilla|cabello|cremas?)\b/],
+    ["bebidas", /\b(gaseosas?|refrescos?|jugos?|nectar|aguas?|bebidas?|cafe|te|cervezas?|isotonicas?|energizantes?|horchata|suero|ponche|sidra|coca cola|pepsi|salvacola|gatorade|powerade)\b/],
+    ["panaderia", /\b(pan|panes|panecillos?|semitas?|galletas?|galletitas?|cereal(es)?|avena|granola|barras?|pastel(es)?|tortas?|quequitos?|muffins?|budin|palmeritas|danes|caracol(es)?|bimbo)\b/],
+    ["otros", /\b(chocolates?|choc|dulces?|caramelos?|chicles?|gomas?|gomitas|helados?|paletas?|pizzas?)\b/],
+    ["carnes", /\b(pollos?|chicken|pechugas?|muslos?|alitas?|gallina|carnes?|res|cerdo|chuletas?|costillas?|bistec|lomo|filetes?|filet|salchichas?|chorizos?|jamon(es)?|tocino|mortadela|salami|pavo|pescados?|tilapia|camarones?|mariscos?|marinero|mejillones|almejas|atun|sardinas?|salmon|embutidos?|nuggets|hamburguesas?|carnitas|medallones)\b/],
+    ["lacteos", /\b(leches?|quesos?|quesillo|requeson|mantequilla|margarina|yogurt|yogur|lacteos?|huevos?)\b/],
+    ["frutas", /\b(frutas?|verduras?|vegetales|tomates?|cebollas?|papas?|chiles?|zanahorias?|platanos?|bananos?|guineos?|limon(es)?|naranjas?|manzanas?|uvas?|pinas?|sandias?|melon(es)?|papayas?|mangos?|aguacates?|pepinos?|lechugas?|repollos?|guisquil(es)?|ajos?|cilantro|brocoli|elotes?|yuca|fresas?|champinones|ensaladas?)\b/],
+    ["basicos", /\b(arroz|frijol(es)?|azucar|panela|endulzantes?|stevia|linaza|sal|aceites?|harinas?|maseca|pastas?|espaguetis?|spaghetti|fideos?|coditos|macarrones|maiz|maicena|maizena|atoles?|incaparina|pure|consome|sopas?|caldos?|salsas?|salsitas?|aderezos?|mayonesa|ketchup|mostaza|vinagre|condimentos?|especias?|pimienta|canela|achiote|sazonador(es)?|sazon|empanizador|levadura|gelatinas?|mermeladas?|miel|mani|semillas?|lentejas?|garbanzos?)\b/]
+  ];
+  const NOMBRES_CATEGORIA = { carnes: "Carnes", lacteos: "Lácteos y huevos", frutas: "Frutas y verduras", panaderia: "Panadería y cereales", basicos: "Abarrotes",
+    bebidas: "Bebidas", limpieza: "Limpieza y hogar", personal: "Cuidado personal", bebe: "Bebé", otros: "Otros" };
+  function categoria(nombreProducto) {
+    const s = palabras(String(nombreProducto || "").replace(/ñ/gi, "n"));
+    for (const [c, re] of FRASES) if (re.test(s)) return c;
+    let mejor = "otros", pos = Infinity;
+    for (const [c, re] of TIPOS) { const m = re.exec(s); if (m && m.index < pos) { mejor = c; pos = m.index; } }
+    return mejor;
+  }
+  const api = { equivalente, precioValido, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda, dia, gtin, categoria, NOMBRES_CATEGORIA };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.Canasta = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);
