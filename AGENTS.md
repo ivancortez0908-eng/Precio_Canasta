@@ -13,7 +13,7 @@ Comparar listas de productos entre supermercados de El Salvador. Al agregar un f
 - `.github/workflows/actualizar-precios.yml`: actualización programada del catálogo.
 - `.github/workflows/publicar-worker.yml`: publica el Worker en Cloudflare cuando cambia en `main`.
 - `.github/workflows/aplicar-aporte.yml`: une a `scraper/equivalencias.json` las issues con la etiqueta `aprobado`.
-- `config.js` y `data/`: configuración del sitio y datos generados; no editarlos a mano.
+- `config.js` y `data/`: configuración del sitio y datos generados; no editarlos a mano. El catálogo va en 3 archivos (`scraper/emparejar.mjs`): `productos.json` (productos en 2+ tiendas, se muestra primero; con `bases` = dominio de cada tienda, porque los enlaces se guardan sin él), `productos-1.json` (una sola tienda, se carga después) y `descripciones.json` (al abrir «Descripción»). `app.js` acepta también el formato anterior de un solo archivo.
 
 No crear copias de estos archivos en la raíz: los workflows y el sitio solo usan las rutas de arriba.
 - `tests/canasta.test.cjs`: pruebas de reglas y flujo con DOM/respuestas simulados.

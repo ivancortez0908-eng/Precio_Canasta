@@ -244,11 +244,21 @@ function refrescarFavs() {
 
 // ---------- Catálogo ----------
 const tam = it => !it.q ? "" : it.u === "g" ? `${Math.round(it.q)} g (${(it.q / 453.592).toFixed(it.q % 454 < 3 ? 0 : 1)} lb)` : it.u === "ml" ? (it.q >= 1000 ? `${+(it.q / 1000).toFixed(2)} L` : `${it.q} ml`) : `${it.q} ud`;
-const desc = it => {
-  const f = it.t.filter(e => e[4]);
-  if (!f.length) return "";
-  return `<details><summary>Descripción</summary>${f.map(e => `<p><b>${esc(D.supers[e[0]])}:</b> ${esc(e[4])}${e[5] ? ` · Marca: ${esc(e[5])}` : ""}${e[6] ? `. ${esc(e[6])}` : ""}</p>`).join("")}</details>`;
-};
+// Descripciones: en un archivo aparte que se descarga la primera vez que se abre una (un catálogo anterior las trae dentro)
+let DESC = null, cargandoDesc = null;
+const textoDesc = e => e[6] || DESC?.[e[0] + "#" + e[7]] || "";
+const cuerpoDesc = it => `<summary>Descripción</summary>` + it.t.filter(e => e[4]).map(e =>
+  `<p><b>${esc(D.supers[e[0]])}:</b> ${esc(e[4])}${e[5] ? ` · Marca: ${esc(e[5])}` : ""}${textoDesc(e) ? `. ${esc(textoDesc(e))}` : ""}</p>`).join("") +
+  (D.descripciones && !DESC ? `<p class="msg">${cargandoDesc ? "Cargando la descripción…" : ""}</p>` : "");
+const desc = it => (it.t.some(e => e[4]) ? `<details class="desc" data-i="${it.i}">${cuerpoDesc(it)}</details>` : "");
+document.addEventListener?.("toggle", e => {
+  const d = e.target;
+  if (!d?.matches?.("details.desc") || !d.open || DESC || !D?.descripciones) return;
+  const llenar = () => document.querySelectorAll("details.desc").forEach(x => { const it = D.items[+x.dataset.i]; if (it) x.innerHTML = cuerpoDesc(it); });
+  cargandoDesc ??= fetch(D.descripciones, { cache: "no-cache" }).then(r => (r.ok ? r.json() : null))
+    .then(x => { DESC = x && x.actualizado === D.actualizado && x.d && typeof x.d === "object" ? x.d : {}; }).catch(() => { DESC = {}; }).finally(llenar);
+  llenar();
+}, true);
 const dif = it => { const v = it.t.map(x => x[1]); return it.t.length > 1 ? (Math.max(...v) - Math.min(...v)) / Math.min(...v) : -1; };
 
 // Un texto de solo cifras con dígito de control válido es un código de barras
@@ -293,7 +303,8 @@ function render() {
   const q = $("q").value.trim();
   // Con la búsqueda vacía se ven las mayores diferencias del catálogo
   $("cattit").textContent = q ? "En el catálogo guardado" : $("ord").value === "dif" ? "Mayores diferencias entre tiendas" : "Todo el catálogo";
-  $("count").textContent = r.length ? `${r.length} producto(s)` : "";
+  const faltan = D.resto && (q || !$("comp").checked) ? " · cargando los productos de una sola tienda…" : "";
+  $("count").textContent = (r.length ? `${r.length} producto(s)` : "") + faltan;
   // Si ya se buscó en las tiendas y el catálogo no tiene nada, la sección vacía no se muestra
   $("seccat").hidden = !r.length && !$("secvivo").hidden;
   let h = `<thead><tr><th>Producto</th>${S.map(s => `<th>${esc(s)}</th>`).join("")}<th>Por unidad</th><th>Fav.</th></tr></thead><tbody>`;
@@ -870,9 +881,29 @@ contar();
 pintarFav();
 // «Espere…» al centro (está en index.html) hasta que el catálogo carga o falla
 // no-cache: el navegador pregunta siempre si hay un catálogo más nuevo (si no cambió, la respuesta es corta)
+// El catálogo viene en partes: productos.json (en 2 o más tiendas, lo primero que se ve), «resto» (en una sola tienda, se carga
+// después) y «descripciones» (al abrir «Descripción»). Los enlaces llegan sin el dominio de su tienda (bases). Un catálogo
+// anterior, en un solo archivo y con enlaces completos, sigue funcionando.
+function prepararItems(items, desde) {
+  items.forEach((it, j) => {
+    it.i = desde + j; it.fid = idGrupo(it); it.c = categoria(it.n);
+    if (it.img && !fotoOk(it.img)) delete it.img;
+    for (const e of it.t) if (typeof e[2] === "string" && e[2].startsWith("/") && D.bases?.[e[0]]) e[2] = D.bases[e[0]] + e[2];
+    it.s = norm(it.n + " " + it.m + " " + it.t.map(e => (e[4] || "") + " " + (e[5] || "")).join(" "));
+  });
+}
+function cargarResto() {
+  fetch(D.resto, { cache: "no-cache" }).then(r => (r.ok ? r.json() : null)).then(x => {
+    if (!x || !Array.isArray(x.items) || x.actualizado !== D.actualizado) return;   // de otra actualización: no se mezclan
+    prepararItems(x.items, D.items.length);
+    D.items.push(...x.items);
+    catParecidos.clear(); catConFotos = D.items.some(it => it.img);
+    refrescarFavs(); pintarCats(); render(); pintarFav();
+  }).catch(() => {}).finally(() => { D.resto = null; render(); });
+}
 fetch("data/productos.json", { cache: "no-cache" }).then(r => { if (!r.ok) throw 0; return r.json(); }).then(d => {
   D = d;
-  D.items.forEach((it, i) => { it.i = i; it.fid = idGrupo(it); it.c = categoria(it.n); if (it.img && !fotoOk(it.img)) delete it.img; it.s = norm(it.n + " " + it.m + " " + it.t.map(e => (e[4] || "") + " " + (e[5] || "")).join(" ")); });
+  prepararItems(D.items, 0);
   refrescarFavs();
   $("fecha").textContent = D.ejemplo ? "Catálogo de ejemplo (no son precios reales)." : `Catálogo actualizado al ${fechaLarga(D.actualizado)}.`;
   $("foot").textContent = D.ejemplo
@@ -881,4 +912,5 @@ fetch("data/productos.json", { cache: "no-cache" }).then(r => { if (!r.ok) throw
   if (D.supers.length < 2) { $("comp").checked = false; $("comp").disabled = true; $("comp").parentElement.title = "Se activa cuando haya 2 o más tiendas con datos"; }
   catConFotos = D.items.some(it => it.img);
   pintarCats(); render(); pintarFav();
+  if (D.resto) cargarResto();
 }).catch(() => { $("fecha").textContent = "No se pudo cargar el catálogo."; $("tabla").innerHTML = "<tr><td>No se pudieron cargar los precios. Si abriste el archivo directo, usa GitHub Pages o un servidor local (python3 -m http.server).</td></tr>"; pintarFav(); }).finally(() => { $("cargando").hidden = true; });

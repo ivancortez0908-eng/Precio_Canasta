@@ -1,4 +1,23 @@
-# Bitácora — 2 de noviembre de 2026 (aportes: no repetir lo ya aprobado)
+# Bitácora — 2 de noviembre de 2026 (carga más rápida del catálogo)
+
+## Medición previa (teléfono simulado: procesador 4× más lento, 4G)
+`data/productos.json` pesaba 4.1 MB (650 KB comprimido): descripciones 42 %, enlaces con dominio repetido ~740 KB, y 3,523 de 5,928 productos en una sola tienda (ocultos por defecto con «2+ tiendas»). Catálogo listo en ~4.4 s.
+
+## Cambios
+- `scraper/emparejar.mjs` escribe 3 archivos: `productos.json` (2+ tiendas, con `bases`, `resto`, `descripciones` y `total`), `productos-1.json` (una sola tienda) y `descripciones.json` (`"tienda#id": texto`). Los enlaces se guardan sin el dominio de su tienda.
+- `app.js`: `prepararItems` completa los enlaces; `cargarResto` trae los de una sola tienda después de mostrar los primeros (solo si son de la misma actualización) y vuelve a pintar; las descripciones se descargan al abrir la primera. Un catálogo anterior en un solo archivo sigue funcionando. Mientras falta el resto, el contador lo indica si se busca o se desmarca «2+ tiendas».
+- Scripts con `?v=2026-11-02c`.
+
+## Resultado con el catálogo real (generado en una copia)
+productos.json 1.17 MB (180 KB comprimido, −72 %); productos-1.json 0.91 MB; descripciones.json 1.88 MB. Catálogo listo en ~1.6 s; todo cargado en ~2.4 s.
+
+## Límites
+Se nota después de la siguiente «Actualizar precios», que genera los archivos nuevos (`git add data` ya los incluye).
+
+## Validación
+- `node --test tests/canasta.test.cjs`: 51 pasan (nueva: catálogo en partes). `node tests/interfaz.cjs` pasa. Prueba en Chromium con los 3 archivos reales: enlaces completos, 5,928 productos y descripción cargada al abrirla.
+
+# Bitácora anterior (aportes: no repetir lo ya aprobado)
 
 ## Problema
 Lo enviado se anotaba solo en el navegador de quien lo envió. Desde otro teléfono, al agregar otra tienda al mismo producto, o si otra persona hacía el mismo cambio, se volvía a preguntar y llegaban a la issue comparaciones ya aprobadas. Al aplicarlas, solo se reconocía una comparación idéntica.

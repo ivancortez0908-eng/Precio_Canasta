@@ -34,7 +34,7 @@ test('totales por cantidad, centavos, cobertura parcial y compra combinada', () 
   assert.equal(resumir([{ cant: 1, t: {} }], ['A']).sinPrecio, 1);
 });
 
-function interfaz({ resultados = [], datos, fallo = false, guardados = [], porConsulta, aprobadas = [] } = {}) {
+function interfaz({ resultados = [], datos, fallo = false, guardados = [], porConsulta, aprobadas = [], archivos = {} } = {}) {
   const elements = new Map();
   function el(id) {
     if (!elements.has(id)) elements.set(id, { value: '', textContent: '', innerHTML: '', hidden: false, checked: true,
@@ -52,6 +52,7 @@ function interfaz({ resultados = [], datos, fallo = false, guardados = [], porCo
     fetch: async url => {
       if (url === 'data/productos.json') return { ok: !!datos, json: async () => datos };
       if (url === 'scraper/equivalencias.json') return { ok: true, json: async () => aprobadas };
+      if (archivos[url]) return { ok: true, json: async () => archivos[url] };
       if (fallo) throw Error('Sin conexión');
       const q = decodeURIComponent(String(url).split('?q=')[1] || ''); consultas.push(q);
       return { ok: true, json: async () => respuesta(porConsulta ? porConsulta(q) : resultados) };
@@ -721,4 +722,23 @@ test('aportes: lo ya aprobado no se vuelve a enviar ni a guardar (solo lo nuevo)
   assert.equal(ui.run('aportesPendientes().length'), 0);
   ui = interfaz({ guardados: [{ ...fav, t: { ...fav.t, Superea: { p: 2.1, id: '7', url: U.url, nom: 'Leche U', manual: true, cambio: true } } }], aprobadas: [[W, S]] }); await terminar();
   assert.equal(ui.run('JSON.stringify(aportesPendientes().map(g => g.map(x => x.tienda)))'), '[["Walmart","Superea"]]');
+});
+test('catálogo en partes: primero los de 2+ tiendas, luego el resto; enlaces sin dominio se completan', async () => {
+  const nuevos = () => JSON.parse(JSON.stringify(datos));
+  const datos = { supers: ['Walmart', 'Superea'], bases: ['https://www.walmart.com.sv', 'https://superea.sv'], actualizado: '2026-11-02',
+    resto: 'data/productos-1.json', descripciones: 'data/descripciones.json',
+    items: [{ n: 'Leche entera Salud 1 L', m: 'Salud', q: 1000, u: 'ml', t: [[0, 2, '/leche-salud/p', 2, 'Leche W', 'Salud', '', '1'], [1, 2.1, '/productos/leche', 2.1, 'Leche U', 'Salud', '', '7']] }] };
+  const resto = { actualizado: '2026-11-02', items: [{ n: 'Arroz San Pedro 1 lb', m: 'San Pedro', q: 454, u: 'g', t: [[0, .9, '/arroz/p', .9, 'Arroz', '', '', '2']] }] };
+  const esperar = async ui => { for (let i = 0; i < 50 && ui.run('!D || D.resto !== null'); i++) await terminar(); };
+  let ui = interfaz({ datos: nuevos(), archivos: { 'data/productos-1.json': resto } });
+  await esperar(ui);
+  assert.equal(ui.run('D.items.length'), 2);
+  assert.equal(ui.run('D.items[0].t[1][2]'), 'https://superea.sv/productos/leche');
+  assert.equal(ui.run('D.items[1].t[0][2]'), 'https://www.walmart.com.sv/arroz/p');
+  assert.equal(ui.run('D.items[1].i'), 1);
+  // Un resto de otra actualización no se mezcla
+  ui = interfaz({ datos: nuevos(), archivos: { 'data/productos-1.json': { ...resto, actualizado: '2026-10-29' } } });
+  await esperar(ui);
+  assert.equal(ui.run('D.items.length'), 1);
+  assert.equal(ui.run('D.resto'), null);
 });
