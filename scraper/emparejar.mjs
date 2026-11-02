@@ -1,4 +1,6 @@
-// Paso 2: une los catálogos y agrupa los productos equivalentes -> data/productos.json
+// Paso 2: une los catálogos y agrupa los productos equivalentes. Para que la página cargue rápido se escriben 3 archivos:
+// data/productos.json (productos en 2 o más tiendas, lo primero que se muestra), data/productos-1.json (en una sola tienda,
+// se carga después) y data/descripciones.json (solo al abrir «Descripción»). Los enlaces se guardan sin el dominio de la tienda (bases).
 // Equivalencia por (1) código de barras, (2) marca + nombre + tamaño, (3) lista manual.
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import { claveNombre, precioUnitario } from "./normalizar.mjs";
@@ -83,7 +85,20 @@ for (const [r, idxs] of grupos) {
 }
 items.sort((a, b) => a.n.localeCompare(b.n, "es"));
 
-await writeFile("data/productos.json", JSON.stringify({
-  ejemplo: false, actualizado: new Date().toISOString().slice(0, 10), supers, items }));
+// Dominio de cada tienda (el de su primer enlace): los enlaces que empiezan con él se guardan sin repetirlo
+const bases = supers.map((_, ti) => { try { return new URL(todos.find(x => x.ti === ti && /^https:\/\//.test(x.url || "")).url).origin; } catch { return ""; } });
+const descripciones = {};
+for (const it of items) for (const e of it.t) {
+  if (e[6]) descripciones[`${e[0]}#${e[7]}`] = e[6];
+  e[6] = "";
+  const b = bases[e[0]];
+  if (b && typeof e[2] === "string" && e[2].startsWith(b + "/")) e[2] = e[2].slice(b.length);
+}
+const actualizado = new Date().toISOString().slice(0, 10);
+const varias = items.filter(i => i.t.length > 1), una = items.filter(i => i.t.length < 2);
+await writeFile("data/productos.json", JSON.stringify({ ejemplo: false, actualizado, supers, bases, items: varias,
+  resto: "data/productos-1.json", descripciones: "data/descripciones.json", total: items.length }));
+await writeFile("data/productos-1.json", JSON.stringify({ actualizado, items: una }));
+await writeFile("data/descripciones.json", JSON.stringify({ actualizado, d: descripciones }));
 const comp = items.filter(i => i.t.length > 1).length;
 console.log(`Listo: ${items.length} productos, ${comp} presentes en 2 o más tiendas (${supers.join(", ")}).`);
