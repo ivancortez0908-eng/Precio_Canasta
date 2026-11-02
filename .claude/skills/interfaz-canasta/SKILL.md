@@ -94,6 +94,7 @@ Siempre de arriba abajo: **controles → estado → tabla → resumen**.
 | cantidad | `span.stp` con `button[data-a=menos]`, `input.qty`, `button[data-a=mas]` (1 a 99) |
 | favorito | `button.star` con `aria-pressed` y ☆/★; abre `dialog#dlista` |
 | contador en pestaña | `span.badge` (verde, texto blanco) |
+| foto de producto | `foto(url, categoría)` en `app.js`: `img.foto` de 48 px (52 px en celular), fondo blanco, borde `--line`, `object-fit:contain`, `alt=""` (el nombre va al lado), `loading="lazy"`, `referrerpolicy="no-referrer"`. Sin foto o si falla: `span.foto.sin` del tono de su categoría. En tablas, dentro de `.pfila` a la izquierda del nombre; en celular, primera columna de `.mfila.confoto` / `.mcab.confoto` |
 | etiqueta pequeña | `.tag` (criterio de unión), `.store` (nombre de tienda), `.marca` (marca, verde), `.cat[data-c]` (categoría con su tono suave; «Otros» no se marca) |
 | filtro por categoría | `div#cats.cats > button[data-c][aria-pressed]` con el tono de la categoría; la elegida lleva borde del color del texto y «✓» (no solo color). Una a la vez; «Todo» (`data-c=""`) con borde gris. En celular, una fila que se desliza de lado (44 px de alto) |
 | precio más barato | `td.best` con `barato(html)` (✓ visible + «(más barato)» en `.vh`); nunca solo el color verde |

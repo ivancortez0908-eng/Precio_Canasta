@@ -58,6 +58,9 @@ Debajo del buscador hay una fila de categorías (Carnes, Lácteos y huevos, Frut
 
 La categoría se deduce del nombre del producto con reglas de `comparador.js` (`categoria`): no viene de las tiendas, así que algún producto raro puede quedar en otra categoría o en «Otros». Para corregir un caso, agrega la palabra a la lista de su categoría.
 
+## Fotos de los productos
+Cada producto muestra una foto pequeña tomada de la tienda (Walmart, Despensa de Don Juan, Maxi Despensa, Super Selectos y Superea; PriceSmart si la entrega). Se cargan solo cuando se ven en pantalla. Si una tienda no tiene foto o no carga, aparece un recuadro del color de la categoría. Las fotos del catálogo llegan con la siguiente **Actualizar precios**; las de «Buscar en las tiendas», en cuanto se publica el Worker.
+
 ## Búsqueda en vivo (producto específico)
 La pestaña **Buscar en vivo** consulta un solo producto en el momento en cada tienda, sin descargar catálogos. Solo se muestran los resultados que contienen **al menos 2 palabras** de la búsqueda (o la única, si se escribe una): «gaseosa cocacola» muestra las Coca Cola y oculta embutidos o papel. No cuentan artículos, números ni medidas; singular y plural son iguales y no importan acentos ni espacios («cocacola» = «Coca-Cola»). El botón **Mostrar todos** enseña también los ocultos. Como el navegador no puede leer otras tiendas directamente, se usa un Worker gratuito de Cloudflare (`worker/worker.js`) que hace una petición por tienda y guarda cada consulta 10 minutos en caché.
 

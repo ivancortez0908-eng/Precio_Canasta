@@ -3,7 +3,7 @@
 // y devuelve los resultados en JSON. Guarda cada consulta 10 minutos en caché para no repetir peticiones.
 const UA = "CanastaSV/1.0 (comparador de precios sin fines de lucro)";
 const MAX = 12; // resultados por tienda
-const VERSION = "2026-10-24-b"; // aparece en cada respuesta: sirve para saber qué código está desplegado
+const VERSION = "2026-11-02"; // aparece en cada respuesta: sirve para saber qué código está desplegado
 
 // ---- tamaños (misma lógica que scraper/normalizar.mjs) ----
 const RE = /(?<![\d.,])(?:(\d+)\s*[x×]\s*)?(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|mg|lbs?|libras?|floz|onzas?|oz|ml|lts?|litros?|l|gal(?:on(?:es)?)?)(?![a-z])/i;
@@ -98,7 +98,10 @@ async function pedir(url, accept, init = {}) {
   } finally { clearTimeout(t); }
 }
 
-// ---- tiendas: cada una recibe el texto buscado y devuelve [{id,nombre,marca,precio,url}] ----
+// ---- tiendas: cada una recibe el texto buscado y devuelve [{id,nombre,marca,precio,url,img}] ----
+// img: foto del producto en la tienda, solo enlaces https (la misma regla que scraper/tiendas.mjs); en VTEX, miniatura 96×96
+const foto = u => (typeof u === "string" && /^https:\/\/[^\s"'<>]+$/.test(u) && u.length < 400 ? u : "");
+const fotoVtex = u => foto(String(u || "").replace(/\/arquivos\/ids\/(\d+)(?:-\d+-\d+)?\//, "/arquivos/ids/$1-96-96/").replace(/\?.*$/, ""));
 // Las tiendas VTEX (Walmart, Despensa de Don Juan, Maxi) publican el código de barras: con «ean» buscan por código.
 const vtex = base => Object.assign(async (q, env, ean) => {
   const filtro = ean ? `fq=alternateIds_Ean:${encodeURIComponent(ean)}` : `ft=${encodeURIComponent(sinTilde(q))}`;
@@ -109,7 +112,8 @@ const vtex = base => Object.assign(async (q, env, ean) => {
     if (!o || !(o.Price > 0) || !(o.AvailableQuantity > 0)) continue;
     const promo = [...(o.PromotionTeasers || []), ...(o.Teasers || [])].map(t => promoVtex(t || {}, hoy)).find(Boolean) || null;
     out.push({ id: String(it.productId), nombre: it.productName, marca: it.brand || "", precio: o.Price, url: it.link || `${base}/${it.linkText}/p`,
-      promo, antes: o.ListPrice > o.Price ? o.ListPrice : null, ...(gtin(it.items?.[0]?.ean) ? { ean: gtin(it.items[0].ean) } : {}) });
+      promo, antes: o.ListPrice > o.Price ? o.ListPrice : null, img: fotoVtex(it.items?.[0]?.images?.[0]?.imageUrl),
+      ...(gtin(it.items?.[0]?.ean) ? { ean: gtin(it.items[0].ean) } : {}) });
   }
   return out;
 }, { porCodigo: true });
@@ -135,10 +139,14 @@ async function selectos(q) {
 
   const h = fin >= 0 ? html.slice(fin) : html;      // la lista real va después del título "Resultado…"
   const re = /<a\b[^>]*href="([^"]*productId=(\d+)[^"]*)"[^>]*>([\s\S]*?)<\/a>/gi;
-  const out = []; let ult = 0, m;
+  const out = [], fotos = {}; let ult = 0, m;
   while ((m = re.exec(h)) && out.length < MAX) {
     const nombre = texto(m[3]);
-    if (nombre.length < 3) continue;                // enlace de la imagen
+    if (nombre.length < 3) {                        // enlace de la imagen: va antes del nombre del mismo producto
+      const src = m[3].match(/<img\b[^>]*\bsrc="([^"]+)"/i)?.[1];
+      if (src) fotos[m[2]] = foto(deco(src));
+      continue;
+    }
     const crudo = h.slice(ult, m.index), tramo = texto(crudo), oferta = tramo.match(/Seleccione\s*\d+\s*X\s*\$\s*[\d.,]*\d/i);
     const imagen = [...crudo.matchAll(/tipoPromoMM\/(\d+-\d+)\.png/gi)].at(-1)?.[1];   // la de este producto, junto a su nombre
     const antes = tramo.replace(/Seleccione\s*\d+\s*X\s*\$\s*[\d.,]+/gi, "");
@@ -147,7 +155,7 @@ async function selectos(q) {
     if (!pr) continue;
     const href = deco(m[1]);
     out.push({ id: m[2], nombre, marca: marcaDe(nombre), precio: parseFloat(pr[1].replace(",", "")), promo: promoDe([oferta?.[0]]) || PROMO_SELECTOS[imagen] || null,
-               url: href.startsWith("http") ? href : SS + (href.startsWith("/") ? "" : "/") + href });
+               url: href.startsWith("http") ? href : SS + (href.startsWith("/") ? "" : "/") + href, img: fotos[m[2]] || "" });
   }
   return out;
 }
@@ -157,14 +165,14 @@ async function selectos(q) {
 async function pricesmart(q, env) {
   const pagina = `https://www.pricesmart.com/es-sv/busqueda?q=${encodeURIComponent(q)}`;
   const cuerpo = [{ account_id: "7024", auth_key: env.PRICESMART_KEY, domain_key: "pricesmart_bloomreach_io_es",
-    fl: "pid,title,brand,slug,currency,fractionDigits,availability_SV,price_SV,inventory_SV",
+    fl: "pid,title,brand,slug,currency,fractionDigits,availability_SV,price_SV,inventory_SV,thumb_image",
     fq: [], q, request_id: Date.now(), rows: MAX, search_type: "keyword", start: 0, url: pagina, view_id: "SV" }];
   const r = await pedir("https://www.pricesmart.com/api/br_discovery/getProductsByKeyword", "application/json",
     { method: "POST", body: JSON.stringify(cuerpo), headers: { "content-type": "application/json" } });
   const j = await r.json(), o = Array.isArray(j) ? j[0] : j;
   return (o?.response?.docs || [])
     .filter(d => String(d.availability_SV) === "true" && Number(d.price_SV) > 0)
-    .map(d => ({ id: String(d.pid), nombre: d.title, marca: d.brand || "", precio: Number(d.price_SV) / 10 ** (d.fractionDigits ?? 2), url: pagina }));
+    .map(d => ({ id: String(d.pid), nombre: d.title, marca: d.brand || "", precio: Number(d.price_SV) / 10 ** (d.fractionDigits ?? 2), url: pagina, img: foto(d.thumb_image) }));
 }
 
 // Superea: su propio buscador usa Algolia con la clave pública de solo búsqueda que el sitio entrega a todo visitante.
@@ -172,13 +180,13 @@ async function pricesmart(q, env) {
 const SUPEREA = { app: "0L9N281WRT", clave: "6d8f296718166bdcfd63f9983931d63d", indice: "prod_SV_articles", bodega: 1 };
 async function superea(q) {
   const p = new URLSearchParams({ query: q, hitsPerPage: String(MAX), filters: `visible_in_wh_ids:${SUPEREA.bodega}`,
-    attributesToRetrieve: "id,name,slug,brand_name,final_price,available_balance,is_always_available,grammage" });
+    attributesToRetrieve: "id,name,slug,brand_name,final_price,available_balance,is_always_available,grammage,image_url" });
   const r = await pedir(`https://${SUPEREA.app.toLowerCase()}-dsn.algolia.net/1/indexes/${SUPEREA.indice}?${p}`, "application/json",
     { headers: { "x-algolia-application-id": SUPEREA.app, "x-algolia-api-key": SUPEREA.clave } });
   return ((await r.json()).hits || [])
     .filter(h => Number(h.final_price) > 0 && (Number(h.is_always_available) === 1 || Number(h.available_balance) > 0) && h.slug)
     .map(h => ({ id: String(h.id ?? h.objectID), nombre: !tamano(h.name) && h.grammage ? `${h.name} ${h.grammage}` : h.name,
-      marca: h.brand_name || "", precio: Number(h.final_price), url: `https://superea.sv/productos/${encodeURIComponent(h.slug)}` }));
+      marca: h.brand_name || "", precio: Number(h.final_price), url: `https://superea.sv/productos/${encodeURIComponent(h.slug)}`, img: foto(h.image_url) }));
 }
 
 // Equivalencias aprobadas (scraper/equivalencias.json en GitHub): al buscar por código, el producto exacto de cada tienda

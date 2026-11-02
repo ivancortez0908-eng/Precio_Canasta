@@ -1,4 +1,25 @@
-# Bitácora — 29 de octubre de 2026 (categorías con colores suaves)
+# Bitácora — 2 de noviembre de 2026 (fotos de los productos)
+
+## Origen de las fotos (revisado con respuestas reales)
+- Walmart, Despensa de Don Juan y Maxi (VTEX): `items[0].images[0].imageUrl`; se pide la miniatura de 96×96 (`/arquivos/ids/<id>-96-96/…`).
+- Super Selectos: cada producto tiene antes un enlace con su `productId` y una `<img>` (bitworks-multimedia.superselectos.com). Con una página real de «leche», las 20 fotos correspondieron a su producto.
+- Superea: atributo `image_url` del índice de Algolia (lo usa su propio sitio; cloudfront).
+- PriceSmart: se pide `thumb_image`; si no viene, no hay foto.
+
+## Cambios
+- `scraper/tiendas.mjs`, `scraper/emparejar.mjs`: el catálogo guarda `img` (una por producto, prefiriendo las miniaturas VTEX). Solo enlaces `https`.
+- `worker/worker.js` (versión `2026-11-02`): los resultados traen `img`.
+- `app.js`/`index.html`: foto a la izquierda del nombre en el catálogo, «Buscar en las tiendas» y Mi lista (tabla y celular). Carga diferida y sin referencia; si no hay o falla, recuadro del tono de la categoría. Con un catálogo sin fotos no se dibujan recuadros. Los favoritos guardan su foto y los anteriores la toman del catálogo o de la siguiente consulta. Scripts con `?v=2026-11-02`.
+- Pruebas en Chromium: foto que carga, foto rota (recuadro) y foto del catálogo.
+
+## Límites
+- Las fotos del catálogo aparecen tras la siguiente «Actualizar precios» (el archivo publicado aún no las trae). `data/productos.json` crecerá unos cientos de KB.
+- Las fotos se cargan desde los servidores de cada tienda; si una tienda bloquea el uso desde otra página, queda el recuadro.
+
+## Validación
+- `node --test tests/canasta.test.cjs`: 49 pasan. `node tests/interfaz.cjs` pasa. Capturas en celular y escritorio revisadas.
+
+# Bitácora anterior (categorías con colores suaves)
 
 ## Cambios
 - `comparador.js`: `categoria(nombre)` y `NOMBRES_CATEGORIA`. 10 categorías. Primero frases que mandan (mascotas → Otros, «para adulto» → Cuidado personal, bebé, boquitas, papel higiénico, «crema» según su pista); si no, la palabra de tipo que aparece primero en el nombre («Atún en agua» = Carnes; «Sal con ajo» = Abarrotes). Lo demás, «Otros».

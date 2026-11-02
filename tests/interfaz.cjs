@@ -9,7 +9,10 @@ const raiz = path.join(__dirname, '..');
 const leche = { nombre: 'Leche entera Salud 1 L', marca: 'Salud', q: 1000, u: 'ml', pu: 2, pl: 'L' };
 const fila = (tienda, id, precio, extra = {}) => ({ ...leche, tienda, id, precio, url: 'https://tienda.test/' + id, ...extra });
 const respuesta = { generado: '2026-10-17T12:00:00Z', tiendas: { Walmart: { ok: true, n: 1 }, 'Super Selectos': { ok: true, n: 1 }, 'Despensa de Don Juan': { ok: false }, 'Maxi Despensa': { ok: true, n: 0 }, Superea: { ok: true, n: 0 }, PriceSmart: { ok: true, n: 0 } },
-  resultados: [fila('Walmart', '1', 2, { promo: '2 x $3.80', antes: 2.10 }), fila('Super Selectos', '2', 1.75)] };
+  resultados: [fila('Walmart', '1', 2, { promo: '2 x $3.80', antes: 2.10, img: 'https://img.test/leche.png' }), fila('Super Selectos', '2', 1.75, { img: 'https://img.test/rota.png' })] };
+// Fotos de productos: una imagen pequeña de prueba; «rota.png» no existe (debe quedar el recuadro de reemplazo)
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+const fotos = route => route.request().url().includes('rota') ? route.fulfill({ status: 404, body: '' }) : route.fulfill({ contentType: 'image/png', body: PNG });
 // Búsqueda por código de barras: el mismo producto en Walmart (por código) y su equivalente en Super Selectos (por nombre)
 const respuestaCodigo = { generado: '2026-10-17T12:00:00Z', ean: '07441029556735', nombre: 'Leche entera Salud 1 L', tiendas: { Walmart: { ok: true, n: 1 }, 'Super Selectos': { ok: true, n: 1 } },
   resultados: [fila('Walmart', '1', 2, { porCodigo: true, ean: '07441029556735' }), fila('Super Selectos', '2', 1.75)] };
@@ -17,7 +20,7 @@ const server = http.createServer((req, res) => {
   req.url = req.url.split('?')[0];   // los scripts llevan ?v= de versión
   const archivos = { '/': 'index.html', '/app.js': 'app.js', '/comparador.js': 'comparador.js', '/exportar.js': 'exportar.js' };
   if (req.url === '/config.js') { res.setHeader('Content-Type', 'text/javascript'); res.end('window.API_VIVO="https://worker.test";'); return; }
-  if (req.url === '/data/productos.json') { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ supers: ['Walmart', 'Super Selectos'], actualizado: '2026-10-17', items: [{ n: 'Arroz Blanco Precisa 1 lb', m: 'Precisa', q: 454, u: 'g', pl: 'lb', pu: .85, k: 'ean',
+  if (req.url === '/data/productos.json') { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ supers: ['Walmart', 'Super Selectos'], actualizado: '2026-10-17', items: [{ n: 'Arroz Blanco Precisa 1 lb', m: 'Precisa', q: 454, u: 'g', pl: 'lb', pu: .85, k: 'ean', img: 'https://img.test/arroz.png',
     t: [[0, .89, 'https://t.test/a1', .89, 'Arroz Blanco Precisa 1 lb', 'Precisa', '', 'a1'], [1, .85, 'https://t.test/a2', .85, 'Arroz Precisa 1 lb', 'Precisa', '', 'a2']] }] })); return; }
   const archivo = archivos[req.url];
   if (!archivo) { res.writeHead(404); res.end(); return; }
@@ -33,6 +36,7 @@ const server = http.createServer((req, res) => {
     const errores = [];
     page.on('pageerror', e => errores.push(e.message));
     await page.route('https://worker.test/**', route => route.fulfill({ json: route.request().url().includes('ean=') ? respuestaCodigo : respuesta }));
+    await page.route('https://img.test/**', fotos);
     const url = 'http://127.0.0.1:' + server.address().port;
     // La impresión real abriría un cuadro del sistema; se registra la llamada
     await page.addInitScript(() => { window.print = () => { window.impreso = (window.impreso || 0) + 1; }; });
@@ -53,6 +57,7 @@ const server = http.createServer((req, res) => {
     assert.deepEqual(await page.locator('#cats button').allInnerTexts(), ['Todo', 'Abarrotes']);
     assert.equal(await page.locator('#cats button[aria-pressed=true]').innerText(), 'Todo');
     assert.equal(await page.locator('#tabla .cat').first().innerText(), 'Abarrotes');
+    assert.equal(await page.locator('#tabla img.foto').count(), 1);   // foto del catálogo
     await page.locator('#cats').getByRole('button', { name: 'Abarrotes' }).click();
     assert.equal(await page.locator('#cats button[aria-pressed=true]').innerText(), 'Abarrotes');
     assert.equal(await page.locator('#tabla tbody tr').count(), 1);
@@ -99,6 +104,9 @@ const server = http.createServer((req, res) => {
     await page.getByRole('button', { name: 'Buscar en las tiendas' }).click();
     // El más barato no se indica solo con color
     assert.match(await page.locator('#tv td.best').innerText(), /✓[^]*\$1\.75[^]*\(más barato\)/);
+    // Fotos: la de Walmart carga; la de Selectos no existe y queda el recuadro de su categoría. El catálogo también lleva foto.
+    await page.waitForFunction(() => document.querySelectorAll('#tv .foto.sin').length === 1 && document.querySelector('#tv img.foto')?.naturalWidth > 0);
+    assert.equal(await page.locator('#tv img.foto').getAttribute('referrerpolicy'), 'no-referrer');
     await page.locator('#tv .star').first().click();
     // La ☆ abre el cuadro para elegir o crear listas
     const cuadro = page.getByRole('dialog', { name: 'Guardar en una lista' });
