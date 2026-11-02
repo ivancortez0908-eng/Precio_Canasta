@@ -742,3 +742,13 @@ test('catálogo en partes: primero los de 2+ tiendas, luego el resto; enlaces si
   assert.equal(ui.run('D.items.length'), 1);
   assert.equal(ui.run('D.resto'), null);
 });
+test('«Cambiar producto»: primero la misma presentación (24 rollos), no lo más barato', () => {
+  const { ordenarOpciones } = require('../comparador.js');
+  const ref = { nombre: 'PAPEL HIGIENICO ENCANTO GRANDE 24 ROLLOS', marca: 'ENCANTO' };
+  const ops = [['Soporte Mainstays Papel Higiénico Negro', 4], ['Papel Higiénico Húmedo Scott - 48 Uds', 1.65], ['Papel Higienico Supermax 1000 Hojas - 4 Rollos', 1.8],
+    ['Papel Higiénico Scott Premium Comfort Triple Hoja - 24 Rollos', 10], ['Papel Higiénico Scott 2 en 1 Doble Hoja - 24 Rollos', 7.91], ['Papel toalla Encanto 3 pack -180 hojas', 1.5]]
+    .map(([nombre, precio]) => ({ nombre, precio }));
+  assert.deepEqual(ordenarOpciones(ref, ops).slice(0, 2).map(x => x.precio), [7.91, 10]);
+  // «6rollos» pegado también cuenta como presentación
+  assert.equal(ordenarOpciones({ nombre: 'Papel X 6 Rollos' }, [{ nombre: 'Papel Y 4 Rollos', precio: 1 }, { nombre: 'Papel Z Doble - 6rollos', precio: 3 }])[0].precio, 3);
+});

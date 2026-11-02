@@ -1,4 +1,19 @@
-# Bitácora — 2 de noviembre de 2026 (carga más rápida del catálogo)
+# Bitácora — 3 de noviembre de 2026 (opciones de «Cambiar producto»)
+
+## Problema
+«Papel Higiénico Encanto Grande 24 Rollos» de Selectos: Walmart y Despensa de Don Juan no venden Encanto, pero en «Cambiar producto» no salían los papeles de 24 rollos (Scott, Rosal, Great Value) que sí aparecen en el buscador. Reproducido con el Worker real: las opciones se ordenaban solo por precio (15 visibles) y se llenaban con paquetes de 4 o 6 rollos, toallitas y hasta soportes; además se guardaban las 8 primeras que llegaban y la consulta no usaba el nombre completo («24 rollos»).
+
+## Cambios
+- `comparador.js`: `ordenarOpciones(ref, lista)`: equivalentes, misma presentación (medida o cantidad escrita: rollos, unidades, pack, hojas, sobres…), palabras en común, precio. «24 rollos» no se agrega como medida del catálogo, para no cambiar cómo se agrupan los productos.
+- `app.js`: «Cambiar producto» y las 8 opciones guardadas usan ese orden; la consulta del favorito agrega su nombre completo. Scripts con `?v=2026-11-03`.
+
+## Resultado (Worker real)
+Walmart, Despensa de Don Juan y Maxi muestran primero los papeles de 24 rollos (Scott 2 en 1 $7.91, Rosal, Great Value, Scott Premium).
+
+## Validación
+- `node --test tests/canasta.test.cjs`: 52 pasan. `node tests/interfaz.cjs` pasa.
+
+# Bitácora anterior (carga más rápida del catálogo)
 
 ## Medición previa (teléfono simulado: procesador 4× más lento, 4G)
 `data/productos.json` pesaba 4.1 MB (650 KB comprimido): descripciones 42 %, enlaces con dominio repetido ~740 KB, y 3,523 de 5,928 productos en una sola tienda (ocultos por defecto con «2+ tiendas»). Catálogo listo en ~4.4 s.

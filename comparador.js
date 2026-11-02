@@ -84,6 +84,21 @@
     const ok = qs.filter(t => ws.some(w => igual(t, w)) || (t.length >= 4 && junto.includes(t)));
     return ok.length >= Math.min(2, qs.length);
   }
+  // Orden de las opciones de «Cambiar producto»: primero las equivalentes, luego las de la misma presentación (misma medida,
+  // o la misma cantidad escrita en el nombre: «24 rollos», «6 pack»), después las que comparten más palabras y, al final, el precio.
+  // Así un papel de 24 rollos no queda escondido detrás de paquetes de 4 más baratos.
+  const presentaciones = n => new Set([...norm(n).matchAll(/(\d+(?:[.,]\d+)?)\s*-?\s*(rollos?|uds?|unidades|unidad|un|pack|pk|piezas?|sobres?|hojas|tabletas?|capsulas?|bolsas?|latas?|botellas?)\b/g)]
+    .map(m => +m[1].replace(",", ".") + " " + m[2].replace(/^(uds?|unidades|unidad|un)$/, "ud").replace(/s$/, "")));
+  function ordenarOpciones(ref, lista) {
+    const qs = palabrasBusqueda(nombre(ref) + " " + (ref.marca || ref.m || "")), pres = presentaciones(nombre(ref));
+    const puntos = x => {
+      const ws = palabras(nombre(x) + " " + (x.marca || x.m || "")).split(" ");
+      const comunes = qs.filter(t => ws.some(w => igual(t, w))).length;
+      const misma = (ref.q && x.q && ref.u && ref.u === x.u && Math.abs(Math.log(x.q / ref.q)) < 0.02) || [...presentaciones(nombre(x))].some(p => pres.has(p));
+      return [equivalente(ref, x) ? 0 : 1, misma ? 0 : 1, -comunes, Number(x.precio) || 0];
+    };
+    return lista.map(x => [puntos(x), x]).sort((a, b) => { for (let i = 0; i < 4; i++) if (a[0][i] !== b[0][i]) return a[0][i] - b[0][i]; return 0; }).map(p => p[1]);
+  }
   // Código de barras (EAN/UPC/GTIN): misma regla que scraper/emparejar.mjs y el Worker. Dígito de control correcto y
   // al menos 8 cifras significativas; se devuelve con 14 cifras para comparar sin importar los ceros a la izquierda.
   function gtin(s) {
@@ -151,7 +166,7 @@
     for (const [x, ks] of conClaves) { const r = raiz(ks[0]); if (!partes.has(r)) partes.set(r, x); }
     return partes.size >= 2 ? [...partes.values()] : null;
   }
-  const api = { equivalente, precioValido, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda, dia, gtin, categoria, NOMBRES_CATEGORIA, reducirAporte };
+  const api = { equivalente, precioValido, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda, dia, gtin, categoria, NOMBRES_CATEGORIA, reducirAporte, ordenarOpciones };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.Canasta = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);
