@@ -71,6 +71,11 @@ td .marca{font-weight:600;color:var(--marca)}
 [data-c=carnes]{--cf:var(--cCarnes);--ct:var(--cCarnesT)}[data-c=lacteos]{--cf:var(--cLacteos);--ct:var(--cLacteosT)}[data-c=frutas]{--cf:var(--cFrutas);--ct:var(--cFrutasT)}
 [data-c=panaderia]{--cf:var(--cPan);--ct:var(--cPanT)}[data-c=basicos]{--cf:var(--cBasicos);--ct:var(--cBasicosT)}[data-c=bebidas]{--cf:var(--cBebidas);--ct:var(--cBebidasT)}
 [data-c=limpieza]{--cf:var(--cLimpieza);--ct:var(--cLimpiezaT)}[data-c=personal]{--cf:var(--cPersonal);--ct:var(--cPersonalT)}[data-c=bebe]{--cf:var(--cBebe);--ct:var(--cBebeT)}[data-c=otros]{--cf:var(--cOtros);--ct:var(--cOtrosT)}
+/* Foto del producto: miniatura de la tienda (o recuadro del tono de su categoría) a la izquierda del nombre */
+.pfila{display:flex;gap:10px;align-items:flex-start}.pfila>div{min-width:0}
+.foto{flex:none;display:block;width:48px;height:48px;border-radius:6px;border:1px solid var(--line);background:#fff;object-fit:contain}
+.foto.sin{background:var(--cf,var(--bg));border-color:transparent}
+.mfila.confoto,.mcab.confoto{grid-template-columns:auto 1fr auto}.mfila.confoto .foto,.mcab.confoto .foto{width:52px;height:52px}
 .cat{display:inline-block;font-size:.75rem;padding:0 8px;border-radius:999px;background:var(--cf);color:var(--ct);margin-left:4px;font-weight:600}
 .cats{display:flex;flex-wrap:wrap;gap:6px;margin:6px 4px 10px}
 .cats button{min-height:32px;padding:4px 12px;border:1px solid transparent;border-radius:999px;background:var(--cf,var(--surf));color:var(--ct,var(--ink));font-weight:600;font-size:.85rem;white-space:nowrap}
@@ -344,9 +349,9 @@ a.chip{text-decoration:none}
 <section id="imprimir" aria-hidden="true"></section>
 
 <!-- ?v= obliga al navegador a descargar los archivos nuevos junto con esta página: súbelo al cambiar cualquiera de ellos -->
-<script src="config.js?v=2026-10-29"></script>
-<script src="comparador.js?v=2026-10-29"></script>
-<script src="exportar.js?v=2026-10-29"></script>
-<script src="app.js?v=2026-10-29"></script>
+<script src="config.js?v=2026-11-02"></script>
+<script src="comparador.js?v=2026-11-02"></script>
+<script src="exportar.js?v=2026-11-02"></script>
+<script src="app.js?v=2026-11-02"></script>
 </body>
 </html>

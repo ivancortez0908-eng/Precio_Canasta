@@ -75,8 +75,11 @@ for (const [r, idxs] of grupos) {
   const conMarca = lista.find(x => x.marca);
   // Códigos de barras válidos del grupo (14 cifras): la página los usa para buscar o escanear un producto
   const b = [...new Set(idxs.map(i => gtin(todos[i].ean)).filter(Boolean))];
+  // Una foto por producto: la primera disponible, empezando por las miniaturas VTEX (más livianas)
+  const img = (idxs.map(i => todos[i].img).filter(u => typeof u === "string" && /^https:\/\/[^\s"'<>]+$/.test(u))
+    .sort((x, y) => (y.includes("/arquivos/ids/") ? 1 : 0) - (x.includes("/arquivos/ids/") ? 1 : 0)))[0];
   items.push({ n: bonito(base.nombre), m: conMarca ? bonito(conMarca.marca) : "", q: conQ.q, u: conQ.u,
-    pl: precioUnitario(1, conQ.q, conQ.u)?.pl ?? null, pu: pus.length ? Math.min(...pus) : null, k, t, ...(b.length ? { b } : {}) });
+    pl: precioUnitario(1, conQ.q, conQ.u)?.pl ?? null, pu: pus.length ? Math.min(...pus) : null, k, t, ...(b.length ? { b } : {}), ...(img ? { img } : {}) });
 }
 items.sort((a, b) => a.n.localeCompare(b.n, "es"));
 

@@ -1,5 +1,5 @@
 // Cada tienda con activa:true debe tener catalogo(): generador que entrega
-// { id, nombre, marca, ean, precio, url, cat } por cada producto disponible.
+// { id, nombre, marca, ean, precio, url, cat, img } por cada producto disponible (img: foto de la tienda, puede ir vacía).
 import { readFile } from "node:fs/promises";
 import { parseTamano } from "./normalizar.mjs";
 const UA = "CanastaSV/1.0 (comparador de precios sin fines de lucro)";
@@ -12,6 +12,9 @@ let avisos = 0;
 const esp = ms => new Promise(r => setTimeout(r, ms));
 // Selectos y Maxi no encuentran nada con acentos («atún» → 0, «atun» → resultados). Se quitan tildes y se conserva la ñ.
 const sinTilde = s => s.normalize("NFD").replace(/[\u0300-\u0302\u0304-\u036f]/g, "").normalize("NFC");
+// Foto del producto: solo enlaces https sin caracteres raros. En VTEX se pide la miniatura de 96×96 (la tienda la recorta).
+export const foto = u => (typeof u === "string" && /^https:\/\/[^\s"'<>]+$/.test(u) && u.length < 400 ? u : "");
+export const fotoVtex = u => foto(String(u || "").replace(/\/arquivos\/ids\/(\d+)(?:-\d+-\d+)?\//, "/arquivos/ids/$1-96-96/").replace(/\?.*$/, ""));
 
 async function getJson(url) {
   let ultimo = "sin respuesta";
@@ -77,7 +80,7 @@ function vtex(base, nombre) {
       if (!(o.IsAvailable ?? o.AvailableQuantity > 0)) { rech.sinStock++; return null; }
       return { id: String(it.productId), nombre: it.productName, marca: it.brand || "", ean: sku.ean || "",
         desc: (it.description || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 220),
-        precio: o.Price, url: it.link || `${base}/${it.linkText}/p`, cat };
+        precio: o.Price, url: it.link || `${base}/${it.linkText}/p`, cat, img: fotoVtex(sku.images?.[0]?.imageUrl) };
     };
     let a = 0, n = 0;
     for (const t of CANASTA.terminos) {
@@ -105,7 +108,7 @@ function vtex(base, nombre) {
       for (const x of j.resultados || []) {
         if (x.tienda !== nombre || vistos.has(x.id)) continue;
         vistos.add(x.id);
-        yield { id: x.id, nombre: x.nombre, marca: x.marca, ean: "", desc: "", precio: x.precio, url: x.url, cat: t };
+        yield { id: x.id, nombre: x.nombre, marca: x.marca, ean: "", desc: "", precio: x.precio, url: x.url, cat: t, img: foto(x.img) };
       }
     }
   };
@@ -141,17 +144,21 @@ export function parseSelectos(html) {
   const ini = html.search(/<h1[\s>]/i);          // la lista real va después del título "Resultado…"
   const h = ini >= 0 ? html.slice(ini) : html;
   const re = /<a\b[^>]*href="([^"]*productId=(\d+)[^"]*)"[^>]*>([\s\S]*?)<\/a>/gi;
-  const out = []; let fin = 0, m;
+  const out = [], fotos = {}; let fin = 0, m;
   while ((m = re.exec(h))) {
     const nombre = texto(m[3]);
-    if (nombre.length < 3) continue;               // enlace de la imagen
+    if (nombre.length < 3) {                        // enlace de la imagen: va antes del nombre del mismo producto
+      const src = m[3].match(/<img\b[^>]*\bsrc="([^"]+)"/i)?.[1];
+      if (src) fotos[m[2]] = foto(deco(src));
+      continue;
+    }
     const antes = texto(h.slice(fin, m.index)).replace(/Seleccione\s*\d+\s*X\s*\$\s*[\d.,]+/gi, "");
     fin = m.index + m[0].length;
     const pr = antes.match(/\$\s*(\d{1,3}(?:,\d{3})*\.\d{2})/);
     if (!pr) continue;
     const href = deco(m[1]);
     out.push({ id: m[2], nombre, marca: detectarMarca(nombre), ean: "", desc: "", precio: parseFloat(pr[1].replace(",", "")),
-               url: href.startsWith("http") ? href : SS + (href.startsWith("/") ? "" : "/") + href });
+               url: href.startsWith("http") ? href : SS + (href.startsWith("/") ? "" : "/") + href, img: fotos[m[2]] || "" });
   }
   return out;
 }
@@ -216,7 +223,7 @@ function superea() {
     const terminos = terminosSuperea();
     for (const t of terminos) {
       const p = new URLSearchParams({ query: t, hitsPerPage: "100", filters: "visible_in_wh_ids:1",
-        attributesToRetrieve: "id,name,slug,brand_name,description,final_price,available_balance,is_always_available,grammage",
+        attributesToRetrieve: "id,name,slug,brand_name,description,final_price,available_balance,is_always_available,grammage,image_url",
         "x-algolia-application-id": app, "x-algolia-api-key": clave });
       const j = await getJson(`https://${app.toLowerCase()}-dsn.algolia.net/1/indexes/prod_SV_articles?${p}`);
       await esp(1000);
@@ -227,7 +234,7 @@ function superea() {
         vistos.add(id); n++;
         yield { id, nombre: !parseTamano(h.name) && h.grammage ? `${h.name} ${h.grammage}` : h.name, marca: h.brand_name || "", ean: "",
           desc: String(h.description || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 220),
-          precio: Number(h.final_price), url: `https://superea.sv/productos/${encodeURIComponent(h.slug)}`, cat: t };
+          precio: Number(h.final_price), url: `https://superea.sv/productos/${encodeURIComponent(h.slug)}`, cat: t, img: foto(h.image_url) };
       }
     }
     console.log(`[Superea] ${n} productos en ${terminos.length} búsquedas`);

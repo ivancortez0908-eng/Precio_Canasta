@@ -63,11 +63,11 @@ const favoritoItem = (it, items = todos()) => items.find(f => f.id === it.fid ||
   Object.values(f.t).some(v => !v.cambio && v.url && v.url === e[2] && !/[?&]q=/.test(v.url))));
 function cancelar(f) { pendientes.get(f)?.abort(); pendientes.delete(f); }
 // ean: código de barras del producto; al actualizar se consulta también por código para traer las equivalencias aprobadas
-const favDeItem = it => ({ id: it.fid, n: it.n, m: it.m, q: it.q, u: it.u, pl: it.pl, ean: it.b?.[0],
+const favDeItem = it => ({ id: it.fid, n: it.n, m: it.m, q: it.q, u: it.u, pl: it.pl, ean: it.b?.[0], img: fotoOk(it.img) ? it.img : undefined,
   t: Object.fromEntries(it.t.map(e => [D.supers[e[0]], { p: e[1], url: e[2], nom: e[4] || it.n, id: e[7] || "", f: D.actualizado, src: "cat" }])) });
 // El producto marcado en la búsqueda en vivo lo eligió la persona: queda como elección manual
 const favDeVivo = x => ({ id: x.id, n: x.nombre, m: x.marca, q: x.q, u: x.u, pl: x.pl, busqueda: busquedaRV,
-  ean: codigoRV && (x.porCodigo || x.porEquivalencia) ? codigoRV : undefined,
+  ean: codigoRV && (x.porCodigo || x.porEquivalencia) ? codigoRV : undefined, img: fotoOk(x.img) ? x.img : undefined,
   t: { [x.tienda]: { p: x.precio, url: x.url, nom: x.nombre, ref: idVivo(x), id: pidDe(x), f: fechaRV || hoy(), manual: true, ...oferta(x) } } });
 // El precio más barato no se indica solo con color: ✓ visible y texto para lectores de pantalla
 const barato = html => `<span class="ok" aria-hidden="true">✓</span>${html}<span class="vh"> (más barato)</span>`;
@@ -99,6 +99,7 @@ function mezclarCatalogo(f) {
       }
       continue;
     }
+    if (!fotoOk(f.img) && fotoOk(it.img)) f.img = it.img;   // favoritos guardados antes de las fotos
     for (const e of it.t) {
       const s = D.supers[e[0]], previo = f.t[s];
       if (f.sin?.[s] || (previo?.manual && previo.url !== e[2])) continue;
@@ -125,6 +126,7 @@ function aplicarResultados(f, resultados, generado) {
     const seguros = opciones.some(x => x.seguro) ? opciones.filter(x => x.seguro) : opciones.filter(x => equivalente(f, x));
     // Varias coincidencias en una tienda requieren revisión; una tienda descartada no se vuelve a llenar sola.
     const elegido = exacto || (!previo && !f.sin?.[s] && seguros.length === 1 ? seguros[0] : null);
+    if (elegido && !previo?.cambio && !fotoOk(f.img) && fotoOk(elegido.img)) f.img = elegido.img;
     if (elegido && (!previo || (generado || hoy()) >= (previo.f || ""))) f.t[s] = { p: elegido.precio, url: elegido.url, nom: elegido.nombre,
       ref: idVivo(elegido), id: pidDe(elegido) || previo?.id || "", f: generado || hoy(), manual: previo?.manual || false, ...oferta(elegido),
       ...(exacto && previo.cambio ? { cambio: true } : {}), src: exacto ? previo.src || "auto" : "auto" };
@@ -262,6 +264,20 @@ function filtrar() {
   return r;
 }
 
+// Foto del producto (viene de la tienda): solo enlaces https. Sin foto, o si no carga, un recuadro del tono de su categoría.
+// Mientras el catálogo publicado no traiga fotos (se agregan en la siguiente «Actualizar precios»), no se muestran recuadros vacíos.
+const fotoOk = u => typeof u === "string" && /^https:\/\/[^\s"'<>]+$/.test(u) && u.length < 400;
+const foto = (u, c) => fotoOk(u)
+  ? `<img class="foto" src="${esc(u)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" width="48" height="48" data-c="${c || "otros"}">`
+  : `<span class="foto sin" data-c="${c || "otros"}" aria-hidden="true"></span>`;
+document.addEventListener?.("error", e => {
+  const im = e.target;
+  if (!im?.matches?.("img.foto")) return;
+  const s = document.createElement("span");
+  s.className = "foto sin"; s.dataset.c = im.dataset.c; s.setAttribute("aria-hidden", "true");
+  im.replaceWith(s);
+}, true);
+let catConFotos = false;
 // Etiqueta de categoría con su tono suave («Otros» no se marca)
 const etqCat = c => c && c !== "otros" ? `<span class="cat" data-c="${c}">${NOMBRES_CATEGORIA[c]}</span>` : "";
 function pintarCats() {
@@ -286,7 +302,7 @@ function render() {
   if (!r.length) h += `<tr><td colspan="${S.length + 3}">${vacio}</td></tr>`;
   for (const it of r.slice(0, limite)) {
     const min = Math.min(...it.t.map(x => x[1]));
-    h += `<tr><td>${esc(it.n)}<small>${it.m ? `<span class="marca">${esc(it.m)}</span>` : "Marca no indicada"}${tam(it) ? " · " + tam(it) : ""}${etqCat(it.c)}${it.k ? `<span class="tag">${TAG[it.k]}</span>` : ""}</small>${desc(it)}</td>` +
+    h += `<tr><td><div class="pfila">${catConFotos ? foto(it.img, it.c) : ""}<div>${esc(it.n)}<small>${it.m ? `<span class="marca">${esc(it.m)}</span>` : "Marca no indicada"}${tam(it) ? " · " + tam(it) : ""}${etqCat(it.c)}${it.k ? `<span class="tag">${TAG[it.k]}</span>` : ""}</small>${desc(it)}</div></div></td>` +
       S.map((_, si) => {
         const e = it.t.find(x => x[0] === si);
         if (!e) return `<td class="na">—</td>`;
@@ -300,7 +316,7 @@ function render() {
   // Celular: nombre, precios con su tienda (el más barato primero), precio por unidad y ☆
   $("mcat").innerHTML = !r.length ? `<p class="msg">${vacio}</p>` : r.slice(0, limite).map(it => {
     const min = Math.min(...it.t.map(x => x[1]));
-    return `<article class="mitem"><div class="mfila"><span class="mnom">${esc(it.n)}<small>${it.m ? `<span class="marca">${esc(it.m)}</span>` : "Marca no indicada"}${tam(it) ? " · " + tam(it) : ""}${etqCat(it.c)}</small></span>` +
+    return `<article class="mitem"><div class="mfila${catConFotos ? " confoto" : ""}">${catConFotos ? foto(it.img, it.c) : ""}<span class="mnom">${esc(it.n)}<small>${it.m ? `<span class="marca">${esc(it.m)}</span>` : "Marca no indicada"}${tam(it) ? " · " + tam(it) : ""}${etqCat(it.c)}</small></span>` +
       estrella(`data-i="${it.i}"`, !!favoritoItem(it)) +
       `<span class="mprecios">${[...it.t].sort((a, b) => a[1] - b[1]).map(e => chip(S[e[0]], e[1], e[1] === min && it.t.length > 1, "", e[2])).join("")}</span>` +
       (it.pu > 0 ? `<small class="mpu">${fpu(it.pu)} por ${it.pl}</small>` : "") + "</div></article>";
@@ -332,17 +348,17 @@ function pintarVivo() {
   const rango = x => x.porCodigo ? 2 : x.porEquivalencia ? 1 : 0;
   r.sort((a, b) => rango(b) - rango(a) || (o === "pu" ? puDe(a) - puDe(b) : a.precio - b.precio));
   const etq = x => x.porCodigo ? `<span class="tag">${TAG.ean}</span>` : x.porEquivalencia ? `<span class="tag">${TAG.manual}</span>` : codigoRV && x.coincide ? `<span class="tag">${TAG.nombre}</span>` : "";
-  const min = r.length ? Math.min(...r.map(x => x.precio)) : 0;
+  const min = r.length ? Math.min(...r.map(x => x.precio)) : 0, conFotos = RV.some(x => fotoOk(x.img));
   $("tv").innerHTML = r.length
     ? `<thead><tr><th>Producto</th><th>Tienda</th><th>Precio</th><th>Por unidad</th><th>Fav.</th></tr></thead><tbody>` + r.map(x => `<tr>
-        <td>${esc(x.nombre)}<small>${x.marca ? `<span class="marca">${esc(x.marca)}</span>` : "Marca no indicada"}${tam(x) ? " · " + tam(x) : ""}${etqCat(x.c)}${etq(x)}</small></td>
+        <td><div class="pfila">${conFotos ? foto(x.img, x.c) : ""}<div>${esc(x.nombre)}<small>${x.marca ? `<span class="marca">${esc(x.marca)}</span>` : "Marca no indicada"}${tam(x) ? " · " + tam(x) : ""}${etqCat(x.c)}${etq(x)}</small></div></div></td>
         <td><span class="store">${esc(x.tienda)}</span></td>
         <td class="${x.precio === min && r.length > 1 ? "best" : ""}">${(x.precio === min && r.length > 1 ? barato : h => h)(`<a href="${esc(x.url)}" target="_blank" rel="noopener">${fmt(x.precio)}</a>`)}${notaOferta({ p: x.precio, ...oferta(x) })}</td>
         <td>${x.pu > 0 ? `${fpu(x.pu)}<small>por ${x.pl}</small>` : "—"}</td>
         <td>${estrella(`data-id="${esc(x.id)}"`, !!favoritoVivo(x))}</td></tr>`).join("") + "</tbody>"
     : visibles.length ? `<tbody><tr><td>${sinCat()}</td></tr></tbody>` : "";
   // Celular: un renglón por resultado con su tienda, precio, oferta y ☆
-  $("mvivo").innerHTML = r.map(x => `<article class="mitem"><div class="mfila"><span class="mnom">${esc(x.nombre)}<small>${x.marca ? `<span class="marca">${esc(x.marca)}</span>` : "Marca no indicada"}${tam(x) ? " · " + tam(x) : ""}${etqCat(x.c)}${etq(x)}</small></span>` +
+  $("mvivo").innerHTML = r.map(x => `<article class="mitem"><div class="mfila${conFotos ? " confoto" : ""}">${conFotos ? foto(x.img, x.c) : ""}<span class="mnom">${esc(x.nombre)}<small>${x.marca ? `<span class="marca">${esc(x.marca)}</span>` : "Marca no indicada"}${tam(x) ? " · " + tam(x) : ""}${etqCat(x.c)}${etq(x)}</small></span>` +
     estrella(`data-id="${esc(x.id)}"`, !!favoritoVivo(x)) +
     `<span class="mprecios">${chip(x.tienda, x.precio, x.precio === min && r.length > 1, leerPromo(x.promo) ? "<i>oferta</i>" : "", x.url)}</span>` +
     `<span class="mpu">${x.pu > 0 ? `<small>${fpu(x.pu)} por ${x.pl}</small>` : ""}${notaOferta({ p: x.precio, ...oferta(x) })}</span></div></article>`).join("") + (!r.length && visibles.length ? `<p class="msg">${sinCat()}</p>` : "");
@@ -453,9 +469,11 @@ function pintarFav(fondo = false) {
   $("favrefresh").setAttribute("aria-label", pendientes.size ? `Consultando ${pendientes.size} producto(s)…` : "Actualizar precios");
   if (!FAV.length) { $("tfav").innerHTML = $("mfav").innerHTML = ""; pintarAyuda(); return; }
   // Contenido de cada producto y tienda; lo usan la tabla (computadora) y la lista compacta (celular)
+  const conFotos = FAV.some(f => fotoOk(f.img));
   const filas = FAV.map(f => {
     const ps = Object.values(f.t).map(v => costo(v, f.cant)), min = Math.min(...ps), id = esc(f.id), consultando = pendientes.has(f);
     const info = `<small>${f.m ? `<span class="marca">${esc(f.m)}</span>` : "Marca no indicada"}${tam(f) ? " · " + tam(f) : ""}</small>`, nombre = esc(f.n) + info;
+    const img = conFotos ? foto(f.img, categoria(f.n)) : "";
     const acciones = `<small class="consulta">${esc(consultando ? "Consultando las tiendas…" : f.estado || "Precios guardados. Actualiza para consultar las tiendas.")}</small><span class="filafav"><span class="stp"><button data-a="menos" data-id="${id}" aria-label="Menos">−</button><input class="qty" type="number" min="1" max="99" value="${f.cant}" data-id="${id}" aria-label="Cantidad de ${esc(f.n)}"><button data-a="mas" data-id="${id}" aria-label="Más">+</button></span>` +
       `<button class="rm" data-a="rm" data-id="${id}">Quitar</button></span><button class="retry" data-a="refresh" data-id="${id}" ${consultando ? "disabled" : ""}>Consultar tiendas</button>`;
     const celdas = S.map(s => {
@@ -469,16 +487,16 @@ function pintarFav(fondo = false) {
       const p = v.url ? `<a href="${esc(v.url)}" target="_blank" rel="noopener">${fmt(v.p)}</a>` : fmt(v.p), mejor = costo(v, f.cant) === min && ps.length > 1;
       return { s, v, mejor, cls: mejor ? "best" : "", html: `${mejor ? barato(p) : p}${notaOferta(v, f.cant)}<small class="product-source">${esc(v.nom || f.n)}</small>${v.f ? `<small class="f">al ${fecha(v.f)}${v.manual ? " · Elegido por ti" : ""}</small>` : ""}`, sel: selector };
     });
-    return { f, id, nombre, info, acciones, celdas };
+    return { f, id, nombre, info, acciones, celdas, img };
   });
   $("tfav").innerHTML = `<thead><tr><th>Producto y cantidad</th>${S.map(s => `<th>${esc(s)}</th>`).join("")}</tr></thead><tbody>` +
-    filas.map(r => `<tr><td>${r.nombre}${r.acciones}</td>${r.celdas.map(c => `<td class="${c.cls}">${c.html}${c.sel}</td>`).join("")}</tr>`).join("") + "</tbody>";
+    filas.map(r => `<tr><td><div class="pfila">${r.img}<div>${r.nombre}${r.acciones}</div></div></td>${r.celdas.map(c => `<td class="${c.cls}">${c.html}${c.sel}</td>`).join("")}</tr>`).join("") + "</tbody>";
   // Celular: nombre, cantidad y precios con su tienda (de más barato a más caro); al tocar se abre el detalle, uno a la vez
   if (!filas.some(r => r.f.id === abierto)) abierto = null;
   $("mfav").innerHTML = filas.map(r => {
     const con = r.celdas.filter(c => c.v).sort((a, b) => costo(a.v, r.f.cant) - costo(b.v, r.f.cant)), sin = r.celdas.length - con.length, open = r.f.id === abierto;
-    return `<article class="mitem${open ? " abierto" : ""}"><button class="mcab" data-a="abrir" data-id="${r.id}" aria-expanded="${open}">` +
-      `<span class="mnom">${esc(r.f.n)}</span><span class="mcant">× ${r.f.cant}</span><span class="mprecios">` +
+    return `<article class="mitem${open ? " abierto" : ""}"><button class="mcab${conFotos ? " confoto" : ""}" data-a="abrir" data-id="${r.id}" aria-expanded="${open}">` +
+      `${r.img}<span class="mnom">${esc(r.f.n)}</span><span class="mcant">× ${r.f.cant}</span><span class="mprecios">` +
       con.map(c => chip(c.s, c.v.p, c.mejor, leerPromo(c.v.promo) ? "<i>oferta</i>" : "")).join("") +
       (sin ? `<span class="chip na">${sin} sin precio</span>` : "") + `</span></button>` +
       (open ? `<div class="mdet"><div class="mprod">${r.info}${r.acciones}</div>${r.celdas.map(c => `<div class="mtienda ${c.cls}"><b class="mts">${esc(c.s)}</b><div>${c.html}</div><div class="msel">${c.sel}</div></div>`).join("")}</div>` : "") + "</article>";
@@ -846,12 +864,13 @@ pintarFav();
 // no-cache: el navegador pregunta siempre si hay un catálogo más nuevo (si no cambió, la respuesta es corta)
 fetch("data/productos.json", { cache: "no-cache" }).then(r => { if (!r.ok) throw 0; return r.json(); }).then(d => {
   D = d;
-  D.items.forEach((it, i) => { it.i = i; it.fid = idGrupo(it); it.c = categoria(it.n); it.s = norm(it.n + " " + it.m + " " + it.t.map(e => (e[4] || "") + " " + (e[5] || "")).join(" ")); });
+  D.items.forEach((it, i) => { it.i = i; it.fid = idGrupo(it); it.c = categoria(it.n); if (it.img && !fotoOk(it.img)) delete it.img; it.s = norm(it.n + " " + it.m + " " + it.t.map(e => (e[4] || "") + " " + (e[5] || "")).join(" ")); });
   refrescarFavs();
   $("fecha").textContent = D.ejemplo ? "Catálogo de ejemplo (no son precios reales)." : `Catálogo actualizado al ${fechaLarga(D.actualizado)}.`;
   $("foot").textContent = D.ejemplo
     ? "Datos de ejemplo (no son precios reales). Ejecuta la acción “Actualizar precios” en GitHub para cargar los reales."
     : `Catálogo del ${fechaLarga(D.actualizado)}. En Mi lista, cada precio lleva la fecha en que se consultó. Precios en USD de las tiendas en línea; pueden diferir de los precios en sala.`;
   if (D.supers.length < 2) { $("comp").checked = false; $("comp").disabled = true; $("comp").parentElement.title = "Se activa cuando haya 2 o más tiendas con datos"; }
+  catConFotos = D.items.some(it => it.img);
   pintarCats(); render(); pintarFav();
 }).catch(() => { $("fecha").textContent = "No se pudo cargar el catálogo."; $("tabla").innerHTML = "<tr><td>No se pudieron cargar los precios. Si abriste el archivo directo, usa GitHub Pages o un servidor local (python3 -m http.server).</td></tr>"; pintarFav(); }).finally(() => { $("cargando").hidden = true; });
