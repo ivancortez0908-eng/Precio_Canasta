@@ -135,7 +135,23 @@
     for (const [c, re] of TIPOS) { const m = re.exec(s); if (m && m.index < pos) { mejor = c; pos = m.index; } }
     return mejor;
   }
-  const api = { equivalente, precioValido, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda, dia, gtin, categoria, NOMBRES_CATEGORIA };
+  // Aportes: quita de una comparación lo que ya está aprobado. Une los productos de las equivalencias aprobadas (por ID o
+  // por enlace) y deja un producto por cada parte distinta: «Walmart ↔ Selectos» aprobada + Superea nueva → «Walmart ↔ Superea».
+  // Devuelve null si todo ya estaba unido. Lo usan la página (qué preguntar) y scraper/aplicar-aporte.mjs (qué guardar).
+  const urlClave = u => { const m = String(u || "").match(/[?&]productId=(\d+)/); return m ? "pid:" + m[1] : String(u || "").split("?")[0].replace(/\/+$/, "").toLowerCase(); };
+  const clavesProducto = x => [x.id ? `${x.tienda}#id:${x.id}` : "", x.url && !/[?&]q=/.test(x.url) ? `${x.tienda}#url:${urlClave(x.url)}` : ""].filter(Boolean);
+  function reducirAporte(grupo, aprobadas = []) {
+    const padre = new Map();
+    const raiz = k => { if (!padre.has(k)) padre.set(k, k); while (padre.get(k) !== k) k = padre.get(k); return k; };
+    const unir = ks => ks.slice(1).forEach(k => { const a = raiz(k), b = raiz(ks[0]); if (a !== b) padre.set(a, b); });
+    for (const g of Array.isArray(aprobadas) ? aprobadas : []) if (Array.isArray(g)) unir(g.filter(Boolean).flatMap(clavesProducto));
+    const conClaves = (grupo || []).map(x => [x, clavesProducto(x)]).filter(([, ks]) => ks.length);
+    conClaves.forEach(([, ks]) => unir(ks));   // el ID y el enlace de un mismo producto son la misma parte
+    const partes = new Map();
+    for (const [x, ks] of conClaves) { const r = raiz(ks[0]); if (!partes.has(r)) partes.set(r, x); }
+    return partes.size >= 2 ? [...partes.values()] : null;
+  }
+  const api = { equivalente, precioValido, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda, dia, gtin, categoria, NOMBRES_CATEGORIA, reducirAporte };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.Canasta = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

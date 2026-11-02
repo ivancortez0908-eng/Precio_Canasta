@@ -34,7 +34,7 @@ test('totales por cantidad, centavos, cobertura parcial y compra combinada', () 
   assert.equal(resumir([{ cant: 1, t: {} }], ['A']).sinPrecio, 1);
 });
 
-function interfaz({ resultados = [], datos, fallo = false, guardados = [], porConsulta } = {}) {
+function interfaz({ resultados = [], datos, fallo = false, guardados = [], porConsulta, aprobadas = [] } = {}) {
   const elements = new Map();
   function el(id) {
     if (!elements.has(id)) elements.set(id, { value: '', textContent: '', innerHTML: '', hidden: false, checked: true,
@@ -51,6 +51,7 @@ function interfaz({ resultados = [], datos, fallo = false, guardados = [], porCo
     AbortController, setTimeout, clearTimeout, console, confirm: () => true,
     fetch: async url => {
       if (url === 'data/productos.json') return { ok: !!datos, json: async () => datos };
+      if (url === 'scraper/equivalencias.json') return { ok: true, json: async () => aprobadas };
       if (fallo) throw Error('Sin conexión');
       const q = decodeURIComponent(String(url).split('?q=')[1] || ''); consultas.push(q);
       return { ok: true, json: async () => respuesta(porConsulta ? porConsulta(q) : resultados) };
@@ -655,6 +656,13 @@ test('aportes: solo se aplican las comparaciones cuya tabla sigue en la issue', 
   // Issue antigua, sin secciones: se aplica todo
   r = correr('Aporte enviado desde el sitio.\n\n' + json);
   assert.deepEqual(r.base, ['2', '1', '3']);
+  // Con una tienda más que una aprobada: se guarda solo la parte nueva (unida a un producto ya aprobado)
+  const g3 = [...g('2', '22'), { tienda: 'Superea', id: '99', url: '', nombre: 'R' }];
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aporte-')); fs.mkdirSync(path.join(dir, 'scraper'));
+  fs.writeFileSync(path.join(dir, 'scraper', 'equivalencias.json'), JSON.stringify([g('2', '22')]));
+  execFileSync(process.execPath, [path.join(__dirname, '..', 'scraper', 'aplicar-aporte.mjs')], { cwd: dir, env: { ...process.env, CUERPO: '```json\n' + JSON.stringify([g3]) + '\n```', GITHUB_OUTPUT: path.join(dir, 's.txt') } });
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, 'scraper', 'equivalencias.json'), 'utf8')).at(-1).map(x => x.tienda + x.id), ['Walmart2', 'Superea99']);
+  fs.rmSync(dir, { recursive: true });
   // Todas borradas: no se aplica nada
   r = correr('### Comparaciones descartadas\n\n' + json.replace(/^/, ''));
   assert.deepEqual(r.base, ['2']);
@@ -695,4 +703,22 @@ test('la categoría elegida filtra el catálogo y los resultados de las tiendas'
   assert.match(ui.el('mvivo').innerHTML, /Ningún resultado de «Abarrotes»/);
   ui.run('CAT = ""; pintarVivo()');
   assert.match(ui.el('mvivo').innerHTML, /class="cat" data-c="lacteos"/);
+});
+test('aportes: lo ya aprobado no se vuelve a enviar ni a guardar (solo lo nuevo)', async () => {
+  const { reducirAporte } = require('../comparador.js');
+  const W = { tienda: 'Walmart', id: '1', url: 'https://w.test/p1/p' }, S = { tienda: 'Super Selectos', id: '11', url: 'https://www.superselectos.com/products?keyword=x&productId=11' };
+  const U = { tienda: 'Superea', id: '7', url: 'https://superea.sv/productos/p7' };
+  assert.equal(reducirAporte([W, S], [[W, S]]), null);                                   // ya aprobada
+  assert.deepEqual(reducirAporte([W, S, U], [[W, S]]), [W, U]);                           // solo la tienda nueva, unida a una de las aprobadas
+  assert.deepEqual(reducirAporte([W, S], []), [W, S]);                                    // nada aprobado: todo
+  assert.equal(reducirAporte([W, { ...S, id: '' }], [[W, S]]), null);                     // reconoce el producto por su enlace (productId)
+  assert.equal(reducirAporte([W, U], [[W, S], [S, U]]), null);                            // unido a través de otra equivalencia
+  // En la página: la pregunta solo incluye lo que falta aprobar
+  const fav = { id: 'g:x', n: 'Leche Salud 1 L', m: 'Salud', q: 1000, u: 'ml', cant: 1, t: {
+    Walmart: { p: 2, id: '1', url: W.url, nom: 'Leche W', manual: true, cambio: true },
+    'Super Selectos': { p: 1.9, id: '11', url: S.url, nom: 'Leche S', manual: true, cambio: true } } };
+  let ui = interfaz({ guardados: [fav], aprobadas: [[W, S]] }); await terminar();
+  assert.equal(ui.run('aportesPendientes().length'), 0);
+  ui = interfaz({ guardados: [{ ...fav, t: { ...fav.t, Superea: { p: 2.1, id: '7', url: U.url, nom: 'Leche U', manual: true, cambio: true } } }], aprobadas: [[W, S]] }); await terminar();
+  assert.equal(ui.run('JSON.stringify(aportesPendientes().map(g => g.map(x => x.tienda)))'), '[["Walmart","Superea"]]');
 });
