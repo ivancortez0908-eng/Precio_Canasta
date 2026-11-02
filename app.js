@@ -10,7 +10,7 @@ let D, limite = 60, RV = [], fechaRV = "", busquedaRV = "", codigoRV = "", ctl, 
 const tiendasConocidas = new Set();
 // Consultas y opciones por favorito (el objeto, porque un producto puede estar en varias listas)
 const pendientes = new Map();
-const { equivalente, precioValido, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda, dia, gtin, categoria, NOMBRES_CATEGORIA, reducirAporte } = Canasta;
+const { equivalente, precioValido, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda, dia, gtin, categoria, NOMBRES_CATEGORIA, reducirAporte, ordenarOpciones } = Canasta;
 // Oferta y precio anterior que reporta cada tienda; solo valen para esa tienda
 const oferta = x => ({ promo: x.promo || null, antes: x.antes > x.precio ? x.antes : null });
 
@@ -137,7 +137,8 @@ function aplicarResultados(f, resultados, generado) {
       .map(x => ({ k: idVivo(x), tienda: s, nombre: x.nombre, marca: x.marca || "", precio: x.precio, url: x.url, id: pidDe(x), q: x.q, u: x.u, promo: x.promo || null, antes: x.antes || null }));
     if (!nuevas.length) continue;
     const ks = new Set(nuevas.map(x => x.k));
-    f.opc = { ...f.opc, [s]: [...nuevas, ...(f.opc?.[s] || []).filter(x => !ks.has(x.k))].slice(0, MAX_OPC) };
+    // Se guardan las más parecidas (misma presentación primero), no simplemente las primeras que llegaron
+    f.opc = { ...f.opc, [s]: ordenarOpciones(f, [...nuevas, ...(f.opc?.[s] || []).filter(x => !ks.has(x.k))]).slice(0, MAX_OPC) };
   }
 }
 const MAX_OPC = 8;
@@ -158,8 +159,7 @@ function opcionesDe(f, s) {
     x.k = idVivo(x);
     if (!out.has(x.k)) out.set(x.k, x);
   }
-  const eq = x => (equivalente(f, x) ? 0 : 1);
-  return [...out.values()].sort((a, b) => eq(a) - eq(b) || a.precio - b.precio).slice(0, 15);
+  return ordenarOpciones(f, [...out.values()]).slice(0, 15);
 }
 // Textos de búsqueda: el original y, como respaldo, la marca con las palabras clave del nombre
 const PARASITAS = new Set("de la el los las con en y para por del al un una bolsa caja paquete pack unidades unidad ud uds g gr kg lb lbs ml l lt oz".split(" "));
@@ -168,7 +168,8 @@ function consultas(f) {
   const marca = norm(f.m || "").trim(), mw = marca.split(" ");
   const nom = [...new Set(toks(f.n))].filter(w => !mw.includes(w));
   const a = [marca, ...nom.slice(0, 3)].filter(Boolean).join(" ").slice(0, 60), b = nom.slice(0, 2).join(" ");
-  return [...new Set([(f.busqueda || f.n || "").trim().slice(0, 60), a, b])].filter(q => q.length >= 2);
+  // También el nombre completo: trae la misma presentación («24 rollos») aunque se haya buscado con menos palabras
+  return [...new Set([(f.busqueda || f.n || "").trim().slice(0, 60), (f.n || "").trim().slice(0, 60), a, b])].filter(q => q.length >= 2);
 }
 // completo: hace todas las búsquedas aunque ya haya coincidencias, para reunir más opciones
 async function completarFavorito(f, completo = false) {
