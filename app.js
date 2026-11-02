@@ -10,7 +10,7 @@ let D, limite = 60, RV = [], fechaRV = "", busquedaRV = "", codigoRV = "", ctl, 
 const tiendasConocidas = new Set();
 // Consultas y opciones por favorito (el objeto, porque un producto puede estar en varias listas)
 const pendientes = new Map();
-const { equivalente, precioValido, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda, dia, gtin, categoria, NOMBRES_CATEGORIA } = Canasta;
+const { equivalente, precioValido, resumir, leerPromo, costo, palabrasBusqueda, coincideBusqueda, dia, gtin, categoria, NOMBRES_CATEGORIA, reducirAporte } = Canasta;
 // Oferta y precio anterior que reporta cada tienda; solo valen para esa tienda
 const oferta = x => ({ promo: x.promo || null, antes: x.antes > x.precio ? x.antes : null });
 
@@ -564,7 +564,15 @@ let ENV = {}, graciasHasta = 0;
 try { ENV = JSON.parse(localStorage.getItem(ENVK) || "{}"); } catch {}
 if (!ENV || typeof ENV !== "object" || Array.isArray(ENV)) ENV = {};
 const guardarEnv = () => { try { localStorage.setItem(ENVK, JSON.stringify(ENV)); } catch {} };
-const aportesPendientes = () => equivalenciasLocal().filter(g => !ENV[claveGrupo(g)]);   // ENV[clave] = "enviado" | "no"
+// Equivalencias ya aprobadas (el mismo archivo que usa el catálogo): no se pregunta por ellas y de un grupo se envía solo lo nuevo.
+// Si no se pueden leer, se pregunta por todo, como antes.
+let APROBADAS = [];
+fetch("scraper/equivalencias.json", { cache: "no-cache" }).then(r => (r.ok ? r.json() : [])).then(d => { APROBADAS = Array.isArray(d) ? d : []; pintarAyuda(); }).catch(() => {});
+const aportesPendientes = () => {
+  const out = new Map();
+  for (const g of equivalenciasLocal()) { const n = reducirAporte(g, APROBADAS); if (n && !ENV[claveGrupo(n)]) out.set(claveGrupo(n), n); }
+  return [...out.values()];   // ENV[clave] = "enviado" | "no"
+};
 function pintarAyuda() {
   const p = window.API_VIVO ? aportesPendientes() : [];
   $("ayuda").hidden = !p.length && Date.now() > graciasHasta;

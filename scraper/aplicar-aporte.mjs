@@ -1,7 +1,10 @@
 // Aplica una issue aprobada (etiqueta "aprobado") a scraper/equivalencias.json
 // Solo entran las comparaciones cuya sección («### Comparación N» y su tabla) sigue en la issue:
 // para descartar una basta con borrar su sección antes de poner la etiqueta; el JSON no se edita.
+// Lo que ya está aprobado no se vuelve a guardar: de cada comparación entra solo lo que une algo nuevo (reducirAporte).
 import { readFile, writeFile, appendFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+const { reducirAporte } = createRequire(import.meta.url)("../comparador.js");
 const cuerpo = process.env.CUERPO || "";
 // Resumen para el comentario de cierre (lo lee el workflow como salida del paso)
 const salida = async (resumen, aplicados) => {
@@ -21,13 +24,13 @@ const antigua = !/###\s*Comparaci[oó]n/i.test(cuerpo);
 const elegidos = nuevos.map((g, i) => [i + 1, g]).filter(([n]) => antigua || visibles.has(n));
 const omitidos = nuevos.map((_, i) => i + 1).filter(n => !antigua && !visibles.has(n));
 
-const clave = g => g.map(x => x.tienda + "#" + (x.id || x.url)).sort().join("|");
 let base = []; try { base = JSON.parse(await readFile("scraper/equivalencias.json", "utf8")); } catch {}
-const vistos = new Set(base.map(clave)); const aplicadas = [], repetidas = [];
+const aplicadas = [], repetidas = [];
 for (const [n, g] of elegidos) {
-  if (vistos.has(clave(g))) { repetidas.push(n); continue; }
-  base.push(g.map(x => ({ tienda: texto(x.tienda, 40), id: texto(x.id, 40), url: texto(x.url, 300), nombre: texto(x.nombre, 150) })));
-  vistos.add(clave(g)); aplicadas.push(n);
+  const nuevo = reducirAporte(g, base);
+  if (!nuevo) { repetidas.push(n); continue; }
+  base.push(nuevo.map(x => ({ tienda: texto(x.tienda, 40), id: texto(x.id, 40), url: texto(x.url, 300), nombre: texto(x.nombre, 150) })));
+  aplicadas.push(n);
 }
 if (aplicadas.length) await writeFile("scraper/equivalencias.json", JSON.stringify(base, null, 1));
 const lista = ns => ns.length > 1 ? ns.slice(0, -1).join(", ") + " y " + ns.at(-1) : String(ns[0]);

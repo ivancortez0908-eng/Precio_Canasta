@@ -1,4 +1,20 @@
-# Bitácora — 2 de noviembre de 2026 (fotos de los productos)
+# Bitácora — 2 de noviembre de 2026 (aportes: no repetir lo ya aprobado)
+
+## Problema
+Lo enviado se anotaba solo en el navegador de quien lo envió. Desde otro teléfono, al agregar otra tienda al mismo producto, o si otra persona hacía el mismo cambio, se volvía a preguntar y llegaban a la issue comparaciones ya aprobadas. Al aplicarlas, solo se reconocía una comparación idéntica.
+
+## Cambios
+- `comparador.js`: `reducirAporte(grupo, aprobadas)` une los productos de las equivalencias aprobadas (por ID o enlace, incluido el `productId` de Selectos) y deja un producto por cada parte distinta; `null` si todo ya estaba unido.
+- `app.js`: lee `scraper/equivalencias.json` (sin caché vieja) y la pregunta de aportes solo incluye lo nuevo; si no se puede leer, pregunta por todo, como antes.
+- `scraper/aplicar-aporte.mjs`: usa la misma función: guarda solo la parte nueva o la marca como «Ya estaban en la base».
+- Scripts con `?v=2026-11-02b`. README y AGENTS actualizados.
+
+## Validación
+- `node --test tests/canasta.test.cjs`: 50 pasan (nueva: casos de `reducirAporte`, pregunta en la página y aplicación con una tienda más).
+- `node tests/interfaz.cjs` pasa.
+- Con las 10 equivalencias reales: las 10 se reconocen como ya aprobadas; la Colgate con una tienda nueva envía solo esa tienda unida a una aprobada.
+
+# Bitácora anterior (fotos de los productos)
 
 ## Origen de las fotos (revisado con respuestas reales)
 - Walmart, Despensa de Don Juan y Maxi (VTEX): `items[0].images[0].imageUrl`; se pide la miniatura de 96×96 (`/arquivos/ids/<id>-96-96/…`).
