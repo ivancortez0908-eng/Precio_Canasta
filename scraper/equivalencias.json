@@ -212,5 +212,31 @@
    "url": "https://www.superselectos.com/products?keyword=gelatina%20ego&productId=120019",
    "nombre": "GELATINA EGO ULTRA INTENSE 450 ml"
   }
+ ],
+ [
+  {
+   "tienda": "Maxi Despensa",
+   "id": "4106931",
+   "url": "https://www.maxidespensa.com.sv/aceite-el-dorado-doypack-700ml-5/p",
+   "nombre": "Aceite El Dorado Doypack 700ml"
+  },
+  {
+   "tienda": "Despensa de Don Juan",
+   "id": "4106931",
+   "url": "https://www.ladespensadedonjuan.com.sv/aceite-el-dorado-doypack-700ml-5/p",
+   "nombre": "Aceite El Dorado Doypack 700ml"
+  },
+  {
+   "tienda": "Walmart",
+   "id": "4106931",
+   "url": "https://www.walmart.com.sv/aceite-el-dorado-doypack-700ml-5/p",
+   "nombre": "Aceite El Dorado Doypack 700ml"
+  },
+  {
+   "tienda": "Super Selectos",
+   "id": "115973",
+   "url": "https://www.superselectos.com/products?keyword=aceite%20el%20dorado&productId=115973",
+   "nombre": "ACEITE EL DORADO DOY PACK 700 mL"
+  }
  ]
 ]
