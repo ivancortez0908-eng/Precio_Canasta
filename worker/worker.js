@@ -3,7 +3,7 @@
 // y devuelve los resultados en JSON. Guarda cada consulta 10 minutos en caché para no repetir peticiones.
 const UA = "CanastaSV/1.0 (comparador de precios sin fines de lucro)";
 const MAX = 12; // resultados por tienda
-const VERSION = "2026-11-02"; // aparece en cada respuesta: sirve para saber qué código está desplegado
+const VERSION = "2026-11-17"; // aparece en cada respuesta: sirve para saber qué código está desplegado
 
 // ---- tamaños (misma lógica que scraper/normalizar.mjs) ----
 const RE = /(?<![\d.,])(?:(\d+)\s*[x×]\s*)?(\d+(?:[.,]\d+)?)\s*(kg|kilos?|grs?|gramos?|g|mg|lbs?|libras?|floz|onzas?|oz|ml|lts?|litros?|l|gal(?:on(?:es)?)?)(?![a-z])/i;
@@ -202,6 +202,9 @@ async function equivalencias(env) {
 // Selectos cambia el ?keyword= según la búsqueda: se compara por productId; en las demás, el enlace sin parámetros
 const normUrl = u => { const m = String(u || "").match(/productId=(\d+)/); return m ? "id:" + m[1] : String(u || "").split("?")[0].replace(/\/+$/, "").toLowerCase(); };
 const mismoProducto = (m, x) => (!!m.id && String(m.id) === String(x.id)) || (!!m.url && normUrl(m.url) === normUrl(x.url));
+// Walmart, Despensa de Don Juan y Maxi Despensa comparten catálogo: el mismo ID es el mismo producto en las tres
+const VTEX = new Set(["Walmart", "Despensa de Don Juan", "Maxi Despensa"]);
+const mismaTienda = (a, b) => a === b || (VTEX.has(a) && VTEX.has(b));
 
 // Para agregar una farmacia u otra tienda: escribe una función igual a las de arriba y agrégala aquí.
 const TIENDAS = { "Walmart": vtex("https://www.walmart.com.sv"), "Despensa de Don Juan": vtex("https://www.ladespensadedonjuan.com.sv"),
@@ -301,7 +304,7 @@ export default {
       // 2) Equivalencias aprobadas de ese producto: en cada tienda se busca el producto exacto que la persona confirmó
       const porCodigo = resultados.filter(x => x.porCodigo);
       const confirmados = (porCodigo.length ? await equivalencias(env) : [])
-        .filter(g => g.some(m => porCodigo.some(x => x.tienda === m.tienda && mismoProducto(m, x)))).flat()
+        .filter(g => g.some(m => porCodigo.some(x => mismaTienda(x.tienda, m.tienda) && (x.tienda === m.tienda ? mismoProducto(m, x) : !!m.id && String(m.id) === String(x.id))))).flat()
         .filter(m => m && nombres.includes(m.tienda) && !resultados.some(x => x.tienda === m.tienda));
       const conEquiv = [...new Set(confirmados.map(m => m.tienda))];
       if (conEquiv.length) await correr(conEquiv, async n => {

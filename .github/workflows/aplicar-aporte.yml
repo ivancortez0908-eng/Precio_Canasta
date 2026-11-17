@@ -26,7 +26,7 @@ jobs:
         run: |
           git config user.name "canasta-bot"
           git config user.email "canasta-bot@users.noreply.github.com"
-          git add scraper/equivalencias.json
+          git add scraper/equivalencias.json scraper/descartadas.json
           git diff --cached --quiet || (git commit -m "Aplicar aporte #$NUM" && git push)
           # Comentario aparte: si la issue ya se cerró a mano, "gh issue close --comment" no lo publica
           gh issue comment "$NUM" --body "$RESUMEN"
