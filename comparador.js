@@ -154,7 +154,10 @@
   // por enlace) y deja un producto por cada parte distinta: «Walmart ↔ Selectos» aprobada + Superea nueva → «Walmart ↔ Superea».
   // Devuelve null si todo ya estaba unido. Lo usan la página (qué preguntar) y scraper/aplicar-aporte.mjs (qué guardar).
   const urlClave = u => { const m = String(u || "").match(/[?&]productId=(\d+)/); return m ? "pid:" + m[1] : String(u || "").split("?")[0].replace(/\/+$/, "").toLowerCase(); };
-  const clavesProducto = x => [x.id ? `${x.tienda}#id:${x.id}` : "", x.url && !/[?&]q=/.test(x.url) ? `${x.tienda}#url:${urlClave(x.url)}` : ""].filter(Boolean);
+  // Walmart, Despensa de Don Juan y Maxi Despensa comparten catálogo (VTEX de Walmart Centroamérica): el mismo ID es el mismo producto
+  const VTEX = new Set(["Walmart", "Despensa de Don Juan", "Maxi Despensa"]);
+  const clavesProducto = x => [x.id ? `${x.tienda}#id:${x.id}` : "", x.id && VTEX.has(x.tienda) ? `vtex#id:${x.id}` : "",
+    x.url && !/[?&]q=/.test(x.url) ? `${x.tienda}#url:${urlClave(x.url)}` : ""].filter(Boolean);
   function reducirAporte(grupo, aprobadas = []) {
     const padre = new Map();
     const raiz = k => { if (!padre.has(k)) padre.set(k, k); while (padre.get(k) !== k) k = padre.get(k); return k; };

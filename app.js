@@ -578,11 +578,14 @@ if (!ENV || typeof ENV !== "object" || Array.isArray(ENV)) ENV = {};
 const guardarEnv = () => { try { localStorage.setItem(ENVK, JSON.stringify(ENV)); } catch {} };
 // Equivalencias ya aprobadas (el mismo archivo que usa el catálogo): no se pregunta por ellas y de un grupo se envía solo lo nuevo.
 // Si no se pueden leer, se pregunta por todo, como antes.
-let APROBADAS = [];
+let APROBADAS = [], DESCARTADAS = [];
 fetch("scraper/equivalencias.json", { cache: "no-cache" }).then(r => (r.ok ? r.json() : [])).then(d => { APROBADAS = Array.isArray(d) ? d : []; pintarAyuda(); }).catch(() => {});
+// Comparaciones que borraste de una issue al aplicarla: tampoco se vuelve a preguntar por ellas
+fetch("scraper/descartadas.json", { cache: "no-cache" }).then(r => (r.ok ? r.json() : [])).then(d => { DESCARTADAS = Array.isArray(d) ? d : []; pintarAyuda(); }).catch(() => {});
 const aportesPendientes = () => {
   const out = new Map();
-  for (const g of equivalenciasLocal()) { const n = reducirAporte(g, APROBADAS); if (n && !ENV[claveGrupo(n)]) out.set(claveGrupo(n), n); }
+  // Lo ya aprobado o descartado no se pregunta; tampoco lo que este navegador ya envió o rechazó (con o sin reducir)
+  for (const g of equivalenciasLocal()) { const n = reducirAporte(g, [...APROBADAS, ...DESCARTADAS]); if (n && !ENV[claveGrupo(n)] && !ENV[claveGrupo(g)]) out.set(claveGrupo(n), n); }
   return [...out.values()];   // ENV[clave] = "enviado" | "no"
 };
 function pintarAyuda() {

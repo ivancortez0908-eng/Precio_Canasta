@@ -34,7 +34,7 @@ test('totales por cantidad, centavos, cobertura parcial y compra combinada', () 
   assert.equal(resumir([{ cant: 1, t: {} }], ['A']).sinPrecio, 1);
 });
 
-function interfaz({ resultados = [], datos, fallo = false, guardados = [], porConsulta, aprobadas = [], archivos = {} } = {}) {
+function interfaz({ resultados = [], datos, fallo = false, guardados = [], porConsulta, aprobadas = [], descartadas = [], archivos = {} } = {}) {
   const elements = new Map();
   function el(id) {
     if (!elements.has(id)) elements.set(id, { value: '', textContent: '', innerHTML: '', hidden: false, checked: true,
@@ -52,6 +52,7 @@ function interfaz({ resultados = [], datos, fallo = false, guardados = [], porCo
     fetch: async url => {
       if (url === 'data/productos.json') return { ok: !!datos, json: async () => datos };
       if (url === 'scraper/equivalencias.json') return { ok: true, json: async () => aprobadas };
+      if (url === 'scraper/descartadas.json') return { ok: true, json: async () => descartadas };
       if (archivos[url]) return { ok: true, json: async () => archivos[url] };
       if (fallo) throw Error('Sin conexión');
       const q = decodeURIComponent(String(url).split('?q=')[1] || ''); consultas.push(q);
@@ -751,4 +752,19 @@ test('«Cambiar producto»: primero la misma presentación (24 rollos), no lo m�
   assert.deepEqual(ordenarOpciones(ref, ops).slice(0, 2).map(x => x.precio), [7.91, 10]);
   // «6rollos» pegado también cuenta como presentación
   assert.equal(ordenarOpciones({ nombre: 'Papel X 6 Rollos' }, [{ nombre: 'Papel Y 4 Rollos', precio: 1 }, { nombre: 'Papel Z Doble - 6rollos', precio: 3 }])[0].precio, 3);
+});
+test('aportes: mismo ID en las tiendas VTEX, lo descartado y lo ya enviado no se vuelven a preguntar', async () => {
+  const { reducirAporte } = require('../comparador.js');
+  const S = { tienda: 'Super Selectos', id: '3673' }, M = { tienda: 'Maxi Despensa', id: '4058993' }, W = { tienda: 'Walmart', id: '4058993' }, D = { tienda: 'Despensa de Don Juan', id: '4058993' };
+  assert.equal(reducirAporte([S, W, D], [[S, M]]), null);              // Walmart/Despensa con el mismo ID que Maxi: ya estaba
+  assert.equal(reducirAporte([{ tienda: 'Walmart', id: '1' }, { tienda: 'Super Selectos', id: '2' }], [[{ tienda: 'Maxi Despensa', id: '1' }, { tienda: 'Super Selectos', id: '2' }]]), null);
+  assert.notEqual(reducirAporte([{ tienda: 'Walmart', id: '1' }, { tienda: 'Superea', id: '1' }], []), null);   // Superea no comparte IDs
+  // En la página: una comparación descartada no se pregunta
+  const pan = { id: 'g:pan', n: 'Pan Bimbo 560 g', m: 'Bimbo', cant: 1, t: {
+    Walmart: { p: 2, id: '4054725', url: 'https://www.walmart.com.sv/pan/p', nom: 'Pan', manual: true, cambio: true },
+    'Super Selectos': { p: 2.1, id: '121419', url: 'https://www.superselectos.com/products?keyword=pan&productId=121419', nom: 'Pan 580', manual: true, cambio: true } } };
+  let ui = interfaz({ guardados: [pan], descartadas: [[{ tienda: 'Walmart', id: '4054725' }, { tienda: 'Super Selectos', id: '121419' }]] }); await terminar();
+  assert.equal(ui.run('aportesPendientes().length'), 0);
+  ui = interfaz({ guardados: [pan] }); await terminar();
+  assert.equal(ui.run('aportesPendientes().length'), 1);
 });

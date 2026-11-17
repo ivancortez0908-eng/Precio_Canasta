@@ -47,7 +47,10 @@ todos.forEach((it, i) => {
 // Equivalencias manuales: scraper/equivalencias.json = [[{tienda,id},{tienda,id}], ...]
 const manual = JSON.parse(await readFile("scraper/equivalencias.json", "utf8").catch(() => "[]"));
 for (const grupo of manual) {
-  const idx = grupo.map(x => porId.get(`${x.tienda}#${x.id}`) ?? (x.url ? porUrl.get(`${x.tienda}#${normUrl(x.url)}`) : undefined)).filter(x => x !== undefined);
+  // En las tiendas VTEX (comparten catálogo) el mismo ID sirve aunque la equivalencia nombre otra de las tres
+  const vtex = x => ["Walmart", "Despensa de Don Juan", "Maxi Despensa"].includes(x.tienda) && x.id
+    ? ["Walmart", "Despensa de Don Juan", "Maxi Despensa"].map(t => porId.get(`${t}#${x.id}`)).find(i => i !== undefined) : undefined;
+  const idx = grupo.map(x => porId.get(`${x.tienda}#${x.id}`) ?? (x.url ? porUrl.get(`${x.tienda}#${normUrl(x.url)}`) : undefined) ?? vtex(x)).filter(x => x !== undefined);
   for (let j = 1; j < idx.length; j++) unir(idx[j], idx[0], "manual");
 }
 

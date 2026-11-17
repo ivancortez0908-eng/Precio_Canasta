@@ -2,6 +2,7 @@
 // Solo entran las comparaciones cuya sección («### Comparación N» y su tabla) sigue en la issue:
 // para descartar una basta con borrar su sección antes de poner la etiqueta; el JSON no se edita.
 // Lo que ya está aprobado no se vuelve a guardar: de cada comparación entra solo lo que une algo nuevo (reducirAporte).
+// Las comparaciones borradas de la issue se anotan en scraper/descartadas.json: la página no vuelve a preguntar por ellas.
 import { readFile, writeFile, appendFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 const { reducirAporte } = createRequire(import.meta.url)("../comparador.js");
@@ -33,9 +34,18 @@ for (const [n, g] of elegidos) {
   aplicadas.push(n);
 }
 if (aplicadas.length) await writeFile("scraper/equivalencias.json", JSON.stringify(base, null, 1));
+let descartadas = []; try { descartadas = JSON.parse(await readFile("scraper/descartadas.json", "utf8")); } catch {}
+let nDescartadas = 0;
+for (const n of omitidos) {
+  const nuevo = reducirAporte(nuevos[n - 1], [...base, ...descartadas]);
+  if (!nuevo) continue;   // ya aprobada o ya descartada
+  descartadas.push(nuevo.map(x => ({ tienda: texto(x.tienda, 40), id: texto(x.id, 40), url: texto(x.url, 300), nombre: texto(x.nombre, 150) })));
+  nDescartadas++;
+}
+if (nDescartadas) await writeFile("scraper/descartadas.json", JSON.stringify(descartadas, null, 1));
 const lista = ns => ns.length > 1 ? ns.slice(0, -1).join(", ") + " y " + ns.at(-1) : String(ns[0]);
 const partes = [aplicadas.length ? `Se aplicaron ${aplicadas.length} comparación(es) (${lista(aplicadas)}) a scraper/equivalencias.json; se verán en el catálogo tras la próxima actualización de precios.`
   : "No se aplicó ninguna comparación."];
-if (omitidos.length) partes.push(`Se omitieron ${lista(omitidos)} porque su tabla se borró de la issue.`);
+if (omitidos.length) partes.push(`Se omitieron ${lista(omitidos)} porque su tabla se borró de la issue` + (nDescartadas ? "; no se volverá a preguntar por ellas." : "."));
 if (repetidas.length) partes.push(`Ya estaban en la base: ${lista(repetidas)}.`);
 await salida(partes.join(" "), aplicadas.length);

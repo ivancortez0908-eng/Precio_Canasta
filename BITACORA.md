@@ -1,4 +1,23 @@
-# Bitácora — 3 de noviembre de 2026 (opciones de «Cambiar producto»)
+# Bitácora — 17 de noviembre de 2026 (aportes repetidos, issue #46)
+
+## Problema
+La issue #46 trajo 5 comparaciones; 4 ya estaban revisadas:
+- Néctar Del Monte, Sopa Maggi y Café Coscafé: aprobadas con Maxi (o con Walmart/Despensa) y enviadas otra vez con otra de esas tiendas, que tiene el mismo ID. La página no sabía que en las tres tiendas VTEX el mismo ID es el mismo producto.
+- Pan Bimbo 560 g ↔ Selectos 580 g: se había quitado de la base en octubre; la página no guardaba lo rechazado.
+
+## Cambios
+- `comparador.js`: `reducirAporte` une por ID compartido entre Walmart, Despensa de Don Juan y Maxi Despensa.
+- `worker/worker.js` (versión `2026-11-17`) y `scraper/emparejar.mjs`: una equivalencia con una de esas tiendas vale para las tres con el mismo ID.
+- `scraper/aplicar-aporte.mjs` y su workflow: las comparaciones borradas de la issue se anotan en `scraper/descartadas.json` (se agregó el Pan Bimbo 560 g ↔ 580 g).
+- `app.js`: no pregunta por lo aprobado ni por lo descartado, ni por lo que ese navegador ya envió o rechazó (con la clave reducida o la original). Scripts con `?v=2026-11-17`.
+
+## Resultado con la #46
+Con las reglas nuevas, las comparaciones 1 a 4 no se habrían preguntado; la 5 (Aceite El Dorado) se guarda como Maxi ↔ Selectos, que vale para Walmart y Despensa por el mismo ID.
+
+## Validación
+- `node --test tests/canasta.test.cjs`: 53 pasan. `node tests/interfaz.cjs` pasa.
+
+# Bitácora anterior (opciones de «Cambiar producto»)
 
 ## Problema
 «Papel Higiénico Encanto Grande 24 Rollos» de Selectos: Walmart y Despensa de Don Juan no venden Encanto, pero en «Cambiar producto» no salían los papeles de 24 rollos (Scott, Rosal, Great Value) que sí aparecen en el buscador. Reproducido con el Worker real: las opciones se ordenaban solo por precio (15 visibles) y se llenaban con paquetes de 4 o 6 rollos, toallitas y hasta soportes; además se guardaban las 8 primeras que llegaban y la consulta no usaba el nombre completo («24 rollos»).
